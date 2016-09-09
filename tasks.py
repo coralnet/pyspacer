@@ -22,7 +22,8 @@ def extract_features(payload):
     bucket = conn.get_bucket(payload['bucketname'], validate=True)
 
     key = bucket.get_key(payload['imkey'])
-    key.get_contents_to_filename(payload['imkey'])
+    basename = os.path.basename(payload['imkey'])
+    key.get_contents_to_filename(basename)
 
     # Setup caffe
     caffe.set_mode_cpu()
@@ -35,12 +36,13 @@ def extract_features(payload):
         'scaling_factor':1,
         'crop_size':224,
         'batch_size':10}
-    imlist = [payload['imkey']]
+    
+    imlist = [basename]
     imdict = {
-        payload['imkey']:([], 100)
+        basename:([], 100)
     }
     for row, col in payload['rowcols']:
-       imdict[payload['imkey']][0].append((row, col, 1)) 
+       imdict[basename][0].append((row, col, 1)) 
 
     # Run
     (_, _, feats) = cpt.classify_from_patchlist(imlist, imdict, pyparams, net, scorelayer = 'fc7')

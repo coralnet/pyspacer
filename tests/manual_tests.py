@@ -1,10 +1,13 @@
 import sys
 sys.path.append('/root/caffe')
+sys.path.append('../')
 
 import caffe
 import boto
 import os
 import json
+import argparse
+from spacer import mailman
 
 import numpy as np
 
@@ -33,3 +36,24 @@ def test_feats():
 	feats = tasks.extract_features(payload)
 	
 	return feats
+
+def read_messages(qname):
+	print 'reading 1 message from {}'.format(qname)
+	q = boto.sqs.connect_to_region("us-west-2").get_queue(qname)
+
+	for m in q.get_messages():
+		print m.get_body()
+
+def run_mailman(sdf):
+	mailman.grab_message()
+
+
+parser = argparse.ArgumentParser(description='Manual test function.')
+parser.add_argument('task', type=str)
+parser.add_argument('queue', type=str)
+dispatcher={
+	'run_mailman':run_mailman,
+	'read_messages':read_messages
+}
+args = parser.parse_args()
+dispatcher[args.task](args.queue)

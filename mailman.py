@@ -10,6 +10,7 @@ tasks = {
 }
 
 def grab_message():
+    print "grabbing message."
 
     # Load default queue
     conn = boto.sqs.connect_to_region("us-west-2")
@@ -56,4 +57,5 @@ def handle_message(body):
 
     return 1, resbody
 
-grab_message()
+if __name__ == '__main__':
+    grab_message()
