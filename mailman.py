@@ -1,5 +1,6 @@
 import boto
 import json
+
 from tasks import extract_features, train_robot, classify_image
 from boto.sqs.message import Message
 
@@ -20,18 +21,23 @@ def grab_message():
 
     # Read message
     m = inqueue.read()
+    if m is None:
+    	print "No messages in inqueue."
+    	return 1
     body = json.loads(m.get_body())
     
     # Do the work
     try:
-        status, res_body = handle_message(body)
+        status, outbound = handle_message(body)
         inqueue.delete_message(m)
         
         m = Message()
-        m.set_body(json.dumps(res_body))
+        out_body = {'inbound': body, 'outbound': outbound}
+        m.set_body(json.dumps(out_body))
         resqueue.write(m)
 
     except Exception as e:
+    	print e
         m = Message()
         m.set_body(json.dumps(e.message))
         errorqueue.write(m)

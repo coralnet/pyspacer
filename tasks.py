@@ -1,10 +1,11 @@
 import sys
-sys.path.append('/root/caffe')
+sys.path.append('/root/caffe/')
 
 import caffe
 import os
 import boto
 import json
+import time
 
 import beijbom_vision_lib.caffe.tools as bct
 import coral_lib.patch.tools as cpt
@@ -13,7 +14,8 @@ from boto.s3.key import Key
 
 def extract_features(payload):
     print "Extracting features for {}.".format(payload['imkey'])
-    
+    t1 = time.time()
+
     # Make sure the right model and prototxt are available locally.
     _download_models(payload['modelname'])
 
@@ -27,8 +29,8 @@ def extract_features(payload):
 
     # Setup caffe
     caffe.set_mode_cpu()
-    net = caffe.Net(payload['modelname'] + '.deploy.prototxt', payload['modelname'] + '.caffemodel', caffe.TEST)
-
+    net = caffe.Net(str(payload['modelname'] + '.deploy.prototxt'), str(payload['modelname'] + '.caffemodel'), caffe.TEST)
+    
     # Set parameters
     pyparams = {
     'im_mean': [128, 128, 128],
@@ -45,15 +47,17 @@ def extract_features(payload):
        imdict[basename][0].append((row, col, 1)) 
 
     # Run
+    t2 = time.time()
     (_, _, feats) = cpt.classify_from_patchlist(imlist, imdict, pyparams, net, scorelayer = 'fc7')
     feats = [list(f) for f in feats]
+    message = {'runtime': {'total': time.time() - t1, 'core': time.time() - t2, 'per_point': (time.time() - t2) / len(payload['rowcols'])}}
 
     # Store
     k = Key(bucket)
     k.key = payload['outputkey']
     k.set_contents_from_string(json.dumps(feats))
 
-    return 1, {'runtime', 3}
+    return 1, message
 
 def train_robot(payload):
     print "Training robot."
@@ -62,10 +66,6 @@ def train_robot(payload):
 
 def classify_image(payload):
     print "Classifying image."
-
-
-
-
 
 
 
