@@ -40,9 +40,8 @@ def test_feats():
 def read_messages(qname):
 	print 'reading 1 message from {}'.format(qname)
 	q = boto.sqs.connect_to_region("us-west-2").get_queue(qname)
-
-	for m in q.get_messages():
-		print m.get_body()
+	m = q.read()
+	print m.get_body()
 
 def run_mailman(sdf):
 	mailman.grab_message()

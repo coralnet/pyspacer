@@ -1,6 +1,10 @@
 # Custom
 secrets.json
-
+*.jpg
+*.jpeg
+*.png
+*.caffemodel
+*.prototxt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

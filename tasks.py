@@ -17,7 +17,7 @@ def extract_features(payload):
     t1 = time.time()
 
     # Make sure the right model and prototxt are available locally.
-    _download_models(payload['modelname'])
+    was_cashed = _download_models(payload['modelname'])
 
     # Download the image to be processed.
     conn = boto.connect_s3()
@@ -29,7 +29,7 @@ def extract_features(payload):
 
     # Setup caffe
     caffe.set_mode_cpu()
-    net = caffe.Net(str(payload['modelname'] + '.deploy.prototxt'), str(payload['modelname'] + '.caffemodel'), caffe.TEST)
+    net = caffe.Net('../models/' + str(payload['modelname'] + '.deploy.prototxt'), '../models/' + str(payload['modelname'] + '.caffemodel'), caffe.TEST)
     
     # Set parameters
     pyparams = {
@@ -50,7 +50,7 @@ def extract_features(payload):
     t2 = time.time()
     (_, _, feats) = cpt.classify_from_patchlist(imlist, imdict, pyparams, net, scorelayer = 'fc7')
     feats = [list(f) for f in feats]
-    message = {'runtime': {'total': time.time() - t1, 'core': time.time() - t2, 'per_point': (time.time() - t2) / len(payload['rowcols'])}}
+    message = {'model_was_cashed': was_cashed, 'runtime': {'total': time.time() - t1, 'core': time.time() - t2, 'per_point': (time.time() - t2) / len(payload['rowcols'])}}
 
     # Store
     k = Key(bucket)
@@ -74,8 +74,8 @@ def _download_models(name):
     conn = boto.connect_s3()
     bucket = conn.get_bucket('spacer-tools')
     for suffix in ['.deploy.prototxt', '.caffemodel']:
-        _download_file(bucket, name + suffix, name + suffix)
-
+        was_cashed = _download_file(bucket, name + suffix, '../models/' + name + suffix)
+    return was_cashed
 
 
 def _download_file(bucket, keystring, destination):
@@ -84,4 +84,7 @@ def _download_file(bucket, keystring, destination):
         print "downloading {}".format(keystring)
         key = Key(bucket, keystring)
         key.get_contents_to_filename(destination)
+        return False
+    else:
+        return True
     
