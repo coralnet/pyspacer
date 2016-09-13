@@ -57,7 +57,7 @@ def extract_features(payload):
     k.key = payload['outputkey']
     k.set_contents_from_string(json.dumps(feats))
 
-    return 1, message
+    return message
 
 def train_robot(payload):
     print "Training robot."

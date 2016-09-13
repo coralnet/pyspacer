@@ -28,11 +28,11 @@ def grab_message():
     
     # Do the work
     try:
-        status, outbound = handle_message(body)
+        outbound = handle_message(body)
         inqueue.delete_message(m)
         
         m = Message()
-        out_body = {'inbound': body, 'outbound': outbound}
+        out_body = {'original_job': body, 'result': outbound}
         m.set_body(json.dumps(out_body))
         resqueue.write(m)
 
@@ -54,14 +54,7 @@ def handle_message(body):
     if not body['task'] in tasks:
         raise ValueError('Requested task: "{}" is not a valid task'.format(body['task']))
     
-    result = tasks[body['task']](body['payload'])
-
-    resbody = {
-        'inbound':body,
-        'result':result
-    }
-
-    return 1, resbody
+    return tasks[body['task']](body['payload'])
 
 if __name__ == '__main__':
     grab_message()
