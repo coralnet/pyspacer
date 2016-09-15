@@ -1,12 +1,12 @@
 import boto
 import json
 
-from tasks import extract_features, train_robot, classify_image
+from tasks import extract_features, train_classifier, classify_image
 from boto.sqs.message import Message
 
 tasks = {
     'extract_features': extract_features,
-    'train_robot': train_robot,
+    'train_classifier': train_classifier,
     'classify_image': classify_image
 }
 
