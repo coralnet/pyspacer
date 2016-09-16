@@ -79,7 +79,7 @@ def train_classifier(payload):
     ## TRAIN A MODEL
     #
     starttime = time.time()
-    clf, refacc = _do_training(traindict, payload['classes'], bucket)
+    clf, refacc = _do_training(traindict, payload['classes'], payload['nbr_epochs'], bucket)
     runtime = time.time() - starttime
 
     # Store
@@ -113,7 +113,7 @@ def classify_image(payload):
     print "Classifying image."
 
 
-def _do_training(traindict, classes, bucket):
+def _do_training(traindict, classes, nbr_epochs, bucket):
 
     # Figure out # images per mini-batch.
     samples_per_image = len(traindict[traindict.keys()[0]])
@@ -133,7 +133,7 @@ def _do_training(traindict, classes, bucket):
 
     print "Trainstats:", images_per_minibatch, n
    
-    for epoch in range(10):
+    for epoch in range(nbr_epochs):
         print "Epoch {}".format(epoch),
         random.shuffle(trainset)
         mini_batches = _chunkify(trainset, n)
@@ -153,11 +153,12 @@ def _evaluate_classifier(clf, imkeys, gtdict, bucket):
     """
     scores = []
     gt = []
+    classes = list(clf.classes_)
     for imkey in imkeys:
         x, y = _load_data(gtdict, imkey, bucket)
         scores.extend(clf.predict_proba(x))
         # Convert the ground truth to index not actual class id.
-        y_index = [clf.classes_.index(yy) for yy in y]
+        y_index = [classes.index(ymember) for ymember in y]
         gt.extend(y_index)
     scores = [list(score) for score in scores]
     # Est also given as index not actual class id. 
