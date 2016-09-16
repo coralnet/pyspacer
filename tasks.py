@@ -156,8 +156,11 @@ def _evaluate_classifier(clf, imkeys, gtdict, bucket):
     for imkey in imkeys:
         x, y = _load_data(gtdict, imkey, bucket)
         scores.extend(clf.predict_proba(x))
-        gt.extend(y)
+        # Convert the ground truth to index not actual class id.
+        y_index = [clf.classes_.index(yy) for yy in y]
+        gt.extend(y_index)
     scores = [list(score) for score in scores]
+    # Est also given as index not actual class id. 
     est = [np.argmax(score) for score in scores]
     return gt, est, scores
 
