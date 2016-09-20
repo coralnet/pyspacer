@@ -79,7 +79,7 @@ def train_classifier(payload):
     ## TRAIN A MODEL
     #
     starttime = time.time()
-    clf, refacc = _do_training(traindict, payload['classes'], payload['nbr_epochs'], bucket)
+    clf, refacc = _do_training(traindict, payload['classes'], int(payload['nbr_epochs']), bucket)
     runtime = time.time() - starttime
 
     # Store
@@ -114,27 +114,27 @@ def classify_image(payload):
 
 
 def _do_training(traindict, classes, nbr_epochs, bucket):
-
-    # Figure out # images per mini-batch.
-    samples_per_image = len(traindict[traindict.keys()[0]])
-    images_per_minibatch = 10000 / samples_per_image
-
+    
     # Make train and ref split. Reference set is here a hold-out part of the train-data portion. Called 'ref' to disambiguate from the actual validation set of the source.
     imkeys = traindict.keys()
     refset = imkeys[::10]
     trainset = list(set(imkeys) - set(refset))
+    print "trainset: {}, valset: {}".format(len(trainset), len(refset))
+
+    # Figure out # images per mini-batch.
+    samples_per_image = len(traindict[traindict.keys()[0]])
+    images_per_minibatch = min(10000 / samples_per_image, len(trainset))
+    print "Using {} images per mini-batch".format(images_per_minibatch)
 
     # Number of mini-batches per epoch.
-    n = len(trainset) / images_per_minibatch + 1
+    n = int(np.ceil(len(trainset) / float(images_per_minibatch)))
+    print "Using {} mini-batches per epoch".format(n)
 
     # Initialize classifier and ref set accuracy list
     clf = linear_model.SGDClassifier(loss = 'log', average = True)
     refacc = []
-
-    print "Trainstats:", images_per_minibatch, n
-   
     for epoch in range(nbr_epochs):
-        print "Epoch {}".format(epoch),
+        print "Epoch {}".format(epoch)
         random.shuffle(trainset)
         mini_batches = _chunkify(trainset, n)
         for mb in mini_batches:
