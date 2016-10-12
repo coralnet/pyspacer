@@ -29,18 +29,17 @@ def grab_message():
     # Do the work
     try:
         outbound = handle_message(body)
-        inqueue.delete_message(m)
-        
-        m = Message()
         out_body = {'original_job': body, 'result': outbound}
-        m.set_body(json.dumps(out_body))
-        resqueue.write(m)
-
+        queue = resqueue
+        
     except Exception as e:
-    	print e
-        m = Message()
-        m.set_body(json.dumps(e.message))
-        errorqueue.write(m)
+        out_body = {'original_job': body, 'error_message': e.message}
+        queue = errorqueue
+    
+    m_out = Message()
+    m_out.set_body(json.dumps(out_body))
+    queue.write(m_out)
+    inqueue.delete_message(m)
     
 
 def handle_message(body):
