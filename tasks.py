@@ -8,6 +8,7 @@ import json
 import time
 import random
 import pickle
+import random
 
 import numpy as np
 
@@ -17,7 +18,8 @@ import coral_lib.patch.tools as cpt
 
 from boto.s3.key import Key
 
-from sklearn import linear_model
+from sklearn.linear_model import SGDClassifier
+from sklearn.calibration import CalibratedClassifierCV
 
 def extract_features(payload):
     print "Extracting features for image pk:{}.".format(payload['pk'])
@@ -69,7 +71,9 @@ def extract_features(payload):
 def train_classifier(payload):
     print "Training classifier pk:{}.".format(payload['pk'])
     print payload
-    # Load
+    
+    # SETUP
+    #
     conn = boto.connect_s3()
     bucket = conn.get_bucket(payload['bucketname'], validate=True)
     k = Key(bucket)
@@ -79,11 +83,11 @@ def train_classifier(payload):
     ## TRAIN A MODEL
     #
     starttime = time.time()
-    clf, refacc = _do_training(traindict, payload['classes'], int(payload['nbr_epochs']), bucket)
+    clf, refacc = _do_training(traindict, int(payload['nbr_epochs']), bucket)
     runtime = time.time() - starttime
 
     # Store
-    k.key = payload['model']
+    k.key = payload['model'] 
     k.set_contents_from_string(pickle.dumps(clf))
 
     ## EVALUATE ON THE VALIDATION SET
@@ -95,9 +99,10 @@ def train_classifier(payload):
 
     # Store
     k.key = payload['valresult']
-    k.set_contents_from_string(json.dumps({'gt':gt, 'est':est, 'scores':scores}))
+    k.set_contents_from_string(json.dumps({'scores':scores, 'gt':gt, 'est':est, 'classes':list(clf.classes_)}))
 
     ## FINALLY, EVALUATE ALL PREVIOUS MODELS ON THE VAL SET TO DETERMINE WHETER TO KEEP THE NEW MODEL
+    #
     ps_accs = []
     for pc_model in payload['pc_models']:
         k.key = pc_model
@@ -109,42 +114,63 @@ def train_classifier(payload):
     return {'runtime': runtime, 'refacc': refacc, 'acc': valacc, 'pc_accs': ps_accs}
 
 
-def classify_image(payload):
-    print "Classifying image."
-
-
-def _do_training(traindict, classes, nbr_epochs, bucket):
+def _do_training(traindict, nbr_epochs, bucket):
+  
+    def get_unique_classes(keylist):
+        labels = set()
+        for imkey in keylist:
+            labels = labels.union(set(traindict[imkey]))
+        return labels
     
-    # Make train and ref split. Reference set is here a hold-out part of the train-data portion. Called 'ref' to disambiguate from the actual validation set of the source.
+
+    # Calculate max nbr images to keep in memory (based on 20000 samples total).
+    samples_per_image = len(traindict[traindict.keys()[0]])
+    max_imgs_in_memory = 20000 / samples_per_image
+
+    # Make train and ref split. Reference set is here a hold-out part of the train-data portion.
+    # Purpose of refset is to 1) know accuracy per epoch and 2) calibrate classifier output scores.
+    # We call it 'ref' to disambiguate from the actual validation set of the source.
     imkeys = traindict.keys()
     refset = imkeys[::10]
+    random.shuffle(refset)
+    refset = refset[:max_imgs_in_memory] # make sure we don't go over the memory limit.
     trainset = list(set(imkeys) - set(refset))
-    print "trainset: {}, valset: {}".format(len(trainset), len(refset))
+    print "trainset: {}, valset: {} images".format(len(trainset), len(refset))
 
-    # Figure out # images per mini-batch.
-    samples_per_image = len(traindict[traindict.keys()[0]])
-    images_per_minibatch = min(10000 / samples_per_image, len(trainset))
-    print "Using {} images per mini-batch".format(images_per_minibatch)
-
-    # Number of mini-batches per epoch.
+    # Figure out # images per mini-batch and batches per epoch.
+    images_per_minibatch = min(max_imgs_in_memory, len(trainset))
     n = int(np.ceil(len(trainset) / float(images_per_minibatch)))
-    print "Using {} mini-batches per epoch".format(n)
+    print "Using {} images per mini-batch and {} mini-batches per epoch".format(images_per_minibatch, n)
+
+    # Identify classes common to both train and val. This will be our labelset for the training.
+    trainclasses = get_unique_classes(trainset) 
+    refclasses = get_unique_classes(refset)
+    classes = list(trainclasses.intersection(refclasses))
+    print "trainset: {}, valset: {}, common: {} labels".format(len(trainclasses), len(refclasses), len(classes))
+    
+    # Load reference data (must hold in memory for the calibration)
+    print "Loading reference data."
+    refx, refy = _load_mini_batch(traindict, refset, classes, bucket)
 
     # Initialize classifier and ref set accuracy list
-    clf = linear_model.SGDClassifier(loss = 'log', average = True)
+    print "Online training..."
+    clf = SGDClassifier(loss = 'log', average = True)
     refacc = []
     for epoch in range(nbr_epochs):
         print "Epoch {}".format(epoch)
         random.shuffle(trainset)
         mini_batches = _chunkify(trainset, n)
         for mb in mini_batches:
-            x, y = _load_mini_batch(traindict, mb, bucket)
+            x, y = _load_mini_batch(traindict, mb, classes, bucket)
             clf.partial_fit(x, y, classes = classes)
-        gt, est, _ = _evaluate_classifier(clf, refset, traindict, bucket)
-        refacc.append(bmt.acc(gt, est))
+        refacc.append(bmt.acc(refy, clf.predict(refx)))
         print "acc: {}".format(refacc[-1])
-    return clf, refacc 
+    
+    print "Calibrating."
+    clf_calibrated = CalibratedClassifierCV(clf, cv = "prefit")
+    clf_calibrated.fit(x, y)
 
+    return clf_calibrated, refacc        
 
 def _evaluate_classifier(clf, imkeys, gtdict, bucket):
     """
@@ -155,7 +181,7 @@ def _evaluate_classifier(clf, imkeys, gtdict, bucket):
     gt = []
     classes = list(clf.classes_)
     for imkey in imkeys:
-        x, y = _load_data(gtdict, imkey, bucket)
+        x, y = _load_data(gtdict, imkey, classes, bucket)
         scores.extend(clf.predict_proba(x))
         # Convert the ground truth to index not actual class id.
         y_index = [classes.index(ymember) for ymember in y]
@@ -168,20 +194,29 @@ def _evaluate_classifier(clf, imkeys, gtdict, bucket):
 def _chunkify(lst, n):
     return [ lst[i::n] for i in xrange(n) ]
 
-def _load_data(gtdict, imkey, bucket):
+def _load_data(labeldict, imkey, classes, bucket):
     """
     load feats from S3 and returns them along with the ground truth labels
     """
     key = bucket.get_key(imkey)
+
+    # Load featutes
     x = json.loads(key.get_contents_as_string())
-    y = gtdict[imkey]
+
+    # Load labels
+    y = labeldict[imkey]
+
+    # Remove samples for which the label is not in classes.
+    x, y = zip(*[(xmember, ymember) for xmember, ymember in zip(x, y) if ymember in classes]) 
     return x, y
     
-def _load_mini_batch(traindict, imkeylist, bucket):
-
+def _load_mini_batch(labeldict, imkeylist, classes, bucket):
+    """
+    An interator over _load_data.
+    """
     x, y = [], []
     for imkey in imkeylist:
-        thisx, thisy = _load_data(traindict, imkey, bucket)
+        thisx, thisy = _load_data(labeldict, imkey, classes, bucket)
         x.extend(thisx)
         y.extend(thisy)
     return x, y
