@@ -94,12 +94,12 @@ def train_classifier(payload):
     #
     key = bucket.get_key(payload['valdata'])
     valdict = json.loads(key.get_contents_as_string())
-    gt, est, scores = _evaluate_classifier(clf, valdict.keys(), valdict, bucket)
+    gt, est, maxscores = _evaluate_classifier(clf, valdict.keys(), valdict, bucket)
     valacc = bmt.acc(gt, est)
 
     # Store
     k.key = payload['valresult']
-    k.set_contents_from_string(json.dumps({'scores':scores, 'gt':gt, 'est':est, 'classes':list(clf.classes_)}))
+    k.set_contents_from_string(json.dumps({'scores':maxscores, 'gt':gt, 'est':est, 'classes':list(clf.classes_)}))
 
     ## FINALLY, EVALUATE ALL PREVIOUS MODELS ON THE VAL SET TO DETERMINE WHETER TO KEEP THE NEW MODEL
     #
@@ -107,7 +107,7 @@ def train_classifier(payload):
     for pc_model in payload['pc_models']:
         k.key = pc_model
         this_clf = pickle.loads(k.get_contents_as_string())
-        gt, est, scores = _evaluate_classifier(this_clf, valdict.keys(), valdict, bucket)
+        gt, est, _ = _evaluate_classifier(this_clf, valdict.keys(), valdict, bucket)
         ps_accs.append(bmt.acc(gt, est))
 
     # Return
@@ -189,7 +189,10 @@ def _evaluate_classifier(clf, imkeys, gtdict, bucket):
     scores = [list(score) for score in scores]
     # Est also given as index not actual class id. 
     est = [np.argmax(score) for score in scores]
-    return gt, est, scores
+
+    # We return the maxscores instead of the whole score
+    maxscores = [np.max(score) for score in scores]
+    return gt, est, maxscores
 
 def _chunkify(lst, n):
     return [ lst[i::n] for i in xrange(n) ]
