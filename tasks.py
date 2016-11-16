@@ -12,8 +12,6 @@ import random
 
 import numpy as np
 
-import beijbom_vision_lib.caffe.tools as bct
-import beijbom_vision_lib.misc.tools as bmt
 import coral_lib.patch.tools as cpt
 
 from boto.s3.key import Key
@@ -84,6 +82,7 @@ def train_classifier(payload):
     #
     starttime = time.time()
     clf, refacc = _do_training(traindict, int(payload['nbr_epochs']), bucket)
+    classes = list(clf.classes_)
     runtime = time.time() - starttime
 
     # Store
@@ -94,12 +93,16 @@ def train_classifier(payload):
     #
     key = bucket.get_key(payload['valdata'])
     valdict = json.loads(key.get_contents_as_string())
-    gt, est, maxscores = _evaluate_classifier(clf, valdict.keys(), valdict, bucket)
-    valacc = bmt.acc(gt, est)
+    gt, est, maxscores = _evaluate_classifier(clf, valdict.keys(), valdict, classes, bucket)
+    
+    # Now, let's map gt and est to the index in the classlist
+    gt = [classes.index(gtmember) for gtmember in gt]
+    est = [classes.index(estmember) for estmember in est]
+    valacc = _acc(gt, est)
 
     # Store
     k.key = payload['valresult']
-    k.set_contents_from_string(json.dumps({'scores':maxscores, 'gt':gt, 'est':est, 'classes':list(clf.classes_)}))
+    k.set_contents_from_string(json.dumps({'scores':maxscores, 'gt':gt, 'est':est, 'classes':classes}))
 
     ## FINALLY, EVALUATE ALL PREVIOUS MODELS ON THE VAL SET TO DETERMINE WHETER TO KEEP THE NEW MODEL
     #
@@ -107,8 +110,8 @@ def train_classifier(payload):
     for pc_model in payload['pc_models']:
         k.key = pc_model
         this_clf = pickle.loads(k.get_contents_as_string())
-        gt, est, _ = _evaluate_classifier(this_clf, valdict.keys(), valdict, bucket)
-        ps_accs.append(bmt.acc(gt, est))
+        gt, est, _ = _evaluate_classifier(this_clf, valdict.keys(), valdict, classes, bucket)
+        ps_accs.append(_acc(gt, est))
 
     # Return
     return {'runtime': runtime, 'refacc': refacc, 'acc': valacc, 'pc_accs': ps_accs}
@@ -163,7 +166,7 @@ def _do_training(traindict, nbr_epochs, bucket):
         for mb in mini_batches:
             x, y = _load_mini_batch(traindict, mb, classes, bucket)
             clf.partial_fit(x, y, classes = classes)
-        refacc.append(bmt.acc(refy, clf.predict(refx)))
+        refacc.append(_acc(refy, clf.predict(refx)))
         print "acc: {}".format(refacc[-1])
     
     print "Calibrating."
@@ -172,26 +175,20 @@ def _do_training(traindict, nbr_epochs, bucket):
 
     return clf_calibrated, refacc        
 
-def _evaluate_classifier(clf, imkeys, gtdict, bucket):
+def _evaluate_classifier(clf, imkeys, gtdict, classes, bucket):
     """
     Return the accuracy of classifier "clf" evaluated on "imkeys"
     with ground truth given in "gtdict". Features are fetched from S3 "bucket".
     """
-    scores = []
-    gt = []
-    classes = list(clf.classes_)
+    scores, gt, est = [], [], []
     for imkey in imkeys:
         x, y = _load_data(gtdict, imkey, classes, bucket)
-        scores.extend(clf.predict_proba(x))
-        # Convert the ground truth to index not actual class id.
-        y_index = [classes.index(ymember) for ymember in y]
-        gt.extend(y_index)
-    scores = [list(score) for score in scores]
-    # Est also given as index not actual class id. 
-    est = [np.argmax(score) for score in scores]
-
-    # We return the maxscores instead of the whole score
+        scores.extend(list(clf.predict_proba(x)))
+        est.extend(clf.predict(x))
+        gt.extend(y)
+    
     maxscores = [np.max(score) for score in scores]
+
     return gt, est, maxscores
 
 def _chunkify(lst, n):
@@ -240,4 +237,24 @@ def _download_file(bucket, keystring, destination):
         return False
     else:
         return True
+  
+
+def _acc(gt, est):
+    """
+    Calculate the accuracy of (agreement between) two interger valued list.
+    """
+    if len(gt) == 0 or len(est) == 0:
+        raise TypeError('Inputs can not be empty')
+
+    if not len(gt) == len(est):
+        raise ValueError('Input gt and est must have the same length')
     
+    for g in gt:
+        if not isinstance(g, int):
+            raise TypeError('Input gt must be an array of ints')
+
+    for e in est:
+        if not isinstance(e, int):
+            raise TypeError('Input est must be an array of ints')
+
+    return float(sum([(g == e) for (g,e) in zip(gt, est)])) / len(gt)    
