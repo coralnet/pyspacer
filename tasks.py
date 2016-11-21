@@ -183,7 +183,7 @@ def _evaluate_classifier(clf, imkeys, gtdict, classes, bucket):
     scores, gt, est = [], [], []
     for imkey in imkeys:
         x, y = _load_data(gtdict, imkey, classes, bucket)
-        if len(x) > 0
+        if len(x) > 0:
             scores.extend(list(clf.predict_proba(x)))
             est.extend(clf.predict(x))
             gt.extend(y)
