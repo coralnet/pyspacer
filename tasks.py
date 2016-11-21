@@ -207,8 +207,12 @@ def _load_data(labeldict, imkey, classes, bucket):
     y = labeldict[imkey]
 
     # Remove samples for which the label is not in classes.
-    x, y = zip(*[(xmember, ymember) for xmember, ymember in zip(x, y) if ymember in classes]) 
-    return x, y
+    if set(classes).isdisjoint(y):
+        # none of the points for this image is in the labelset.
+        return [], []
+    else:
+        x, y = zip(*[(xmember, ymember) for xmember, ymember in zip(x, y) if ymember in classes]) 
+        return x, y
     
 def _load_mini_batch(labeldict, imkeylist, classes, bucket):
     """
