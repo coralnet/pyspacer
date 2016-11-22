@@ -81,7 +81,10 @@ def train_classifier(payload):
     ## TRAIN A MODEL
     #
     starttime = time.time()
-    clf, refacc = _do_training(traindict, int(payload['nbr_epochs']), bucket)
+    ok, clf, refacc = _do_training(traindict, int(payload['nbr_epochs']), bucket)
+    if not ok:
+        return {'ok': False, 'runtime': 0, 'refacc': 0, 'acc': 0, 'pc_accs': 0}
+
     classes = list(clf.classes_)
     runtime = time.time() - starttime
 
@@ -98,6 +101,9 @@ def train_classifier(payload):
     # Now, let's map gt and est to the index in the classlist
     gt = [classes.index(gtmember) for gtmember in gt]
     est = [classes.index(estmember) for estmember in est]
+    if len(gt) == 0:
+        return {'ok': False, 'runtime': 0, 'refacc': 0, 'acc': 0, 'pc_accs': 0}
+        
     valacc = _acc(gt, est)
 
     # Store
@@ -114,7 +120,7 @@ def train_classifier(payload):
         ps_accs.append(_acc(gt, est))
 
     # Return
-    return {'runtime': runtime, 'refacc': refacc, 'acc': valacc, 'pc_accs': ps_accs}
+    return {'ok': True, 'runtime': runtime, 'refacc': refacc, 'acc': valacc, 'pc_accs': ps_accs}
 
 
 def _do_training(traindict, nbr_epochs, bucket):
@@ -150,6 +156,8 @@ def _do_training(traindict, nbr_epochs, bucket):
     refclasses = get_unique_classes(refset)
     classes = list(trainclasses.intersection(refclasses))
     print "trainset: {}, valset: {}, common: {} labels".format(len(trainclasses), len(refclasses), len(classes))
+    if len(classes) == 1:
+        return False, [], []
     
     # Load reference data (must hold in memory for the calibration)
     print "Loading reference data."
@@ -173,7 +181,7 @@ def _do_training(traindict, nbr_epochs, bucket):
     clf_calibrated = CalibratedClassifierCV(clf, cv = "prefit")
     clf_calibrated.fit(x, y)
 
-    return clf_calibrated, refacc        
+    return True, clf_calibrated, refacc     
 
 def _evaluate_classifier(clf, imkeys, gtdict, classes, bucket):
     """
