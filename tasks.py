@@ -132,9 +132,9 @@ def _do_training(traindict, nbr_epochs, bucket):
         return labels
     
 
-    # Calculate max nbr images to keep in memory (based on 20000 samples total).
+    # Calculate max nbr images to keep in memory (based on 5000 samples total).
     samples_per_image = len(traindict[traindict.keys()[0]])
-    max_imgs_in_memory = 20000 / samples_per_image
+    max_imgs_in_memory = 5000 / samples_per_image
 
     # Make train and ref split. Reference set is here a hold-out part of the train-data portion.
     # Purpose of refset is to 1) know accuracy per epoch and 2) calibrate classifier output scores.
@@ -179,7 +179,7 @@ def _do_training(traindict, nbr_epochs, bucket):
     
     print "Calibrating."
     clf_calibrated = CalibratedClassifierCV(clf, cv = "prefit")
-    clf_calibrated.fit(x, y)
+    clf_calibrated.fit(refx, refy)
 
     return True, clf_calibrated, refacc     
 
