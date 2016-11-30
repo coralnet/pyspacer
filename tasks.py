@@ -77,6 +77,9 @@ def train_classifier(payload):
     k = Key(bucket)
     k.key = payload['traindata']
     traindict = json.loads(k.get_contents_as_string())
+    if len(traindict.keys()) < 10:
+        return {'ok': False, 'runtime': 0, 'refacc': 0, 'acc': 0, 'pc_accs': 0}
+
 
     ## TRAIN A MODEL
     #
