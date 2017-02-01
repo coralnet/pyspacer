@@ -118,6 +118,7 @@ def train_classifier(payload):
     ps_accs = []
     for pc_model in payload['pc_models']:
         k.key = pc_model
+        k.version_id=None
         this_clf = pickle.loads(k.get_contents_as_string())
         gt, est, _ = _evaluate_classifier(this_clf, valdict.keys(), valdict, classes, bucket)
         ps_accs.append(_acc(gt, est))
