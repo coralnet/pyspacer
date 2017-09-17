@@ -6,7 +6,6 @@ import os
 import boto
 import json
 import time
-import random
 import pickle
 import random
 
@@ -18,6 +17,7 @@ from boto.s3.key import Key
 
 from sklearn.linear_model import SGDClassifier
 from sklearn.calibration import CalibratedClassifierCV
+
 
 def extract_features(payload):
     print "Extracting features for image pk:{}.".format(payload['pk'])
@@ -39,12 +39,11 @@ def extract_features(payload):
     net = caffe.Net('../models/' + str(payload['modelname'] + '.deploy.prototxt'), '../models/' + str(payload['modelname'] + '.caffemodel'), caffe.TEST)
     
     # Set parameters
-    pyparams = {
-    'im_mean': [128, 128, 128],
-        'scaling_method':'scale',
-        'scaling_factor':1,
-        'crop_size':224,
-        'batch_size':10}
+    pyparams = {'im_mean': [128, 128, 128],
+                'scaling_method': 'scale',
+                'scaling_factor': 1,
+                'crop_size': 224,
+                'batch_size': 10}
     
     imlist = [basename]
     imdict = {
@@ -65,6 +64,7 @@ def extract_features(payload):
     k.set_contents_from_string(json.dumps(feats))
 
     return message
+
 
 def train_classifier(payload):
     print "Training classifier pk:{}.".format(payload['pk'])
@@ -186,6 +186,7 @@ def _do_training(traindict, nbr_epochs, bucket):
 
     return True, clf_calibrated, refacc     
 
+
 def _evaluate_classifier(clf, imkeys, gtdict, classes, bucket):
     """
     Return the accuracy of classifier "clf" evaluated on "imkeys"
@@ -203,8 +204,10 @@ def _evaluate_classifier(clf, imkeys, gtdict, classes, bucket):
 
     return gt, est, maxscores
 
+
 def _chunkify(lst, n):
     return [ lst[i::n] for i in xrange(n) ]
+
 
 def _load_data(labeldict, imkey, classes, bucket):
     """
@@ -225,7 +228,8 @@ def _load_data(labeldict, imkey, classes, bucket):
     else:
         x, y = zip(*[(xmember, ymember) for xmember, ymember in zip(x, y) if ymember in classes]) 
         return x, y
-    
+
+
 def _load_mini_batch(labeldict, imkeylist, classes, bucket):
     """
     An interator over _load_data.
@@ -237,12 +241,14 @@ def _load_mini_batch(labeldict, imkeylist, classes, bucket):
         y.extend(thisy)
     return x, y
 
+
 def _download_nets(name):
     conn = boto.connect_s3()
     bucket = conn.get_bucket('spacer-tools')
     for suffix in ['.deploy.prototxt', '.caffemodel']:
         was_cashed = _download_file(bucket, name + suffix, '../models/' + name + suffix)
     return was_cashed
+
 
 def _download_file(bucket, keystring, destination):
     
