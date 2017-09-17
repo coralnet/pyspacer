@@ -41,7 +41,7 @@ class TestMailman(unittest.TestCase):
     def makemessage(self):
         m = {
         'task':'extract_features',
-        'payload':{}
+        'payload':{'pk':'olle', 'modelname':'dummy'}
         }
         return m
 
@@ -53,12 +53,6 @@ class TestMailman(unittest.TestCase):
 
 
 if __name__ == '__main__':
-
-    # SETUP CREDENTIALS
-    with open('../secrets.json') as data_file:    
-        data = json.load(data_file)
-        os.environ['AWS_ACCESS_KEY_ID'] = data['aws_access_key_id']
-        os.environ['AWS_SECRET_ACCESS_KEY'] = data['aws_secret_access_key']
 
     suite = unittest.TestLoader().loadTestsFromTestCase(TestMailman)
     unittest.TextTestRunner(verbosity=2).run(suite)
