@@ -9,20 +9,21 @@ tasks = {
     'train_classifier': train_classifier,
 }
 
-def grab_message():
+
+def grab_message(queue_group='spacer'):
     print "grabbing message."
 
     # Load default queue
     conn = boto.sqs.connect_to_region("us-west-2")
-    inqueue = conn.get_queue('spacer_jobs')
-    resqueue = conn.get_queue('spacer_results')
-    errorqueue = conn.get_queue('spacer_errors')
+    inqueue = conn.get_queue('{}_jobs'.format(queue_group))
+    resqueue = conn.get_queue('{}_results'.format(queue_group))
+    errorqueue = conn.get_queue('{}_errors'.format(queue_group))
 
     # Read message
     m = inqueue.read()
     if m is None:
-    	print "No messages in inqueue."
-    	return 1
+        print "No messages in inqueue."
+        return 1
     body = json.loads(m.get_body())
     
     # Do the work
@@ -46,13 +47,14 @@ def handle_message(body):
     if not type(body) is dict:
         raise TypeError('Input "body" must be a dictionary.')
 
-    if not 'task' in body:
-        raise KeyError('Input dictinary "body" must have key "task"')
+    if 'task' not in body:
+        raise KeyError('Input dictionary "body" must have key "task"')
 
     if not body['task'] in tasks:
         raise ValueError('Requested task: "{}" is not a valid task'.format(body['task']))
     
     return tasks[body['task']](body['payload'])
+
 
 if __name__ == '__main__':
     grab_message()
