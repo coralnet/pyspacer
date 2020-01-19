@@ -78,7 +78,8 @@ class TestMailman(unittest.TestCase):
                        "outputkey": "sfq2mr5qbs.jpeg.feats",
                        "imkey": "sfq2mr5qbs.jpeg",
                        "bucketname": "spacer-test",
-                       "pk": "sfq2mr5qbs"}}
+                       "pk": "sfq2mr5qbs"}
+                   }
         self.sendmessage(message, 'spacer_test_jobs')
         result_message = mailman.handle_message(message)
         self.assertTrue(('model_was_cashed' in result_message))
@@ -91,7 +92,4 @@ class TestMailman(unittest.TestCase):
 
 
 if __name__ == '__main__':
-
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestMailman)
-    unittest.TextTestRunner(verbosity=2).run(suite)
-
+    unittest.main()

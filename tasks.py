@@ -8,6 +8,7 @@ import json
 import time
 import pickle
 import random
+import wget
 
 import numpy as np
 
@@ -20,7 +21,7 @@ from sklearn.calibration import CalibratedClassifierCV
 
 
 def extract_features(payload):
-    print "Extracting features for image pk:{}.".format(payload['pk'])
+    print("Extracting features for image pk:{}.".format(payload['pk']))
     t1 = time.time()
 
     # Make sure the right model and prototxt are available locally.
@@ -67,8 +68,8 @@ def extract_features(payload):
 
 
 def train_classifier(payload):
-    print "Training classifier pk:{}.".format(payload['pk'])
-    print payload
+    print("Training classifier pk:{}.".format(payload['pk']))
+    print(payload)
     
     # SETUP
     #
@@ -127,6 +128,64 @@ def train_classifier(payload):
     return {'ok': True, 'runtime': runtime, 'refacc': refacc, 'acc': valacc, 'pc_accs': ps_accs}
 
 
+def deploy(payload):
+
+    t1 = time.time()
+
+    # Make sure the right model and prototxt are available locally.
+    was_cashed = _download_nets(payload['modelname'])
+
+    local_impath = os.path.basename(payload['im_url'])
+
+    wget.download(payload['im_url'], local_impath)
+
+    # Setup caffe
+    caffe.set_mode_cpu()
+    net = caffe.Net(
+        '../models/' + str(payload['modelname'] + '.deploy.prototxt'),
+        '../models/' + str(payload['modelname'] + '.caffemodel'), caffe.TEST)
+
+    # Set parameters
+    pyparams = {'im_mean': [128, 128, 128],
+                'scaling_method': 'scale',
+                'scaling_factor': 1,
+                'crop_size': 224,
+                'batch_size': 10}
+
+    imlist = [local_impath]
+    imdict = {
+        local_impath: ([], 100)
+    }
+    for row, col in payload['rowcols']:
+        imdict[local_impath][0].append((row, col, 1))
+
+    # Run
+    t2 = time.time()
+    (_, _, feats) = cpt.classify_from_patchlist(imlist, imdict, pyparams, net, scorelayer='fc7')
+
+    # Download the image to be processed.
+    conn = boto.connect_s3()
+    bucket = conn.get_bucket(payload['bucketname'], validate=True)
+    key = bucket.get_key(payload['model'])
+
+    model = pickle.loads(key.get_contents_as_string())
+
+    scores = model.predict_proba(feats)
+
+    message = {
+        'model_was_cashed': was_cashed,
+        'runtime': {
+            'total': time.time() - t1,
+            'core': time.time() - t2,
+            'per_point': (time.time() - t2) / len(payload['rowcols'])
+        },
+        'scores': [list(score) for score in scores],
+        'classes': list(model.classes_)
+    }
+
+    return message
+
+
 def _do_training(traindict, nbr_epochs, bucket):
   
     def get_unique_classes(keylist):
@@ -148,40 +207,40 @@ def _do_training(traindict, nbr_epochs, bucket):
     random.shuffle(refset)
     refset = refset[:max_imgs_in_memory] # make sure we don't go over the memory limit.
     trainset = list(set(imkeys) - set(refset))
-    print "trainset: {}, valset: {} images".format(len(trainset), len(refset))
+    print("trainset: {}, valset: {} images".format(len(trainset), len(refset)))
 
     # Figure out # images per mini-batch and batches per epoch.
     images_per_minibatch = min(max_imgs_in_memory, len(trainset))
     n = int(np.ceil(len(trainset) / float(images_per_minibatch)))
-    print "Using {} images per mini-batch and {} mini-batches per epoch".format(images_per_minibatch, n)
+    print("Using {} images per mini-batch and {} mini-batches per epoch".format(images_per_minibatch, n))
 
     # Identify classes common to both train and val. This will be our labelset for the training.
     trainclasses = get_unique_classes(trainset) 
     refclasses = get_unique_classes(refset)
     classes = list(trainclasses.intersection(refclasses))
-    print "trainset: {}, valset: {}, common: {} labels".format(len(trainclasses), len(refclasses), len(classes))
+    print("trainset: {}, valset: {}, common: {} labels".format(len(trainclasses), len(refclasses), len(classes)))
     if len(classes) == 1:
         return False, [], []
     
     # Load reference data (must hold in memory for the calibration)
-    print "Loading reference data."
+    print("Loading reference data.")
     refx, refy = _load_mini_batch(traindict, refset, classes, bucket)
 
     # Initialize classifier and ref set accuracy list
-    print "Online training..."
+    print("Online training...")
     clf = SGDClassifier(loss = 'log', average = True)
     refacc = []
     for epoch in range(nbr_epochs):
-        print "Epoch {}".format(epoch)
+        print("Epoch {}".format(epoch))
         random.shuffle(trainset)
         mini_batches = _chunkify(trainset, n)
         for mb in mini_batches:
             x, y = _load_mini_batch(traindict, mb, classes, bucket)
             clf.partial_fit(x, y, classes = classes)
         refacc.append(_acc(refy, clf.predict(refx)))
-        print "acc: {}".format(refacc[-1])
+        print("acc: {}".format(refacc[-1]))
     
-    print "Calibrating."
+    print("Calibrating.")
     clf_calibrated = CalibratedClassifierCV(clf, cv = "prefit")
     clf_calibrated.fit(refx, refy)
 
@@ -254,7 +313,7 @@ def _download_nets(name):
 def _download_file(bucket, keystring, destination):
     
     if not os.path.isfile(destination):
-        print "downloading {}".format(keystring)
+        print("downloading {}".format(keystring))
         key = Key(bucket, keystring)
         key.get_contents_to_filename(destination)
         return False
