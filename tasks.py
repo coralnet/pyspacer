@@ -172,7 +172,6 @@ def deploy(payload):
 
     scores = model.predict_proba(feats)
 
-
     message = {
         'model_was_cashed': was_cashed,
         'runtime': {
