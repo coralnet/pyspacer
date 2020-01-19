@@ -1,17 +1,18 @@
 import boto
 import json
 
-from tasks import extract_features, train_classifier
+from tasks import extract_features, train_classifier, deploy
 from boto.sqs.message import Message
 
 tasks = {
     'extract_features': extract_features,
     'train_classifier': train_classifier,
+    'deploy': deploy
 }
 
 
 def grab_message(queue_group='spacer'):
-    print "grabbing message."
+    print("grabbing message.")
 
     # Load default queue
     conn = boto.sqs.connect_to_region("us-west-2")
@@ -22,7 +23,7 @@ def grab_message(queue_group='spacer'):
     # Read message
     m = inqueue.read()
     if m is None:
-        print "No messages in inqueue."
+        print("No messages in inqueue.")
         return 1
     body = json.loads(m.get_body())
     
