@@ -1,6 +1,6 @@
 import unittest
 
-from ... import tasks
+from spacer import tasks
 
 
 class TestDeploy(unittest.TestCase):
@@ -17,7 +17,7 @@ class TestDeploy(unittest.TestCase):
             'bucketname': 'coralnet-beijbom-dev',
             'im_url': 'https://coralnet-beijbom-dev.s3-us-west-2.amazonaws.com/media/images/04yv0o1o88.jpg',
             'modelname': 'vgg16_coralnet_ver1',
-            'rowcols': [[100, 100]],
+            'rowcols': [[100, 100], [200, 200]],
             'model': 'media/classifiers/15.model',
         }
 

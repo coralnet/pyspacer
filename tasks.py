@@ -130,7 +130,6 @@ def train_classifier(payload):
 
 def deploy(payload):
 
-    print("Extracting features for image pk:{}.".format(payload['pk']))
     t1 = time.time()
 
     # Make sure the right model and prototxt are available locally.
