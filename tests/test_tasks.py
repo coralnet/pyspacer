@@ -22,7 +22,7 @@ class TestDeploy(unittest.TestCase):
         }
 
         results = tasks.deploy(payload)
-        print(results)
+        self.assertEqual(results['ok'], 1)
 
     def test_deploy_error(self):
 
@@ -35,7 +35,7 @@ class TestDeploy(unittest.TestCase):
         }
 
         results = tasks.deploy(payload)
-        print(results)
+        self.assertEqual(results['ok'], 0)
 
 if __name__ == '__main__':
     unittest.main()
