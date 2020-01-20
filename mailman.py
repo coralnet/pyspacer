@@ -34,7 +34,7 @@ def grab_message(queue_group='spacer'):
         queue = resqueue
         
     except Exception as e:
-        out_body = {'original_job': body, 'error_message': e.message}
+        out_body = {'original_job': body, 'error_message': repr(e)}
         queue = errorqueue
     
     m_out = Message()

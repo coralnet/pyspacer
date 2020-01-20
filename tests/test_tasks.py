@@ -24,5 +24,18 @@ class TestDeploy(unittest.TestCase):
         results = tasks.deploy(payload)
         print(results)
 
+    def test_deploy_error(self):
+
+        payload = {
+            'bucketname': 'coralnet-beijbom-dev',
+            'im_url': 'https://nothing_here.jpg',
+            'modelname': 'vgg16_coralnet_ver1',
+            'rowcols': [[100, 100], [200, 200]],
+            'model': 'media/classifiers/15.model',
+        }
+
+        results = tasks.deploy(payload)
+        print(results)
+
 if __name__ == '__main__':
     unittest.main()
