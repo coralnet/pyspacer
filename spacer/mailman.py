@@ -1,8 +1,9 @@
-import boto
 import json
 
-from tasks import extract_features, train_classifier, deploy
+import boto
 from boto.sqs.message import Message
+
+from spacer.tasks import extract_features, train_classifier, deploy
 
 tasks = {
     'extract_features': extract_features,

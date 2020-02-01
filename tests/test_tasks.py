@@ -37,5 +37,6 @@ class TestDeploy(unittest.TestCase):
         results = tasks.deploy(payload)
         self.assertEqual(results['ok'], 0)
 
+
 if __name__ == '__main__':
     unittest.main()

@@ -1,23 +1,18 @@
-import sys
-sys.path.append('/root/caffe/')
-
-import caffe
-import os
-import boto
 import json
-import time
+import os
 import pickle
 import random
-import wget
+import time
 
+import boto
+from spacer.caffe.utils import classify_from_patchlist
 import numpy as np
-
-import coral_lib.patch.tools as cpt
-
+import wget
 from boto.s3.key import Key
-
-from sklearn.linear_model import SGDClassifier
 from sklearn.calibration import CalibratedClassifierCV
+from sklearn.linear_model import SGDClassifier
+
+from spacer import caffe
 
 
 def extract_features(payload):
@@ -55,7 +50,7 @@ def extract_features(payload):
 
     # Run
     t2 = time.time()
-    (_, _, feats) = cpt.classify_from_patchlist(imlist, imdict, pyparams, net, scorelayer = 'fc7')
+    (_, _, feats) = classify_from_patchlist(imlist, imdict, pyparams, net, scorelayer = 'fc7')
     feats = [list(f) for f in feats]
     message = {'model_was_cashed': was_cashed, 'runtime': {'total': time.time() - t1, 'core': time.time() - t2, 'per_point': (time.time() - t2) / len(payload['rowcols'])}}
 
