@@ -1,3 +1,4 @@
 boto==2.42.0
 wget==3.2
 numpy==1.11.0
+scikit-learn==0.17.1

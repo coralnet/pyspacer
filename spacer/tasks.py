@@ -5,14 +5,17 @@ import random
 import time
 
 import boto
-from spacer.caffe.utils import classify_from_patchlist
-import numpy as np
 import wget
+import caffe
+
+import numpy as np
+
 from boto.s3.key import Key
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.linear_model import SGDClassifier
 
-from spacer import caffe
+
+from spacer.caffe_backend.utils import classify_from_patchlist
 
 
 def extract_features(payload):
@@ -32,7 +35,9 @@ def extract_features(payload):
 
     # Setup caffe
     caffe.set_mode_cpu()
-    net = caffe.Net('../models/' + str(payload['modelname'] + '.deploy.prototxt'), '../models/' + str(payload['modelname'] + '.caffemodel'), caffe.TEST)
+    net = caffe.Net('../models/' + str(payload['modelname'] + '.deploy.prototxt'),
+                    '../models/' + str(payload['modelname'] + '.caffemodel'),
+                    caffe.TEST)
     
     # Set parameters
     pyparams = {'im_mean': [128, 128, 128],
@@ -43,16 +48,22 @@ def extract_features(payload):
     
     imlist = [basename]
     imdict = {
-        basename:([], 100)
+        basename: ([], 100)
     }
     for row, col in payload['rowcols']:
-       imdict[basename][0].append((row, col, 1)) 
+        imdict[basename][0].append((row, col, 1))
 
     # Run
     t2 = time.time()
-    (_, _, feats) = classify_from_patchlist(imlist, imdict, pyparams, net, scorelayer = 'fc7')
+    (_, _, feats) = classify_from_patchlist(imlist, imdict, pyparams, net, scorelayer='fc7')
     feats = [list(f) for f in feats]
-    message = {'model_was_cashed': was_cashed, 'runtime': {'total': time.time() - t1, 'core': time.time() - t2, 'per_point': (time.time() - t2) / len(payload['rowcols'])}}
+    message = {'model_was_cashed': was_cashed,
+               'runtime':
+                   {'total': time.time() - t1,
+                    'core': time.time() - t2,
+                    'per_point': (time.time() - t2) / len(payload['rowcols'])
+                    }
+               }
 
     # Store
     k = Key(bucket)
@@ -76,9 +87,7 @@ def train_classifier(payload):
     if len(traindict.keys()) < 10:
         return {'ok': False, 'runtime': 0, 'refacc': 0, 'acc': 0, 'pc_accs': 0}
 
-
-    ## TRAIN A MODEL
-    #
+    # TRAIN A MODEL
     starttime = time.time()
     ok, clf, refacc = _do_training(traindict, int(payload['nbr_epochs']), bucket)
     if not ok:
@@ -91,8 +100,7 @@ def train_classifier(payload):
     k.key = payload['model'] 
     k.set_contents_from_string(pickle.dumps(clf))
 
-    ## EVALUATE ON THE VALIDATION SET
-    #
+    # EVALUATE ON THE VALIDATION SET
     key = bucket.get_key(payload['valdata'])
     valdict = json.loads(key.get_contents_as_string())
     gt, est, maxscores = _evaluate_classifier(clf, valdict.keys(), valdict, classes, bucket)
@@ -107,14 +115,19 @@ def train_classifier(payload):
 
     # Store
     k.key = payload['valresult']
-    k.set_contents_from_string(json.dumps({'scores':maxscores, 'gt':gt, 'est':est, 'classes':classes}))
+    k.set_contents_from_string(json.dumps(
+        {'scores': maxscores,
+         'gt': gt,
+         'est': est,
+         'classes': classes
+         }
+    ))
 
-    ## FINALLY, EVALUATE ALL PREVIOUS MODELS ON THE VAL SET TO DETERMINE WHETER TO KEEP THE NEW MODEL
-    #
+    # FINALLY, EVALUATE ALL PREVIOUS MODELS ON THE VAL SET TO DETERMINE WHETER TO KEEP THE NEW MODEL
     ps_accs = []
     for pc_model in payload['pc_models']:
         k.key = pc_model
-        k.version_id=None
+        k.version_id = None
         this_clf = pickle.loads(k.get_contents_as_string())
         gt, est, _ = _evaluate_classifier(this_clf, valdict.keys(), valdict, classes, bucket)
         ps_accs.append(_acc(gt, est))
@@ -157,7 +170,7 @@ def deploy(payload):
 
         # Run
         t2 = time.time()
-        (_, _, feats) = cpt.classify_from_patchlist(imlist, imdict, pyparams, net, scorelayer='fc7')
+        (_, _, feats) = classify_from_patchlist(imlist, imdict, pyparams, net, scorelayer='fc7')
 
         # Download the image to be processed.
         conn = boto.connect_s3()
@@ -197,7 +210,6 @@ def _do_training(traindict, nbr_epochs, bucket):
         for imkey in keylist:
             labels = labels.union(set(traindict[imkey]))
         return labels
-    
 
     # Calculate max nbr images to keep in memory (based on 5000 samples total).
     samples_per_image = len(traindict[traindict.keys()[0]])
@@ -209,7 +221,7 @@ def _do_training(traindict, nbr_epochs, bucket):
     imkeys = traindict.keys()
     refset = imkeys[::10]
     random.shuffle(refset)
-    refset = refset[:max_imgs_in_memory] # make sure we don't go over the memory limit.
+    refset = refset[:max_imgs_in_memory]  # Make sure we don't go over the memory limit.
     trainset = list(set(imkeys) - set(refset))
     print("trainset: {}, valset: {} images".format(len(trainset), len(refset)))
 
@@ -232,7 +244,7 @@ def _do_training(traindict, nbr_epochs, bucket):
 
     # Initialize classifier and ref set accuracy list
     print("Online training...")
-    clf = SGDClassifier(loss = 'log', average = True)
+    clf = SGDClassifier(loss='log', average=True)
     refacc = []
     for epoch in range(nbr_epochs):
         print("Epoch {}".format(epoch))
@@ -240,12 +252,12 @@ def _do_training(traindict, nbr_epochs, bucket):
         mini_batches = _chunkify(trainset, n)
         for mb in mini_batches:
             x, y = _load_mini_batch(traindict, mb, classes, bucket)
-            clf.partial_fit(x, y, classes = classes)
+            clf.partial_fit(x, y, classes=classes)
         refacc.append(_acc(refy, clf.predict(refx)))
         print("acc: {}".format(refacc[-1]))
     
     print("Calibrating.")
-    clf_calibrated = CalibratedClassifierCV(clf, cv = "prefit")
+    clf_calibrated = CalibratedClassifierCV(clf, cv="prefit")
     clf_calibrated.fit(refx, refy)
 
     return True, clf_calibrated, refacc     
@@ -270,7 +282,7 @@ def _evaluate_classifier(clf, imkeys, gtdict, classes, bucket):
 
 
 def _chunkify(lst, n):
-    return [ lst[i::n] for i in xrange(n) ]
+    return [lst[i::n] for i in xrange(n)]
 
 
 def _load_data(labeldict, imkey, classes, bucket):
@@ -309,6 +321,7 @@ def _load_mini_batch(labeldict, imkeylist, classes, bucket):
 def _download_nets(name):
     conn = boto.connect_s3()
     bucket = conn.get_bucket('spacer-tools')
+    was_cashed = False
     for suffix in ['.deploy.prototxt', '.caffemodel']:
         was_cashed = _download_file(bucket, name + suffix, '../models/' + name + suffix)
     return was_cashed
@@ -343,4 +356,4 @@ def _acc(gt, est):
         if not isinstance(e, int):
             raise TypeError('Input est must be an array of ints')
 
-    return float(sum([(g == e) for (g,e) in zip(gt, est)])) / len(gt)    
+    return float(sum([(g == e) for (g, e) in zip(gt, est)])) / len(gt)
