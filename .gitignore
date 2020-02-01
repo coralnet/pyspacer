@@ -134,3 +134,4 @@ dmypy.json
 # OTHER
 .jpg
 .png
+*secrets*

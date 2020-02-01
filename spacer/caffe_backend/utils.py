@@ -9,6 +9,8 @@ import numpy as np
 
 from copy import copy
 
+from PIL import Image
+
 
 class Transformer:
     """
@@ -104,61 +106,29 @@ def gray2rgb(im):
     return ret
 
 
-def imblur(im, radius):
-    """ Applies Gaussian blurring to image """
-    im = Image.fromarray(im)
-    return np.asarray(im.filter(ImageFilter.GaussianBlur(radius = radius)))
-
-
-def imstretch(img):
-    """ Performs contrast normalization of input image. """
-    hist,bins = np.histogram(img.flatten(),256,[0,256])
-    cdf = hist.cumsum()
-    cdf_m = np.ma.masked_equal(cdf,0)
-    cdf_m = (cdf_m - cdf_m.min())*255/(cdf_m.max()-cdf_m.min())
-    cdf = np.ma.filled(cdf_m,0).astype('uint8')
-    return cdf[img]
-
-
 def crop_patch(im, crop_size, scale, point_anns, offsets=None):
     """ Crops patches from images. """
+
+    assert scale == 1, "Only supports scale == 1"
+
     if offsets is None:
         offsets = np.zeros([len(point_anns), 2])
 
     patchlist = []
     labellist = []
     pad = crop_size
-    if scale > 1:
-        # Here we make the image larger to make receptive field smaller.
-        # Processing order is: pad, crop + augment, resize.
 
-        im = np.pad(im, ((pad, pad), (pad, pad), (0, 0)), mode='reflect')
-        cs_scale = int(np.round(crop_size / float(scale)))  # we will crop smaller patches and then resize in the end.
+    im = np.pad(im, ((pad, pad), (pad, pad), (0, 0)), mode='reflect')
 
-        for ((row, col, label), offset) in zip(point_anns, offsets):
-            center_org = np.asarray([row, col])
-            center = np.round(pad + center_org + offset).astype(np.int)
+    for ((row, col, label), offset) in zip(point_anns, offsets):
+        center_org = np.asarray([row, col])
+        center = np.round(pad + (center_org * scale) + offset).astype(np.int)
 
-            patch = crop_simple(im, center, cs_scale)
+        patch = crop_simple(im, center, crop_size)
 
-            patchlist.append(imresize(patch, [crop_size, crop_size]))
-            labellist.append(label)
+        patchlist.append(patch)
+        labellist.append(label)
 
-    else:  # in this case it's better to first resize image. Processing order is: resize, pad, crop + augment.
-
-        if not (scale == 1):
-            im = imresize(im, float(scale))
-
-        im = np.pad(im, ((pad, pad), (pad, pad), (0, 0)), mode='reflect')
-
-        for ((row, col, label), offset) in zip(point_anns, offsets):
-            center_org = np.asarray([row, col])
-            center = np.round(pad + (center_org * scale) + offset).astype(np.int)
-
-            patch = crop_simple(im, center, crop_size)
-
-            patchlist.append(patch)
-            labellist.append(label)
     return patchlist, labellist
 
 

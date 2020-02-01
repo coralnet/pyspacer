@@ -35,8 +35,8 @@ def extract_features(payload):
 
     # Setup caffe
     caffe.set_mode_cpu()
-    net = caffe.Net('../models/' + str(payload['modelname'] + '.deploy.prototxt'),
-                    '../models/' + str(payload['modelname'] + '.caffemodel'),
+    net = caffe.Net(str(payload['modelname'] + '.deploy.prototxt'),
+                    str(payload['modelname'] + '.caffemodel'),
                     caffe.TEST)
     
     # Set parameters
@@ -151,8 +151,9 @@ def deploy(payload):
         # Setup caffe
         caffe.set_mode_cpu()
         net = caffe.Net(
-            '../models/' + str(payload['modelname'] + '.deploy.prototxt'),
-            '../models/' + str(payload['modelname'] + '.caffemodel'), caffe.TEST)
+            str(payload['modelname'] + '.deploy.prototxt'),
+            str(payload['modelname'] + '.caffemodel'),
+            caffe.TEST)
 
         # Set parameters
         pyparams = {'im_mean': [128, 128, 128],
@@ -323,7 +324,7 @@ def _download_nets(name):
     bucket = conn.get_bucket('spacer-tools')
     was_cashed = False
     for suffix in ['.deploy.prototxt', '.caffemodel']:
-        was_cashed = _download_file(bucket, name + suffix, '../models/' + name + suffix)
+        was_cashed = _download_file(bucket, name + suffix, name + suffix)
     return was_cashed
 
 
