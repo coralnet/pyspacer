@@ -22,7 +22,6 @@ class TestDeploy(unittest.TestCase):
         }
 
         results = tasks.deploy(payload)
-        print(results)
         self.assertEqual(results['ok'], 1)
 
     def test_deploy_error(self):

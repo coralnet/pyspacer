@@ -76,14 +76,12 @@ def extract_features(payload):
 
 def train_classifier(payload):
     print("Training classifier pk:{}.".format(payload['pk']))
-    print(payload)
     
     # SETUP
     #
     conn = boto.connect_s3()
     bucket = conn.get_bucket(payload['bucketname'], validate=True)
-    k = Key(bucket)
-    k.key = payload['traindata']
+    k = Key(bucket, payload['traindata'])
     traindict = json.loads(k.get_contents_as_string())
     if len(traindict.keys()) < 10:
         return {'ok': False, 'runtime': 0, 'refacc': 0, 'acc': 0, 'pc_accs': 0}
