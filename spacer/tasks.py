@@ -13,6 +13,7 @@ import numpy as np
 from boto.s3.key import Key
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.linear_model import SGDClassifier
+from spacer import config
 
 
 from spacer.caffe_backend.utils import classify_from_patchlist
@@ -35,8 +36,8 @@ def extract_features(payload):
 
     # Setup caffe
     caffe.set_mode_cpu()
-    net = caffe.Net(str(payload['modelname'] + '.deploy.prototxt'),
-                    str(payload['modelname'] + '.caffemodel'),
+    net = caffe.Net(str(os.path.join(config.LOCAL_MODEL_PATH, payload['modelname'] + '.deploy.prototxt')),
+                    str(os.path.join(config.LOCAL_MODEL_PATH, payload['modelname'] + '.caffemodel')),
                     caffe.TEST)
     
     # Set parameters
@@ -151,8 +152,8 @@ def deploy(payload):
         # Setup caffe
         caffe.set_mode_cpu()
         net = caffe.Net(
-            str(payload['modelname'] + '.deploy.prototxt'),
-            str(payload['modelname'] + '.caffemodel'),
+            str(os.path.join(config.LOCAL_MODEL_PATH, payload['modelname'] + '.deploy.prototxt')),
+            str(os.path.join(config.LOCAL_MODEL_PATH, payload['modelname'] + '.caffemodel')),
             caffe.TEST)
 
         # Set parameters
@@ -178,7 +179,7 @@ def deploy(payload):
         bucket = conn.get_bucket(payload['bucketname'], validate=True)
         key = bucket.get_key(payload['model'])
 
-        model = pickle.loads(key.get_contents_as_string())
+        model = pickle.loads(key.get_contents_as_string(), fix_imports=True, encoding='latin1')
 
         scores = model.predict_proba(feats)
 
@@ -194,6 +195,7 @@ def deploy(payload):
             'ok': 1
         }
     except Exception as e:
+
         # For deploy calls we don't use the error queue, but instead return the error message to the standard
         # return queue.
         message = {
@@ -324,7 +326,7 @@ def _download_nets(name):
     bucket = conn.get_bucket('spacer-tools')
     was_cashed = False
     for suffix in ['.deploy.prototxt', '.caffemodel']:
-        was_cashed = _download_file(bucket, name + suffix, name + suffix)
+        was_cashed = _download_file(bucket, name + suffix, os.path.join(config.LOCAL_MODEL_PATH, name + suffix))
     return was_cashed
 
 

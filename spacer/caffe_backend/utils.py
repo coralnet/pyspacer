@@ -74,7 +74,7 @@ def classify_from_imlist(im_list, net, transformer, batch_size, scorelayer='scor
     """
 
     scorelist = []
-    for b in range(len(im_list) / batch_size + 1):
+    for b in range(len(im_list) // batch_size + 1):
         for i in range(batch_size):
             pos = b * batch_size + i
             if pos < len(im_list):

@@ -1,0 +1,1 @@
+LOCAL_MODEL_PATH='/workspace/models'
