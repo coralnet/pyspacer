@@ -4,6 +4,7 @@ import boto
 from boto.sqs.message import Message
 
 from spacer.tasks import extract_features, train_classifier, deploy
+from spacer.messages import TaskMsg
 
 tasks = {
     'extract_features': extract_features,
@@ -19,7 +20,6 @@ def grab_message(queue_group='spacer'):
     conn = boto.sqs.connect_to_region("us-west-2")
     inqueue = conn.get_queue('{}_jobs'.format(queue_group))
     resqueue = conn.get_queue('{}_results'.format(queue_group))
-    errorqueue = conn.get_queue('{}_errors'.format(queue_group))
 
     # Read message
     m = inqueue.read()
@@ -27,35 +27,37 @@ def grab_message(queue_group='spacer'):
         print("No messages in inqueue.")
         return 1
     body = json.loads(m.get_body())
+
+    task_msg = TaskMsg(body['task'], body['payload'])
     
     # Do the work
     try:
-        outbound = handle_message(body)
-        out_body = {'original_job': body, 'result': outbound}
-        queue = resqueue
-        
+        outbound = handle_message(task_msg)
+        out_body = {
+            'original_job': body,
+            'ok': True,
+            'result': outbound,
+            'error_message': None
+        }
     except Exception as e:
-        out_body = {'original_job': body, 'error_message': repr(e)}
-        queue = errorqueue
+        out_body = {
+            'original_job': body,
+            'ok': False,
+            'result': None,
+            'error_message': repr(e)}
     
     m_out = Message()
     m_out.set_body(json.dumps(out_body))
-    queue.write(m_out)
+    resqueue.write(m_out)
     inqueue.delete_message(m)
     
 
-def handle_message(body):
-    
-    if not type(body) is dict:
-        raise TypeError('Input "body" must be a dictionary.')
+def handle_message(task_msg):
 
-    if 'task' not in body:
-        raise KeyError('Input dictionary "body" must have key "task"')
-
-    if not body['task'] in tasks:
-        raise ValueError('Requested task: "{}" is not a valid task'.format(body['task']))
+    if task_msg.task not in tasks:
+        raise ValueError('Requested task: "{}" is not a valid task'.format(task_msg.task))
     
-    return tasks[body['task']](body['payload'])
+    return tasks[task_msg.task](task_msg.payload)
 
 
 if __name__ == '__main__':

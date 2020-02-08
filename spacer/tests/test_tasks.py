@@ -1,6 +1,7 @@
 import unittest
 
 from spacer import tasks
+from spacer.messages import ExtractFeaturesMsg
 
 
 class TestDeploy(unittest.TestCase):
@@ -36,6 +37,23 @@ class TestDeploy(unittest.TestCase):
 
         results = tasks.deploy(payload)
         self.assertEqual(results['ok'], 0)
+
+
+class TestExtractFeatures(unittest.TestCase):
+
+    def test_caffe_extract(self):
+
+        msg = ExtractFeaturesMsg(
+            pk=1,
+            modelname='vgg16_coralnet_ver1',
+            bucketname='spacer-test',
+            storage_type='s3',
+            imkey='edinburgh3.jpg',
+            rowcols=[(100, 100)],
+            outputkey='edinburgh3.jpg.feats'
+        )
+
+        tasks.extract_features(msg)
 
 
 if __name__ == '__main__':

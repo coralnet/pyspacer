@@ -17,61 +17,22 @@ from spacer import config
 
 
 from spacer.caffe_backend.utils import classify_from_patchlist
+from spacer.messages import ExtractFeaturesMsg
+from spacer.extract_features import feature_extractor_factory
+from spacer.storage import storage_factory
 
 
-def extract_features(payload):
-    print("Extracting features for image pk:{}.".format(payload['pk']))
-    t1 = time.time()
+def extract_features(payload: ExtractFeaturesMsg):
 
-    # Make sure the right model and prototxt are available locally.
-    was_cashed = _download_nets(payload['modelname'])
+    storage = storage_factory(payload.storage_type, payload.bucketname)
 
-    # Download the image to be processed.
-    conn = boto.connect_s3()
-    bucket = conn.get_bucket(payload['bucketname'], validate=True)
+    extractor = feature_extractor_factory(payload, storage)
 
-    key = bucket.get_key(payload['imkey'])
-    basename = os.path.basename(payload['imkey'])
-    key.get_contents_to_filename(basename)
+    features, return_message = extractor()
 
-    # Setup caffe
-    caffe.set_mode_cpu()
-    net = caffe.Net(str(os.path.join(config.LOCAL_MODEL_PATH, payload['modelname'] + '.deploy.prototxt')),
-                    str(os.path.join(config.LOCAL_MODEL_PATH, payload['modelname'] + '.caffemodel')),
-                    caffe.TEST)
-    
-    # Set parameters
-    pyparams = {'im_mean': [128, 128, 128],
-                'scaling_method': 'scale',
-                'scaling_factor': 1,
-                'crop_size': 224,
-                'batch_size': 10}
-    
-    imlist = [basename]
-    imdict = {
-        basename: ([], 100)
-    }
-    for row, col in payload['rowcols']:
-        imdict[basename][0].append((row, col, 1))
+    storage.store_string(json.dumps(features), payload.outputkey)
 
-    # Run
-    t2 = time.time()
-    (_, _, feats) = classify_from_patchlist(imlist, imdict, pyparams, net, scorelayer='fc7')
-    feats = [list(f) for f in feats]
-    message = {'model_was_cashed': was_cashed,
-               'runtime':
-                   {'total': time.time() - t1,
-                    'core': time.time() - t2,
-                    'per_point': (time.time() - t2) / len(payload['rowcols'])
-                    }
-               }
-
-    # Store
-    k = Key(bucket)
-    k.key = payload['outputkey']
-    k.set_contents_from_string(json.dumps(feats))
-
-    return message
+    return return_message
 
 
 def train_classifier(payload):

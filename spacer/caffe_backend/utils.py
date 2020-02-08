@@ -139,17 +139,17 @@ def crop_simple(im, center, crop_size):
     return im[upper: upper + crop_size, left: left + crop_size, :]
 
 
-def classify_from_patchlist(imlist, imdict, pyparams, net, scorelayer='score', startlayer='conv1_1'):
+def classify_from_patchlist(imdict, pyparams, net, storage, scorelayer='score', startlayer='conv1_1'):
 
     scale = 1
     estlist, scorelist, gtlist = [], [], []
     transformer = Transformer(pyparams['im_mean'])
-    for imname in imlist:
+    for imname in imdict:
 
         (point_anns, height_cm) = imdict[os.path.basename(imname)]
 
         # Load image
-        im_pil = Image.open(imname)
+        im_pil = storage.load_image(imname)
         im = np.asarray(im_pil)
 
         # Do it a second time due to bug
@@ -159,7 +159,6 @@ def classify_from_patchlist(imlist, imdict, pyparams, net, scorelayer='score', s
         im = im[:, :, :3]  # only keep the first three color channels
 
         # Crop patches
-
         patchlist, this_gtlist = crop_patch(im, pyparams['crop_size'], scale, point_anns)
 
         # Classify
