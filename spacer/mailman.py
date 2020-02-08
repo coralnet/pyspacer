@@ -29,22 +29,8 @@ def grab_message(queue_group='spacer'):
     body = json.loads(m.get_body())
 
     task_msg = TaskMsg(body['task'], body['payload'])
-    
-    # Do the work
-    try:
-        outbound = handle_message(task_msg)
-        out_body = {
-            'original_job': body,
-            'ok': True,
-            'result': outbound,
-            'error_message': None
-        }
-    except Exception as e:
-        out_body = {
-            'original_job': body,
-            'ok': False,
-            'result': None,
-            'error_message': repr(e)}
+
+    out_body = handle_message(task_msg)
     
     m_out = Message()
     m_out.set_body(json.dumps(out_body))
@@ -56,8 +42,23 @@ def handle_message(task_msg):
 
     if task_msg.task not in tasks:
         raise ValueError('Requested task: "{}" is not a valid task'.format(task_msg.task))
-    
-    return tasks[task_msg.task](task_msg.payload)
+
+    try:
+        outbound = tasks[task_msg.task](task_msg.payload)
+        out_body = {
+            'original_job': '',
+            'ok': True,
+            'result': outbound,
+            'error_message': None
+        }
+    except Exception as e:
+        out_body = {
+            'original_job': '',
+            'ok': False,
+            'result': None,
+            'error_message': repr(e)}
+
+    return out_body
 
 
 if __name__ == '__main__':

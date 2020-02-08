@@ -1,8 +1,8 @@
 import unittest
 
 from spacer import tasks
-from spacer.messages import ExtractFeaturesMsg
-
+from spacer.messages import ExtractFeaturesMsg, TaskMsg
+from spacer.mailman import handle_message
 
 class TestDeploy(unittest.TestCase):
 
@@ -53,7 +53,8 @@ class TestExtractFeatures(unittest.TestCase):
             outputkey='edinburgh3.jpg.feats'
         )
 
-        tasks.extract_features(msg)
+        return_message = handle_message(TaskMsg('extract_features', msg))
+        print(return_message)
 
 
 if __name__ == '__main__':

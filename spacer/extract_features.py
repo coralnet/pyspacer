@@ -1,5 +1,6 @@
 import abc
 import time
+import os
 from typing import Tuple, List
 from spacer.messages import ExtractFeaturesMsg, ExtractFeaturesReturnMsg
 from spacer import config
@@ -22,20 +23,16 @@ class VGG16CaffeExtractor(FeatureExtractorInterface):
     def __call__(self, *args, **kwargs):
 
         # We should only reach this line if it is confirmed caffe is available
+        os.environ['GLOG_minloglevel'] = '2'
         import caffe
         from spacer.caffe_backend.utils import classify_from_patchlist
 
-        print("Extracting features for image pk:{}.".format(self.payload.pk))
         t1 = time.time()
 
         # Make sure the right model and prototxt are available locally.
         modeldef_path, def_was_cashed = download_model(self.payload.modelname + '.deploy.prototxt')
         modelweighs_path, weights_was_cashed = download_model(self.payload.modelname + '.caffemodel')
         was_cashed = def_was_cashed and weights_was_cashed
-
-        # Download image.
-        # imfile_path = os.path.basename(self.payload.imkey)
-        # download_file(self.payload.imkey, imfile_path, self.payload.bucketname)
 
         # Setup caffe
         caffe.set_mode_cpu()
@@ -68,15 +65,6 @@ class VGG16CaffeExtractor(FeatureExtractorInterface):
             }
         )
 
-        # # Store
-        # print("Len features: ", len(feats), type(feats))
-        # print("Len features[0]: ", len(feats[0]), type(feats[0]))
-        # print("Type features[0][0]: ", type(feats[0][0]))
-        # conn = boto.connect_s3()
-        # bucket = conn.get_bucket(self.payload.bucketname, validate=True)
-        # k = Key(bucket, self.payload.outputkey)
-        # k.set_contents_from_string(json.dumps(feats))
-
         return feats, return_message
 
 
@@ -84,6 +72,7 @@ class EfficientNetExtractor(FeatureExtractorInterface):
 
     def __init__(self, msg: ExtractFeaturesMsg, storage: Storage):
         self.msg = msg
+        self.storage = storage
 
     def __call__(self, *args, **kwargs):
         pass
@@ -95,9 +84,11 @@ def feature_extractor_factory(msg: ExtractFeaturesMsg, storage: Storage) -> Feat
 
     if msg.modelname == 'vgg16_coralnet_ver1':
         assert config.HAS_CAFFE, "Need to have Caffe installed to instantiate {}".format(msg.modelname)
+        print("-> Initializing VGG16CaffeExtractor")
         return VGG16CaffeExtractor(msg, storage)
 
     elif msg.modelname == 'efficientnet_b0_imagenet':
+        print("-> Initializing EfficientNetExtractor")
         return EfficientNetExtractor(msg, storage)
 
     else:

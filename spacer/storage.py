@@ -66,8 +66,10 @@ def storage_factory(storage_type: str, bucketname: Union[str, None]):
     assert storage_type in config.STORAGE_TYPES
 
     if storage_type == 's3':
+        print("-> Initializing s3 storage")
         return S3Storage(bucketname=bucketname)
     elif storage_type == 'local':
+        print("-> Initializing local storage")
         return LocalStorage()
     else:
         raise ValueError('Unknown storage type: {}'.format(storage_type))
@@ -78,7 +80,7 @@ def download_model(keyname: str) -> Tuple[str, bool]:
 
     destination = os.path.join(config.LOCAL_MODEL_PATH, keyname)
     if not os.path.isfile(destination):
-        print("downloading {}".format(keyname))
+        print("-> Downloading {}".format(keyname))
         conn = boto.connect_s3()
         bucket = conn.get_bucket(config.MODELS_BUCKET, validate=True)
         key = bucket.get_key(keyname)

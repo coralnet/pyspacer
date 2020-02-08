@@ -1,4 +1,5 @@
 from typing import List, Tuple, Dict, Union, Optional
+from pprint import pprint
 
 
 class ExtractFeaturesMsg:
@@ -44,6 +45,9 @@ class ExtractFeaturesReturnMsg:
 
     def serialize(self) -> Dict:
         pass
+
+    def __str__(self):
+        return str(pprint(vars(self)))
 
 
 class TrainClassifierMsg:

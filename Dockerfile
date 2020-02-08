@@ -62,8 +62,11 @@ RUN pip3 install scikit-image
 RUN pip3 install scipy==0.19.1
 RUN pip3 install numpy==1.17.0
 
+# Reduce caffe logging to not spam the console.
+ENV GLOG_minloglevel=2
+
 WORKDIR /root/.aws
-COPY secrets credentials
+# COPY secrets credentials
 
 WORKDIR /workspace
 COPY . spacer

@@ -28,6 +28,8 @@ def extract_features(payload: ExtractFeaturesMsg):
 
     extractor = feature_extractor_factory(payload, storage)
 
+    print("-> Extracting features for image pk:{}.".format(payload.pk))
+
     features, return_message = extractor()
 
     storage.store_string(json.dumps(features), payload.outputkey)
