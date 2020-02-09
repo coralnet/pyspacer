@@ -4,6 +4,7 @@ from spacer import tasks
 from spacer.messages import ExtractFeaturesMsg, TaskMsg
 from spacer.mailman import handle_message
 
+
 class TestDeploy(unittest.TestCase):
 
     def setUp(self):

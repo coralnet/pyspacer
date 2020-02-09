@@ -1,5 +1,5 @@
 from typing import List, Tuple, Dict, Union, Optional
-from pprint import pprint
+from pprint import pformat
 
 
 class ExtractFeaturesMsg:
@@ -21,13 +21,22 @@ class ExtractFeaturesMsg:
         self.rowcols = rowcols
         self.outputkey = outputkey
 
-
     @classmethod
-    def deserialize(cls) -> 'ExtractFeaturesMsg':
-        pass
+    def deserialize(cls, data: Dict) -> 'ExtractFeaturesMsg':
+        msg = ExtractFeaturesMsg(**data)
+        msg.rowcols = [tuple(entry) for entry in msg.rowcols]  # JSONstores tuples as lists, we restore it here.
+        return msg
 
     def serialize(self) -> Dict:
-        pass
+        return self.__dict__
+
+    def __repr__(self):
+        return pformat(vars(self))
+
+    def __eq__(self, other):
+        sd = self.__dict__
+        od = other.__dict__
+        return sd.keys() == od.keys() and all([sd[key] == od[key] for key in sd])
 
 
 class ExtractFeaturesReturnMsg:

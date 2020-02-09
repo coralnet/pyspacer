@@ -44,11 +44,10 @@ def handle_message(task_msg):
         raise ValueError('Requested task: "{}" is not a valid task'.format(task_msg.task))
 
     try:
-        outbound = tasks[task_msg.task](task_msg.payload)
         out_body = {
             'original_job': '',
             'ok': True,
-            'result': outbound,
+            'result': tasks[task_msg.task](task_msg.payload),
             'error_message': None
         }
     except Exception as e:
