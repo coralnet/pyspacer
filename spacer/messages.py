@@ -173,6 +173,11 @@ class PointFeatures(DataClass):
             data=[1.1, 1.3, 1.12]
         )
 
+    @classmethod
+    def deserialize(cls, data: Dict) -> 'PointFeatures':
+        """ Redefined here to help the Typing module. """
+        return cls(**data)
+
 
 class ImageFeatures(DataClass):
 
@@ -211,13 +216,24 @@ class ImageFeatures(DataClass):
         }
 
     @classmethod
-    def deserialize(cls, data: Dict):
-        return ImageFeatures(
-            point_features=[PointFeatures.deserialize(feat) for feat in data['point_features']],
-            valid_rowcol=data['valid_rowcol'],
-            feature_dim=data['feature_dim'],
-            npoints=data['npoints']
-        )
+    def deserialize(cls, data: Union[Dict, List]):
+
+        if isinstance(data, List):
+            # Legacy feature were stored as a list of list without row and column information.
+            assert len(data) > 0, "Empty features file."
+            return ImageFeatures(
+                point_features=[PointFeatures(row=0, col=0, data=entry) for entry in data],
+                valid_rowcol=False,
+                feature_dim=len(data[0]),
+                npoints=len(data)
+            )
+        else:
+            return ImageFeatures(
+                point_features=[PointFeatures.deserialize(feat) for feat in data['point_features']],
+                valid_rowcol=data['valid_rowcol'],
+                feature_dim=data['feature_dim'],
+                npoints=data['npoints']
+            )
 
     def __eq__(self, other):
         return all([a == b for a, b in zip(self.point_features, other.point_features)]) and \

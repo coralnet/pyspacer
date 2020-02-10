@@ -1,3 +1,4 @@
+import os
 import unittest
 import json
 
@@ -8,6 +9,8 @@ from spacer.messages import \
     TrainClassifierReturnMsg, \
     PointFeatures, \
     ImageFeatures
+
+fixture_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fixtures')
 
 
 class TestExtractFeaturesMsg(unittest.TestCase):
@@ -81,9 +84,20 @@ class TestImageFeatures(unittest.TestCase):
     def test_serialize(self):
 
         msg = ImageFeatures.example()
-        msg2 = ImageFeatures.deserialize(msg.serialize())
-        print(msg)
-        print(msg2)
-        print(msg2.point_features[0].__dict__)
-        self.assertEqual(msg, msg2)
-        #self.assertEqual(msg, ImageFeatures.deserialize(json.loads(json.dumps(msg.serialize()))))
+        self.assertEqual(msg, ImageFeatures.deserialize(msg.serialize()))
+        self.assertEqual(msg, ImageFeatures.deserialize(json.loads(json.dumps(msg.serialize()))))
+
+    def test_legacy(self):
+        """ Loads an actual legacy feature file and make sure it's parsed correctly. """
+        with open(os.path.join(fixture_dir, 'legacy.jpg.feats')) as fp:
+            msg = ImageFeatures.deserialize(json.load(fp))
+        self.assertEqual(msg.valid_rowcol, False)
+        self.assertEqual(ImageFeatures.deserialize(msg.serialize()).valid_rowcol, False)
+
+        self.assertTrue(isinstance(msg.point_features[0], PointFeatures))
+        self.assertEqual(msg.npoints, len(msg.point_features))
+        self.assertEqual(msg.feature_dim, len(msg.point_features[0].data))
+
+        self.assertEqual(msg, ImageFeatures.deserialize(msg.serialize()))
+        self.assertEqual(msg, ImageFeatures.deserialize(json.loads(json.dumps(msg.serialize()))))
+
