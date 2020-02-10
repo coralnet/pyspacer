@@ -255,7 +255,7 @@ def _load_data(labeldict, imkey, classes, bucket):
     """
     key = bucket.get_key(imkey)
 
-    # Load featutes
+    # Load features
     x = json.loads(key.get_contents_as_string())
 
     # Load labels
