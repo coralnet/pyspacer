@@ -8,7 +8,7 @@ from spacer.messages import \
     ExtractFeaturesReturnMsg, \
     ImageFeatures
 from spacer.storage import storage_factory
-from spacer.tasks import extract_features
+from spacer.extract_features import DummyExtractor, VGG16CaffeExtractor
 
 
 class TestDummyExtractor(unittest.TestCase):
@@ -18,24 +18,23 @@ class TestDummyExtractor(unittest.TestCase):
             pk=1,
             modelname='dummy',
             bucketname='spacer-test',
-            storage_type='s3',
-            imkey='edinburgh3.jpg',
+            storage_type='local',
+            imkey='not_used',
             rowcols=[(100, 100)],
-            outputkey='edinburgh3.jpg.feats'
+            outputkey='not_used'
         )
 
-        return_msg = extract_features(msg)
+        storage = storage_factory(msg.storage_type, msg.bucketname)
+        ext = DummyExtractor(msg, storage)
+
+        features, return_msg = ext(msg)
 
         self.assertTrue(isinstance(return_msg, ExtractFeaturesReturnMsg))
+        self.assertTrue(isinstance(features, ImageFeatures))
 
-        # Now check that the features were stored as expected.
-        storage = storage_factory(msg.storage_type, msg.bucketname)
-
-        feats = ImageFeatures.deserialize(json.loads(
-            storage.load_string(msg.outputkey)))
-
-        self.assertEqual(feats.point_features[0].row, 100)
-        self.assertEqual(feats.point_features[0].col, 100)
+        # Check some feature metadata
+        self.assertEqual(features.point_features[0].row, 100)
+        self.assertEqual(features.point_features[0].col, 100)
 
 
 class TestCaffeExtractor(unittest.TestCase):
@@ -58,18 +57,17 @@ class TestCaffeExtractor(unittest.TestCase):
             outputkey='edinburgh3.jpg.feats'
         )
 
-        return_msg = extract_features(msg)
+        storage = storage_factory(msg.storage_type, msg.bucketname)
+        ext = VGG16CaffeExtractor(msg, storage)
+
+        features, return_msg = ext(msg)
 
         self.assertTrue(isinstance(return_msg, ExtractFeaturesReturnMsg))
+        self.assertTrue(isinstance(features, ImageFeatures))
 
-        # Now check that the features were stored as expected.
-        storage = storage_factory(msg.storage_type, msg.bucketname)
-
-        feats = ImageFeatures.deserialize(json.loads(
-            storage.load_string(msg.outputkey)))
-
-        self.assertEqual(feats.point_features[0].row, 100)
-        self.assertEqual(feats.point_features[0].col, 100)
+        # Check some feature metadata
+        self.assertEqual(features.point_features[0].row, 100)
+        self.assertEqual(features.point_features[0].col, 100)
 
     @unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
     @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
@@ -89,12 +87,17 @@ class TestCaffeExtractor(unittest.TestCase):
             rowcols=[(148, 50), (60, 425)],
             outputkey='kh6dydiix0.jpeg.feats'
         )
-        storage = storage_factory('s3', 'spacer-test')
-        storage.delete(msg.outputkey)
-        return_msg = extract_features(msg)
+        storage = storage_factory(msg.storage_type, msg.bucketname)
+        ext = VGG16CaffeExtractor(msg, storage)
+
+        features, return_msg = ext(msg)
 
         self.assertTrue(isinstance(return_msg, ExtractFeaturesReturnMsg))
-        self.assertTrue(storage.exists(msg.outputkey))
+        self.assertTrue(isinstance(features, ImageFeatures))
+
+        # Check some feature metadata
+        self.assertEqual(features.point_features[0].row, 148)
+        self.assertEqual(features.point_features[0].col, 50)
 
     @unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
     @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
@@ -114,12 +117,17 @@ class TestCaffeExtractor(unittest.TestCase):
             rowcols=[(190, 226), (25, 359)],
             outputkey='sfq2mr5qbs.jpeg.feats'
         )
-        storage = storage_factory('s3', 'spacer-test')
-        storage.delete(msg.outputkey)
-        return_msg = extract_features(msg)
+        storage = storage_factory(msg.storage_type, msg.bucketname)
+        ext = VGG16CaffeExtractor(msg, storage)
+
+        features, return_msg = ext(msg)
 
         self.assertTrue(isinstance(return_msg, ExtractFeaturesReturnMsg))
-        self.assertTrue(storage.exists(msg.outputkey))
+        self.assertTrue(isinstance(features, ImageFeatures))
+
+        # Check some feature metadata
+        self.assertEqual(features.point_features[0].row, 190)
+        self.assertEqual(features.point_features[0].col, 226)
 
 
 if __name__ == '__main__':

@@ -89,7 +89,7 @@ class ExtractFeaturesReturnMsg(DataClass):
 
     def __init__(self,
                  model_was_cashed: bool,
-                 runtime: Dict[str, float]):
+                 runtime: float):
 
         self.model_was_cashed = model_was_cashed
         self.runtime = runtime
@@ -98,36 +98,37 @@ class ExtractFeaturesReturnMsg(DataClass):
     def example(cls) -> 'ExtractFeaturesReturnMsg':
         return ExtractFeaturesReturnMsg(
             model_was_cashed=True,
-            runtime={
-                'total': 2.0,
-                'core': 1.0,
-                'per_point': 0.1
-            }
+            runtime=2.1
         )
 
 
 class TrainClassifierMsg(DataClass):
 
     def __init__(self,
-                 pk: int,  # Primary key of the model to train
-                 bucketname: str,  # Bucket name where features are stored.
-                 traindata: str,  # Struct defining labels and features files.
-                 model: str,  # Key for where to store the trained model.
-                 valdata: str,  # Structure defining previous models and performances.
+                 # Primary key of the model to train
+                 pk: int,
+                 # Bucket name where features are stored.
+                 bucketname: str,
+                 # Structure defining labels and features files.
+                 traindata: str,
+                 # Structure defining previous models and performances.
+                 valdata: str,
+                 # Key for where to store the trained model.
+                 model: str,
                  ):
 
         self.pk = pk
         self.bucketname = bucketname
         self.traindata = traindata
-        self.model = model
         self.valdata = valdata
+        self.model = model
 
     @classmethod
     def example(cls):
         return TrainClassifierMsg(
             pk=1,
             bucketname='spacer-test',
-            traindata='s3bucketkey',
+            traindata='my_traindata',
             model='my_trained_model',
             valdata='my_valdata'
         )
@@ -164,7 +165,7 @@ class PointFeatures(DataClass):
 
     def __init__(self,
                  row: Optional[int],  # Row where feature was extracted
-                 col: Optional[int],  # Colum where feature was extracted
+                 col: Optional[int],  # Column where feature was extracted
                  data: List[float],  # Feature vector as list of floats.
                  ):
         self.row = row
@@ -206,6 +207,16 @@ class ImageFeatures(DataClass):
         self.valid_rowcol = valid_rowcol
         self.feature_dim = feature_dim
         self.npoints = npoints
+
+        if self.valid_rowcol:
+            # Store a row_col hash for quick retrieval based on (row, col)
+            self._rchash = {(pf.row, pf.col): enum for
+                            enum, pf in enumerate(self.point_features)}
+
+    def get(self, rowcol: Tuple[int, int]) -> List[float]:
+        if not self.valid_rowcol:
+            raise ValueError('Method not supported for legacy features')
+        return self.point_features[self._rchash[rowcol]].data
 
     @classmethod
     def example(cls):

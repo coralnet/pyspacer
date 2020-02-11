@@ -27,7 +27,7 @@ class DummyExtractor(FeatureExtractorInterface):
         self.storage = storage
 
     def __call__(self, *args, **kwargs):
-        img_features = ImageFeatures(
+        return ImageFeatures(
             point_features=[PointFeatures(row=rc[0],
                                           col=rc[1],
                                           data=[1.1, 2.2, 3.3])
@@ -35,14 +35,13 @@ class DummyExtractor(FeatureExtractorInterface):
             valid_rowcol=True,
             npoints=len(self.msg.rowcols),
             feature_dim=3
-        )
-        return img_features, ExtractFeaturesReturnMsg.example()
+        ), ExtractFeaturesReturnMsg.example()
 
 
 class VGG16CaffeExtractor(FeatureExtractorInterface):
 
     def __init__(self, msg: ExtractFeaturesMsg, storage: Storage):
-        self.payload = msg
+        self.msg = msg
         self.storage = storage
 
     def __call__(self, *args, **kwargs):
@@ -52,13 +51,13 @@ class VGG16CaffeExtractor(FeatureExtractorInterface):
         os.environ['GLOG_minloglevel'] = '3'
         from spacer.caffe_backend.utils import classify_from_patchlist
 
-        t1 = time.time()
+        t0 = time.time()
 
-        # Make sure the right model and prototxt are available locally.
+        # Cache models and prototxt locally.
         modeldef_path, _ = download_model(
-            self.payload.modelname + '.deploy.prototxt')
+            self.msg.modelname + '.deploy.prototxt')
         modelweighs_path, was_cashed = download_model(
-            self.payload.modelname + '.caffemodel')
+            self.msg.modelname + '.caffemodel')
 
         # Set parameters
         pyparams = {'im_mean': [128, 128, 128],
@@ -71,11 +70,11 @@ class VGG16CaffeExtractor(FeatureExtractorInterface):
         dummy_label = 1
         # The imheight in centimeters are not used by the algorithm.
         dummy_imheight = 100
-        rowcols = [(row, col, dummy_label) for row, col in self.payload.rowcols]
-        imdict = {self.payload.imkey: (rowcols, dummy_imheight)}
+        rowcols = [(row, col, dummy_label) for
+                   row, col in self.msg.rowcols]
+        imdict = {self.msg.imkey: (rowcols, dummy_imheight)}
 
         # Run
-        t2 = time.time()
         (_, _, feats) = classify_from_patchlist(imdict,
                                                 pyparams,
                                                 modeldef_path,
@@ -83,7 +82,7 @@ class VGG16CaffeExtractor(FeatureExtractorInterface):
                                                 self.storage,
                                                 scorelayer='fc7')
 
-        img_features = ImageFeatures(
+        return ImageFeatures(
             point_features=[PointFeatures(row=rc[0],
                                           col=rc[1],
                                           data=ft.tolist())
@@ -91,18 +90,10 @@ class VGG16CaffeExtractor(FeatureExtractorInterface):
             valid_rowcol=True,
             feature_dim=len(feats[0]),
             npoints=len(feats)
-        )
-
-        return_message = ExtractFeaturesReturnMsg(
+        ), ExtractFeaturesReturnMsg(
             model_was_cashed=was_cashed,
-            runtime={
-                'total': time.time() - t1,
-                'core': time.time() - t2,
-                'per_point': (time.time() - t2) / len(self.payload.rowcols)
-            }
+            runtime=time.time() - t0
         )
-
-        return img_features, return_message
 
 
 class EfficientNetExtractor(FeatureExtractorInterface):
