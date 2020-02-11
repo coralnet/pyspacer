@@ -1,10 +1,12 @@
 import abc
-import boto
 import os
 from io import BytesIO
-from PIL import Image
-from spacer import config
 from typing import Union, Tuple
+
+import boto
+from PIL import Image
+
+from spacer import config
 
 
 class Storage(abc.ABC):
@@ -31,7 +33,6 @@ class Storage(abc.ABC):
         pass
 
 
-
 class S3Storage(Storage):
 
     def __init__(self, bucketname: str):
@@ -56,6 +57,7 @@ class S3Storage(Storage):
 
     def exists(self, keyname: str):
         return self.bucket.get_key(keyname) is not None
+
 
 class LocalStorage(Storage):
 

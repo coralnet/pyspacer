@@ -139,7 +139,16 @@ def crop_simple(im, center, crop_size):
     return im[upper: upper + crop_size, left: left + crop_size, :]
 
 
-def classify_from_patchlist(imdict, pyparams, net, storage, scorelayer='score', startlayer='conv1_1'):
+def classify_from_patchlist(imdict,
+                            pyparams,
+                            modeldef_path,
+                            modelweighs_path,
+                            storage,
+                            scorelayer='score',
+                            startlayer='conv1_1'):
+    # Setup caffe
+    caffe.set_mode_cpu()
+    net = caffe.Net(modeldef_path, modelweighs_path, caffe.TEST)
 
     scale = 1
     estlist, scorelist, gtlist = [], [], []

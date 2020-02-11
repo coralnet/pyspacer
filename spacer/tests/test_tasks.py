@@ -1,4 +1,5 @@
 import unittest
+import warnings
 
 from spacer import tasks
 
@@ -7,7 +8,7 @@ from spacer import tasks
 class TestDeploy(unittest.TestCase):
 
     def setUp(self):
-        pass
+        warnings.simplefilter("ignore", ResourceWarning)
 
     def tearDown(self):
         pass

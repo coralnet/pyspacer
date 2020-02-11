@@ -9,7 +9,8 @@ from spacer.messages import \
     PointFeatures, \
     ImageFeatures
 
-fixture_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fixtures')
+fixture_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           'fixtures')
 
 
 class TestExtractFeaturesMsg(unittest.TestCase):

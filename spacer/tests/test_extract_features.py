@@ -1,5 +1,6 @@
 import json
 import unittest
+import warnings
 
 from spacer import config
 from spacer.messages import \
@@ -39,8 +40,12 @@ class TestDummyExtractor(unittest.TestCase):
 
 class TestCaffeExtractor(unittest.TestCase):
 
+    def setUp(self):
+        warnings.simplefilter("ignore", ResourceWarning)
+
     @unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
-    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
+    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to tests')
+    @unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
     def test_simple(self):
 
         msg = ExtractFeaturesMsg(
@@ -68,6 +73,7 @@ class TestCaffeExtractor(unittest.TestCase):
 
     @unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
     @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
+    @unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
     def test_corner_case1(self):
         """
         This particular image caused trouble on the production server.
@@ -92,6 +98,7 @@ class TestCaffeExtractor(unittest.TestCase):
 
     @unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
     @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
+    @unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
     def test_cornercase2(self):
         """
         This particular image caused trouble on the production server.

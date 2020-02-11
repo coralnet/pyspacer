@@ -5,17 +5,15 @@ import random
 import time
 
 import boto
-import wget
-
 import numpy as np
-
+import wget
 from boto.s3.key import Key
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.linear_model import SGDClassifier
-from spacer import config
 
-from spacer.messages import ExtractFeaturesMsg, ExtractFeaturesReturnMsg
+from spacer import config
 from spacer.extract_features import feature_extractor_factory
+from spacer.messages import ExtractFeaturesMsg, ExtractFeaturesReturnMsg
 from spacer.storage import storage_factory
 
 

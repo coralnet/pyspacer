@@ -1,6 +1,6 @@
-from typing import List, Tuple, Dict, Union, Optional
-from pprint import pformat
 from abc import ABC, abstractmethod
+from pprint import pformat
+from typing import List, Tuple, Dict, Union, Optional
 
 from spacer import config
 
@@ -25,8 +25,8 @@ class DataClass(ABC):
 
     def serialize(self) -> Dict:
         """
-        Serialized the class content to native data-types, dicts, lists, etc, such that
-        it it compatible with json.dumps and json.loads.
+        Serialized the class content to native data-types, dicts, lists, etc,
+        such that it it compatible with json.dumps and json.loads.
         """
         return self.__dict__
 
@@ -36,7 +36,8 @@ class DataClass(ABC):
     def __eq__(self, other):
         sd = self.__dict__
         od = other.__dict__
-        return sd.keys() == od.keys() and all([sd[key] == od[key] for key in sd])
+        return sd.keys() == od.keys() and \
+               all([sd[key] == od[key] for key in sd])
 
 
 class ExtractFeaturesMsg(DataClass):
@@ -67,7 +68,8 @@ class ExtractFeaturesMsg(DataClass):
     @classmethod
     def deserialize(cls, data: Dict) -> 'ExtractFeaturesMsg':
         msg = cls(**data)
-        msg.rowcols = [tuple(entry) for entry in msg.rowcols]  # JSONstores tuples as lists, we restore it here.
+        # JSON stores tuples as lists, we restore it here.
+        msg.rowcols = [tuple(entry) for entry in msg.rowcols]
         return msg
 
     @classmethod
@@ -134,10 +136,14 @@ class TrainClassifierMsg(DataClass):
 class TrainClassifierReturnMsg(DataClass):
 
     def __init__(self,
-                 acc: float,  # Accuracy of new classifier on the validation set.
-                 pc_accs: List[float],  # Accuracy of previous classifiers on the validation set.
-                 refacc: List[float],  # Accuracy on reference set for each epoch of training.
-                 runtime: float,  # Runtime for full training execution.
+                 # Accuracy of new classifier on the validation set.
+                 acc: float,
+                 # Accuracy of previous classifiers on the validation set.
+                 pc_accs: List[float],
+                 # Accuracy on reference set for each epoch of training.
+                 refacc: List[float],
+                 # Runtime for full training execution.
+                 runtime: float,
                  ):
         self.acc = acc
         self.pc_accs = pc_accs
@@ -157,8 +163,8 @@ class TrainClassifierReturnMsg(DataClass):
 class PointFeatures(DataClass):
 
     def __init__(self,
-                 row: int,  # Row which this feature vector was extracted
-                 col: int,  # Colum for which this feature vector was extracted
+                 row: Optional[int],  # Row where feature was extracted
+                 col: Optional[int],  # Colum where feature was extracted
                  data: List[float],  # Feature vector as list of floats.
                  ):
         self.row = row
@@ -182,10 +188,14 @@ class PointFeatures(DataClass):
 class ImageFeatures(DataClass):
 
     def __init__(self,
-                 point_features: List[PointFeatures],  # List of features for all points in image
-                 valid_rowcol: bool,  # Legacy feature did not store row and column locations.
-                 feature_dim: int,  # Dimensionality of the feature vectors.
-                 npoints: int,  # Number of points in this image (same as len(self.point_features)).
+                 # List of features for all points in image
+                 point_features: List[PointFeatures],
+                 # Legacy feature did not store row and column locations.
+                 valid_rowcol: bool,
+                 # Dimensionality of the feature vectors.
+                 feature_dim: int,
+                 # Number of points in this image.
+                 npoints: int,
                  ):
 
         assert len(point_features) == npoints
@@ -209,7 +219,8 @@ class ImageFeatures(DataClass):
 
     def serialize(self):
         return {
-            'point_features': [feats.serialize() for feats in self.point_features],
+            'point_features': [feats.serialize() for
+                               feats in self.point_features],
             'valid_rowcol': self.valid_rowcol,
             'feature_dim': self.feature_dim,
             'npoints': self.npoints
@@ -219,24 +230,29 @@ class ImageFeatures(DataClass):
     def deserialize(cls, data: Union[Dict, List]):
 
         if isinstance(data, List):
-            # Legacy feature were stored as a list of list without row and column information.
+            # Legacy feature were stored as a list of list
+            # without row and column information.
             assert len(data) > 0, "Empty features file."
             return ImageFeatures(
-                point_features=[PointFeatures(row=0, col=0, data=entry) for entry in data],
+                point_features=[PointFeatures(row=None,
+                                              col=None,
+                                              data=entry) for entry in data],
                 valid_rowcol=False,
                 feature_dim=len(data[0]),
                 npoints=len(data)
             )
         else:
             return ImageFeatures(
-                point_features=[PointFeatures.deserialize(feat) for feat in data['point_features']],
+                point_features=[PointFeatures.deserialize(feat)
+                                for feat in data['point_features']],
                 valid_rowcol=data['valid_rowcol'],
                 feature_dim=data['feature_dim'],
                 npoints=data['npoints']
             )
 
     def __eq__(self, other):
-        return all([a == b for a, b in zip(self.point_features, other.point_features)]) and \
+        return all([a == b for a, b in zip(self.point_features,
+                                           other.point_features)]) and \
                self.valid_rowcol == other.valid_rowcol and \
                self.feature_dim == other.feature_dim and \
                self.npoints == other.npoints
@@ -254,7 +270,9 @@ class TaskMsg:
 
     def __init__(self,
                  task: str,
-                 payload: Union[ExtractFeaturesMsg, TrainClassifierMsg, DeployMsg]):
+                 payload: Union[ExtractFeaturesMsg,
+                                TrainClassifierMsg,
+                                DeployMsg]):
 
         self.task = task
         self.payload = payload
@@ -265,7 +283,9 @@ class TaskReturnMsg:
     def __init__(self,
                  original_job: TaskMsg,
                  ok: bool,
-                 results: Optional[Union[ExtractFeaturesMsg, TrainClassifierReturnMsg, DeployReturnMsg]],
+                 results: Optional[Union[ExtractFeaturesMsg,
+                                         TrainClassifierReturnMsg,
+                                         DeployReturnMsg]],
                  error_message: Optional[str]):
 
         self.original_job = original_job
