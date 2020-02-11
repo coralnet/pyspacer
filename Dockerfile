@@ -55,8 +55,8 @@ LABEL maintainer oscar.beijbom@gmail.com
 
 RUN pip3 install --upgrade pip
 
-RUN pip3 install boto
-RUN pip3 install wget
+RUN pip3 install boto==2.49.0
+RUN pip3 install wget==3.2
 RUN pip3 install scikit-learn==0.17.1
 RUN pip3 install scikit-image
 RUN pip3 install scipy==0.19.1
@@ -66,7 +66,7 @@ RUN pip3 install numpy==1.17.0
 ENV GLOG_minloglevel=2
 
 WORKDIR /root/.aws
-# COPY secrets credentials
+COPY secrets credentials
 
 WORKDIR /workspace
 COPY . spacer

@@ -6,7 +6,6 @@ import time
 
 import boto
 import wget
-import caffe
 
 import numpy as np
 
@@ -15,14 +14,12 @@ from sklearn.calibration import CalibratedClassifierCV
 from sklearn.linear_model import SGDClassifier
 from spacer import config
 
-
-from spacer.caffe_backend.utils import classify_from_patchlist
-from spacer.messages import ExtractFeaturesMsg
+from spacer.messages import ExtractFeaturesMsg, ExtractFeaturesReturnMsg
 from spacer.extract_features import feature_extractor_factory
 from spacer.storage import storage_factory
 
 
-def extract_features(payload: ExtractFeaturesMsg):
+def extract_features(payload: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
 
     storage = storage_factory(payload.storage_type, payload.bucketname)
 
@@ -32,7 +29,7 @@ def extract_features(payload: ExtractFeaturesMsg):
 
     features, return_message = extractor()
 
-    storage.store_string(json.dumps(features), payload.outputkey)
+    storage.store_string(json.dumps(features.serialize()), payload.outputkey)
 
     return return_message
 

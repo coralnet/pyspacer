@@ -1,10 +1,9 @@
 import unittest
 
 from spacer import tasks
-from spacer.messages import ExtractFeaturesMsg, TaskMsg
-from spacer.mailman import handle_message
 
 
+@unittest.skip
 class TestDeploy(unittest.TestCase):
 
     def setUp(self):
@@ -13,6 +12,7 @@ class TestDeploy(unittest.TestCase):
     def tearDown(self):
         pass
 
+    @unittest.skip
     def test_deploy_simple(self):
 
         payload = {
@@ -26,6 +26,9 @@ class TestDeploy(unittest.TestCase):
         results = tasks.deploy(payload)
         self.assertEqual(results['ok'], 1)
 
+        storage = storage_factory(payload.storage_type, payload.bucketname)
+
+    @unittest.skip
     def test_deploy_error(self):
 
         payload = {
@@ -38,24 +41,6 @@ class TestDeploy(unittest.TestCase):
 
         results = tasks.deploy(payload)
         self.assertEqual(results['ok'], 0)
-
-
-class TestExtractFeatures(unittest.TestCase):
-
-    def test_caffe_extract(self):
-
-        msg = ExtractFeaturesMsg(
-            pk=1,
-            modelname='vgg16_coralnet_ver1',
-            bucketname='spacer-test',
-            storage_type='s3',
-            imkey='edinburgh3.jpg',
-            rowcols=[(100, 100)],
-            outputkey='edinburgh3.jpg.feats'
-        )
-
-        return_message = handle_message(TaskMsg('extract_features', msg))
-        print(return_message)
 
 
 if __name__ == '__main__':

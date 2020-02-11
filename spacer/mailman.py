@@ -41,7 +41,8 @@ def grab_message(queue_group='spacer'):
 def handle_message(task_msg):
 
     if task_msg.task not in tasks:
-        raise ValueError('Requested task: "{}" is not a valid task'.format(task_msg.task))
+        raise ValueError('Requested task: "{}" is not a valid task'.
+                         format(task_msg.task))
 
     try:
         out_body = {

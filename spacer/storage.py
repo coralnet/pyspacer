@@ -18,8 +18,18 @@ class Storage(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def load_string(self, content: str, keyname: str) -> str:
+    def load_string(self, keyname: str) -> str:
         pass
+
+    @abc.abstractmethod
+    def delete(self, keyname: str) -> None:
+        """ Deletes the file if it exists"""
+        pass
+
+    @abc.abstractmethod
+    def exists(self, keyname: str) -> bool:
+        pass
+
 
 
 class S3Storage(Storage):
@@ -27,22 +37,25 @@ class S3Storage(Storage):
     def __init__(self, bucketname: str):
 
         conn = boto.connect_s3()
-        self.bucket = conn.get_bucket(bucketname, validate=True)
+        self.bucket = conn.get_bucket(bucketname)
 
     def load_image(self, keyname) -> Image:
-
         key = self.bucket.get_key(keyname)
         return Image.open(BytesIO(key.get_contents_as_string()))
 
     def store_string(self, content: str, keyname: str):
-
-        key = self.bucket.get_key(keyname)
+        key = self.bucket.new_key(keyname)
         key.set_contents_from_string(content)
 
-    def load_string(self, content: str, keyname: str):
+    def load_string(self, keyname: str) -> str:
         key = self.bucket.get_key(keyname)
-        return key.get_contents_as_string()
+        return key.get_contents_as_string().decode('UTF-8')
 
+    def delete(self, keyname: str):
+        self.bucket.delete_key(keyname)
+
+    def exists(self, keyname: str):
+        return self.bucket.get_key(keyname) is not None
 
 class LocalStorage(Storage):
 
@@ -56,9 +69,15 @@ class LocalStorage(Storage):
         with open(keyname, 'w') as f:
             f.write(content)
 
-    def load_string(self, content: str, keyname: str):
+    def load_string(self, keyname: str):
         with open(keyname, 'r') as f:
             return f.read()
+
+    def delete(self, keyname: str):
+        os.remove(keyname)
+
+    def exists(self, keyname: str):
+        return os.path.exists(keyname)
 
 
 def storage_factory(storage_type: str, bucketname: Union[str, None]):
