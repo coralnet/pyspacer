@@ -53,6 +53,8 @@ RUN apt-get install vim -y
 
 LABEL maintainer oscar.beijbom@gmail.com
 
+# These could be run from requirements.txt after the COPY below
+# But by doing it explicitly the docker build can cache them for faster builds.
 RUN pip3 install --upgrade pip
 
 RUN pip3 install boto==2.49.0
