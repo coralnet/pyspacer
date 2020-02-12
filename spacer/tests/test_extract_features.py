@@ -54,7 +54,7 @@ class TestCaffeExtractor(unittest.TestCase):
             storage_type='s3',
             imkey='edinburgh3.jpg',
             rowcols=[[100, 100]],
-            outputkey='edinburgh3.jpg.feats'
+            outputkey='dummy',
         )
 
         storage = storage_factory(msg.storage_type, msg.bucketname)
@@ -85,7 +85,7 @@ class TestCaffeExtractor(unittest.TestCase):
             storage_type='s3',
             imkey='kh6dydiix0.jpeg',
             rowcols=[[148, 50], [60, 425]],
-            outputkey='kh6dydiix0.jpeg.feats'
+            outputkey='dummy',
         )
         storage = storage_factory(msg.storage_type, msg.bucketname)
         ext = VGG16CaffeExtractor(msg, storage)
@@ -115,7 +115,7 @@ class TestCaffeExtractor(unittest.TestCase):
             storage_type='s3',
             imkey='sfq2mr5qbs.jpeg',
             rowcols=[[190, 226], [25, 359]],
-            outputkey='sfq2mr5qbs.jpeg.feats'
+            outputkey='dummy'
         )
         storage = storage_factory(msg.storage_type, msg.bucketname)
         ext = VGG16CaffeExtractor(msg, storage)

@@ -1,4 +1,5 @@
 import importlib
+import os
 import warnings
 
 import boto
@@ -17,6 +18,9 @@ FEATURE_EXTRACTOR_NAMES = ['dummy',
 MODELS_BUCKET = 'spacer-tools'
 
 STORAGE_TYPES = ['s3', 'local']
+
+LOCAL_FIXTURE_DIR = os.path.join(os.path.dirname(
+    os.path.abspath(__file__)), 'tests', 'fixtures')
 
 # Check access to select which tests to run.
 HAS_CAFFE = importlib.util.find_spec("caffe") is not None

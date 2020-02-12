@@ -4,11 +4,11 @@ import boto
 from boto.sqs.message import Message
 
 from spacer.messages import TaskMsg
-from spacer.tasks import extract_features, train_classifier, deploy
+from spacer.tasks import extract_features_task, train_classifier_task, deploy
 
 tasks = {
-    'extract_features': extract_features,
-    'train_classifier': train_classifier,
+    'extract_features': extract_features_task,
+    'train_classifier': train_classifier_task,
     'deploy': deploy
 }
 

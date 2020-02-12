@@ -1,5 +1,6 @@
 import abc
 import os
+import pickle
 from io import BytesIO
 from typing import Union, Tuple
 
@@ -8,28 +9,38 @@ from PIL import Image
 
 from spacer import config
 
+from sklearn.calibration import CalibratedClassifierCV
+
 
 class Storage(abc.ABC):
 
     @abc.abstractmethod
-    def load_image(self, key) -> Image:
+    def store_classifier(self, path: str, clf: CalibratedClassifierCV) -> None:
+        pass
+
+    def load_classifier(self, path: str) -> CalibratedClassifierCV:
         pass
 
     @abc.abstractmethod
-    def store_string(self, content: str, keyname: str) -> None:
+    def load_image(self, path: str) -> Image:
         pass
 
     @abc.abstractmethod
-    def load_string(self, keyname: str) -> str:
+    def store_string(self, path: str, content: str) -> None:
         pass
 
     @abc.abstractmethod
-    def delete(self, keyname: str) -> None:
-        """ Deletes the file if it exists"""
+    def load_string(self, path: str) -> str:
         pass
 
     @abc.abstractmethod
-    def exists(self, keyname: str) -> bool:
+    def delete(self, path: str) -> None:
+        """ Deletes the file if it exists """
+        pass
+
+    @abc.abstractmethod
+    def exists(self, path: str) -> bool:
+        """ Checks if file exists """
         pass
 
 
@@ -40,23 +51,35 @@ class S3Storage(Storage):
         conn = boto.connect_s3()
         self.bucket = conn.get_bucket(bucketname)
 
-    def load_image(self, keyname) -> Image:
-        key = self.bucket.get_key(keyname)
+    def load_classifier(self, path: str):
+        key = self.bucket.get_key(path)
+
+        # Make sure pickle.loads is compatible with legacy classifiers which
+        # were stored using pickle.dumps in python 2.7.
+        return pickle.loads(key.get_contents_as_string(), fix_imports=True,
+                            encoding='latin1')
+
+    def store_classifier(self, path: str, clf: CalibratedClassifierCV):
+        key = self.bucket.new_key(path)
+        key.set_contents_from_string(pickle.dumps(clf, protocol=2))
+
+    def load_image(self, path) -> Image:
+        key = self.bucket.get_key(path)
         return Image.open(BytesIO(key.get_contents_as_string()))
 
-    def store_string(self, content: str, keyname: str):
-        key = self.bucket.new_key(keyname)
+    def store_string(self, path: str, content: str):
+        key = self.bucket.new_key(path)
         key.set_contents_from_string(content)
 
-    def load_string(self, keyname: str) -> str:
-        key = self.bucket.get_key(keyname)
+    def load_string(self, path: str) -> str:
+        key = self.bucket.get_key(path)
         return key.get_contents_as_string().decode('UTF-8')
 
-    def delete(self, keyname: str):
-        self.bucket.delete_key(keyname)
+    def delete(self, path: str):
+        self.bucket.delete_key(path)
 
-    def exists(self, keyname: str):
-        return self.bucket.get_key(keyname) is not None
+    def exists(self, path: str):
+        return self.bucket.get_key(path) is not None
 
 
 class LocalStorage(Storage):
@@ -64,22 +87,30 @@ class LocalStorage(Storage):
     def __init__(self):
         pass
 
+    def load_classifier(self, path: str) -> CalibratedClassifierCV:
+        with open(path, 'rb') as f:
+            return pickle.load(f, encoding='latin1')
+
+    def store_classifier(self, path: str, clf: CalibratedClassifierCV):
+        with open(path, 'wb') as f:
+            pickle.dump(clf, f, protocol=2)
+
     def load_image(self, path) -> Image:
         return Image.open(path)
 
-    def store_string(self, content: str, keyname: str):
-        with open(keyname, 'w') as f:
+    def store_string(self, path: str, content: str):
+        with open(path, 'w') as f:
             f.write(content)
 
-    def load_string(self, keyname: str):
-        with open(keyname, 'r') as f:
+    def load_string(self, path: str):
+        with open(path, 'r') as f:
             return f.read()
 
-    def delete(self, keyname: str):
-        os.remove(keyname)
+    def delete(self, path: str):
+        os.remove(path)
 
-    def exists(self, keyname: str):
-        return os.path.exists(keyname)
+    def exists(self, path: str):
+        return os.path.exists(path)
 
 
 def storage_factory(storage_type: str, bucketname: Union[str, None]):

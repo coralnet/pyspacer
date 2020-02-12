@@ -49,7 +49,8 @@ class ExtractFeaturesMsg(DataClass):
                  imkey: str,
                  rowcols: List[List[int]],  # List of [row, col] entries.
                  outputkey: str,
-                 storage_type: str = 's3'):
+                 storage_type: str = 's3',
+                 ):
 
         assert storage_type in config.STORAGE_TYPES
         assert modelname in config.FEATURE_EXTRACTOR_NAMES
@@ -100,21 +101,37 @@ class TrainClassifierMsg(DataClass):
     def __init__(self,
                  # Primary key of the model to train
                  pk: int,
-                 # Bucket name where features are stored.
-                 bucketname: str,
+                 # Key for where to store the trained model.
+                 model_key: str,
                  # Key to LabeledFeatures structure with training data.
                  traindata_key: str,
                  # Key to LabeledFeatures structure with validation data.
                  valdata_key: str,
-                 # Key for where to store the trained model.
-                 model_key: str,
+                 # Key to where the validation results is stored.
+                 valresult_key: str,
+                 # Number of epochs to do training.
+                 nbr_epochs: int,
+                 # List of keys to to previous models
+                 pc_models_key: List[str],
+                 # List of primary-keys to previous models. This is for
+                 # bookkeeping purposes.
+                 pc_pks: List[int],
+                 # Bucket name where features are stored.
+                 bucketname: str,
+                 # storage type
+                 storage_type: str = 's3',
                  ):
 
         self.pk = pk
-        self.bucketname = bucketname
+        self.model_key = model_key
         self.traindata_key = traindata_key
         self.valdata_key = valdata_key
-        self.model_key = model_key
+        self.valresult_key = valresult_key
+        self.nbr_epochs = nbr_epochs
+        self.pc_models_key = pc_models_key
+        self.pc_pks = pc_pks
+        self.bucketname = bucketname
+        self.storage_type = storage_type
 
     @classmethod
     def example(cls):
@@ -190,7 +207,7 @@ class TaskReturnMsg:
         self.error_message = error_message
 
 
-class LabeledFeatures(DataClass):
+class FeatureLabels(DataClass):
 
     def __init__(self,
                  # Data maps a feature key (or file path) to a List of
@@ -200,10 +217,18 @@ class LabeledFeatures(DataClass):
 
     @classmethod
     def example(cls):
-        return LabeledFeatures({
+        return FeatureLabels({
             'img1.features': [[100, 200, 3], [101, 200, 2], [103, 200, 3]],
             'img2.features': [[100, 202, 3], [101, 200, 3], [103, 204, 3]]
         })
+
+    @classmethod
+    def deserialize(cls, data: Dict) -> 'FeatureLabels':
+        """ Redefined here to help the Typing module. """
+        return cls(**data)
+
+    def __len__(self):
+        return len(self.data)
 
 
 class PointFeatures(DataClass):

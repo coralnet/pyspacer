@@ -2,6 +2,8 @@ import json
 import os
 import unittest
 
+from spacer import config
+
 from spacer.messages import \
     ExtractFeaturesMsg, \
     ExtractFeaturesReturnMsg, \
@@ -9,9 +11,6 @@ from spacer.messages import \
     PointFeatures, \
     ImageFeatures, \
     LabeledFeatures
-
-fixture_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                           'fixtures')
 
 
 class TestExtractFeaturesMsg(unittest.TestCase):
@@ -111,7 +110,8 @@ class TestImageFeatures(unittest.TestCase):
         """
         Loads a legacy feature file and make sure it's parsed correctly.
         """
-        with open(os.path.join(fixture_dir, 'legacy.jpg.feats')) as fp:
+        with open(os.path.join(config.LOCAL_FIXTURE_DIR,
+                               'legacy.jpg.feats')) as fp:
             msg = ImageFeatures.deserialize(json.load(fp))
         self.assertEqual(msg.valid_rowcol, False)
         self.assertEqual(ImageFeatures.deserialize(
