@@ -49,7 +49,7 @@ class VGG16CaffeExtractor(FeatureExtractorInterface):
         # We should only reach this line if it is confirmed caffe is available
         # This suppresses most of the superfluous caffe logging.
         os.environ['GLOG_minloglevel'] = '3'
-        from spacer.caffe_backend.utils import classify_from_patchlist
+        from spacer.caffe_utils import classify_from_patchlist
 
         t0 = time.time()
 

@@ -25,8 +25,7 @@ def do_training(traindict, nbr_epochs, bucket):
     imkeys = traindict.keys()
     refset = imkeys[::10]
     random.shuffle(refset)
-    refset = refset[
-             :max_imgs_in_memory]  # Make sure we don't go over the memory limit.
+    refset = refset[:max_imgs_in_memory]  # Don't go over the memory limit.
     trainset = list(set(imkeys) - set(refset))
     print("trainset: {}, valset: {} images".format(len(trainset), len(refset)))
 

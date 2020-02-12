@@ -137,10 +137,16 @@ class TrainClassifierMsg(DataClass):
     def example(cls):
         return TrainClassifierMsg(
             pk=1,
-            bucketname='spacer-test',
+            model_key='my_trained_model',
             traindata_key='my_traindata',
             valdata_key='my_valdata',
-            model_key='my_trained_model'
+            valresult_key='my_valresults',
+            nbr_epochs=5,
+            pc_models_key=['my_previous_model1',
+                           'my_previous_model2',
+                           'my_previous_model3'],
+            pc_pks=[1, 2, 3],
+            bucketname='spacer-test',
         )
 
 

@@ -4,12 +4,10 @@ Since support for Caffe will be deprecate, these are not cleaned up from their o
 """
 
 import os
-
-import numpy as np
-
 from copy import copy
 
-from PIL import Image
+import caffe
+import numpy as np
 
 
 class Transformer:
