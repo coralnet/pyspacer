@@ -20,7 +20,7 @@ class TestDummyExtractor(unittest.TestCase):
             bucketname='spacer-test',
             storage_type='local',
             imkey='not_used',
-            rowcols=[(100, 100)],
+            rowcols=[[100, 100]],
             outputkey='not_used'
         )
 
@@ -53,7 +53,7 @@ class TestCaffeExtractor(unittest.TestCase):
             bucketname='spacer-test',
             storage_type='s3',
             imkey='edinburgh3.jpg',
-            rowcols=[(100, 100)],
+            rowcols=[[100, 100]],
             outputkey='edinburgh3.jpg.feats'
         )
 
@@ -75,7 +75,7 @@ class TestCaffeExtractor(unittest.TestCase):
     def test_corner_case1(self):
         """
         This particular image caused trouble on the production server.
-        The image file itself is lightly corrupted, and PIL doesn't quite like it.
+        The image file itself is lightly corrupted, and PIL doesn't like it.
         """
 
         msg = ExtractFeaturesMsg(
@@ -84,7 +84,7 @@ class TestCaffeExtractor(unittest.TestCase):
             bucketname='spacer-test',
             storage_type='s3',
             imkey='kh6dydiix0.jpeg',
-            rowcols=[(148, 50), (60, 425)],
+            rowcols=[[148, 50], [60, 425]],
             outputkey='kh6dydiix0.jpeg.feats'
         )
         storage = storage_factory(msg.storage_type, msg.bucketname)
@@ -114,7 +114,7 @@ class TestCaffeExtractor(unittest.TestCase):
             bucketname='spacer-test',
             storage_type='s3',
             imkey='sfq2mr5qbs.jpeg',
-            rowcols=[(190, 226), (25, 359)],
+            rowcols=[[190, 226], [25, 359]],
             outputkey='sfq2mr5qbs.jpeg.feats'
         )
         storage = storage_factory(msg.storage_type, msg.bucketname)

@@ -7,7 +7,8 @@ from spacer.messages import \
     ExtractFeaturesReturnMsg, \
     TrainClassifierMsg, \
     PointFeatures, \
-    ImageFeatures
+    ImageFeatures, \
+    LabeledFeatures
 
 fixture_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                            'fixtures')
@@ -124,3 +125,13 @@ class TestImageFeatures(unittest.TestCase):
         self.assertEqual(msg, ImageFeatures.deserialize(json.loads(
             json.dumps(msg.serialize()))))
 
+
+class TestLabeledFeatures(unittest.TestCase):
+
+    def test_serialize(self):
+
+        msg = LabeledFeatures.example()
+        self.assertEqual(msg, LabeledFeatures.deserialize(
+            msg.serialize()))
+        self.assertEqual(msg, LabeledFeatures.deserialize(
+            json.loads(json.dumps(msg.serialize()))))

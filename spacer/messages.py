@@ -47,7 +47,7 @@ class ExtractFeaturesMsg(DataClass):
                  modelname: str,
                  bucketname: str,
                  imkey: str,
-                 rowcols: List[Tuple[int, int]],
+                 rowcols: List[List[int]],  # List of [row, col] entries.
                  outputkey: str,
                  storage_type: str = 's3'):
 
@@ -66,20 +66,13 @@ class ExtractFeaturesMsg(DataClass):
         self.outputkey = outputkey
 
     @classmethod
-    def deserialize(cls, data: Dict) -> 'ExtractFeaturesMsg':
-        msg = cls(**data)
-        # JSON stores tuples as lists, we restore it here.
-        msg.rowcols = [tuple(entry) for entry in msg.rowcols]
-        return msg
-
-    @classmethod
     def example(cls) -> 'ExtractFeaturesMsg':
         return ExtractFeaturesMsg(
             pk=1,
             modelname='vgg16_coralnet_ver1',
             bucketname='spacer-test',
             imkey='edinburgh3.jpg',
-            rowcols=[(100, 100)],
+            rowcols=[[100, 100]],
             outputkey='edinburgh3.jpg.feats',
             storage_type='s3',
         )
@@ -109,28 +102,28 @@ class TrainClassifierMsg(DataClass):
                  pk: int,
                  # Bucket name where features are stored.
                  bucketname: str,
-                 # Structure defining labels and features files.
-                 traindata: str,
-                 # Structure defining previous models and performances.
-                 valdata: str,
+                 # Key to LabeledFeatures structure with training data.
+                 traindata_key: str,
+                 # Key to LabeledFeatures structure with validation data.
+                 valdata_key: str,
                  # Key for where to store the trained model.
-                 model: str,
+                 model_key: str,
                  ):
 
         self.pk = pk
         self.bucketname = bucketname
-        self.traindata = traindata
-        self.valdata = valdata
-        self.model = model
+        self.traindata_key = traindata_key
+        self.valdata_key = valdata_key
+        self.model_key = model_key
 
     @classmethod
     def example(cls):
         return TrainClassifierMsg(
             pk=1,
             bucketname='spacer-test',
-            traindata='my_traindata',
-            model='my_trained_model',
-            valdata='my_valdata'
+            traindata_key='my_traindata',
+            valdata_key='my_valdata',
+            model_key='my_trained_model'
         )
 
 
@@ -142,13 +135,13 @@ class TrainClassifierReturnMsg(DataClass):
                  # Accuracy of previous classifiers on the validation set.
                  pc_accs: List[float],
                  # Accuracy on reference set for each epoch of training.
-                 refacc: List[float],
+                 ref_acc: List[float],
                  # Runtime for full training execution.
                  runtime: float,
                  ):
         self.acc = acc
         self.pc_accs = pc_accs
-        self.refacc = refacc
+        self.ref_acc = ref_acc
         self.runtime = runtime
 
     @classmethod
@@ -156,9 +149,61 @@ class TrainClassifierReturnMsg(DataClass):
         return TrainClassifierReturnMsg(
             acc=0.7,
             pc_accs=[0.4, 0.5, 0.6],
-            refacc=[0.55, 0.65, 0.64, 0.67, 0.70],
+            ref_acc=[0.55, 0.65, 0.64, 0.67, 0.70],
             runtime=123.4,
         )
+
+
+class DeployMsg:
+    pass
+
+
+class DeployReturnMsg:
+    pass
+
+
+class TaskMsg:
+
+    def __init__(self,
+                 task: str,
+                 payload: Union[ExtractFeaturesMsg,
+                                TrainClassifierMsg,
+                                DeployMsg]):
+
+        self.task = task
+        self.payload = payload
+
+
+class TaskReturnMsg:
+
+    def __init__(self,
+                 original_job: TaskMsg,
+                 ok: bool,
+                 results: Optional[Union[ExtractFeaturesMsg,
+                                         TrainClassifierReturnMsg,
+                                         DeployReturnMsg]],
+                 error_message: Optional[str]):
+
+        self.original_job = original_job
+        self.results = results
+        self.ok = ok
+        self.error_message = error_message
+
+
+class LabeledFeatures(DataClass):
+
+    def __init__(self,
+                 # Data maps a feature key (or file path) to a List of
+                 # [row, col, label].
+                 data: Dict[str, List[List[int]]]):
+        self.data = data
+
+    @classmethod
+    def example(cls):
+        return LabeledFeatures({
+            'img1.features': [[100, 200, 3], [101, 200, 2], [103, 200, 3]],
+            'img2.features': [[100, 202, 3], [101, 200, 3], [103, 204, 3]]
+        })
 
 
 class PointFeatures(DataClass):
@@ -267,39 +312,3 @@ class ImageFeatures(DataClass):
                self.valid_rowcol == other.valid_rowcol and \
                self.feature_dim == other.feature_dim and \
                self.npoints == other.npoints
-
-
-class DeployMsg:
-    pass
-
-
-class DeployReturnMsg:
-    pass
-
-
-class TaskMsg:
-
-    def __init__(self,
-                 task: str,
-                 payload: Union[ExtractFeaturesMsg,
-                                TrainClassifierMsg,
-                                DeployMsg]):
-
-        self.task = task
-        self.payload = payload
-
-
-class TaskReturnMsg:
-
-    def __init__(self,
-                 original_job: TaskMsg,
-                 ok: bool,
-                 results: Optional[Union[ExtractFeaturesMsg,
-                                         TrainClassifierReturnMsg,
-                                         DeployReturnMsg]],
-                 error_message: Optional[str]):
-
-        self.original_job = original_job
-        self.results = results
-        self.ok = ok
-        self.error_message = error_message
