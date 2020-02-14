@@ -10,7 +10,8 @@ from spacer.messages import \
     TrainClassifierMsg, \
     PointFeatures, \
     ImageFeatures, \
-    FeatureLabels
+    FeatureLabels, \
+    ValResults
 
 
 class TestExtractFeaturesMsg(unittest.TestCase):
@@ -125,6 +126,11 @@ class TestImageFeatures(unittest.TestCase):
         self.assertEqual(msg, ImageFeatures.deserialize(json.loads(
             json.dumps(msg.serialize()))))
 
+    def test_getitem(self):
+        msg = ImageFeatures.example()
+        point_features = msg[(100, 100)]
+        self.assertEqual(point_features.data[0], 1.1)
+
 
 class TestFeatureLabels(unittest.TestCase):
 
@@ -134,4 +140,19 @@ class TestFeatureLabels(unittest.TestCase):
         self.assertEqual(msg, FeatureLabels.deserialize(
             msg.serialize()))
         self.assertEqual(msg, FeatureLabels.deserialize(
+            json.loads(json.dumps(msg.serialize()))))
+
+    def test_samples_per_image(self):
+        msg = FeatureLabels.example()
+        self.assertEqual(msg.samples_per_image, 2)
+
+
+class TestValResults(unittest.TestCase):
+
+    def test_serialize(self):
+
+        msg = ValResults.example()
+        self.assertEqual(msg, ValResults.deserialize(
+            msg.serialize()))
+        self.assertEqual(msg, ValResults.deserialize(
             json.loads(json.dumps(msg.serialize()))))

@@ -15,10 +15,11 @@ from spacer.messages import \
     ExtractFeaturesReturnMsg, \
     TrainClassifierMsg, \
     TrainClassifierReturnMsg, \
-    FeatureLabels
+    FeatureLabels, \
+    TrainClassifierReturnMsg
 
 from spacer.extract_features import feature_extractor_factory
-from spacer.train_classifier import do_training
+from spacer.train_classifier import trainer_factory
 
 from spacer.storage import storage_factory
 
@@ -37,56 +38,18 @@ def extract_features_task(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
 def train_classifier_task(msg: TrainClassifierMsg) -> TrainClassifierReturnMsg:
     print("Training classifier pk:{}.".format(msg.pk))
 
-    # Load train labels
     storage = storage_factory(msg.storage_type, msg.bucketname)
-    feature_labels_train = FeatureLabels.deserialize(
-        json.loads(storage.load_string(msg.traindata_key)))
-    if len(feature_labels_train) < 10:
-        raise ValueError('Not enough training samples.')
+
+    trainer = trainer_factory(msg, storage)
 
     # Do the actual training
-    t0 = time.time()
-    clf, refacc = do_training(feature_labels_train, msg.nbr_epochs, storage)
-    classes = list(clf.classes_)
-    runtime = time.time() - t0
+    clf, val_results, return_message = trainer()
 
     # Store
-    storage.store_string(msg.model_key, pickle.dumps(clf))
-
-    # Evaluate on val.
-    feature_labels_val = FeatureLabels.deserialize(
-        json.loads(storage.load_string(msg.traindata_key)))
-    gt, est, maxscores = _evaluate_classifier(clf, valdict.keys(), valdict, classes, bucket)
-    
-    # Now, let's map gt and est to the index in the classlist
-    gt = [classes.index(gtmember) for gtmember in gt]
-    est = [classes.index(estmember) for estmember in est]
-    if len(gt) == 0:
-        return {'ok': False, 'runtime': 0, 'refacc': 0, 'acc': 0, 'pc_accs': 0}
-        
-    valacc = _acc(gt, est)
-
-    # Store
-    k.key = payload['valresult']
-    k.set_contents_from_string(json.dumps(
-        {'scores': maxscores,
-         'gt': gt,
-         'est': est,
-         'classes': classes
-         }
-    ))
-
-    # FINALLY, EVALUATE ALL PREVIOUS MODELS ON THE VAL SET TO DETERMINE WHETER TO KEEP THE NEW MODEL
-    ps_accs = []
-    for pc_model in payload['pc_models']:
-        k.key = pc_model
-        k.version_id = None
-        this_clf = pickle.loads(k.get_contents_as_string())
-        gt, est, _ = _evaluate_classifier(this_clf, valdict.keys(), valdict, classes, bucket)
-        ps_accs.append(_acc(gt, est))
-
-    # Return
-    return {'ok': True, 'runtime': runtime, 'refacc': refacc, 'acc': valacc, 'pc_accs': ps_accs}
+    storage.store_classifier(msg.model_key, clf)
+    storage.store_string(msg.valresult_key,
+                         json.dumps(val_results.serialize()))
+    return return_message
 
 
 def deploy(payload):

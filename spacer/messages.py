@@ -1,8 +1,11 @@
+import json
+
 from abc import ABC, abstractmethod
 from pprint import pformat
-from typing import List, Tuple, Dict, Union, Optional
+from typing import List, Tuple, Dict, Union, Optional, Set
 
 from spacer import config
+from spacer.storage import Storage
 
 
 class DataClass(ABC):
@@ -47,7 +50,7 @@ class ExtractFeaturesMsg(DataClass):
                  modelname: str,
                  bucketname: str,
                  imkey: str,
-                 rowcols: List[List[int]],  # List of [row, col] entries.
+                 rowcols: List[Tuple[int, int]],  # List of [row, col] entries.
                  outputkey: str,
                  storage_type: str = 's3',
                  ):
@@ -67,13 +70,20 @@ class ExtractFeaturesMsg(DataClass):
         self.outputkey = outputkey
 
     @classmethod
+    def deserialize(cls, data: Dict) -> 'ExtractFeaturesMsg':
+        msg = cls(**data)
+        """ Custom deserializer to convert back to tuples. """
+        msg.rowcols = [tuple(rc) for rc in data['rowcols']]
+        return msg
+
+    @classmethod
     def example(cls) -> 'ExtractFeaturesMsg':
         return ExtractFeaturesMsg(
             pk=1,
             modelname='vgg16_coralnet_ver1',
             bucketname='spacer-test',
             imkey='edinburgh3.jpg',
-            rowcols=[[100, 100]],
+            rowcols=[(100, 100)],
             outputkey='edinburgh3.jpg.feats',
             storage_type='s3',
         )
@@ -94,6 +104,49 @@ class ExtractFeaturesReturnMsg(DataClass):
             model_was_cashed=True,
             runtime=2.1
         )
+
+
+class FeatureLabels(DataClass):
+
+    def __init__(self,
+                 # Data maps a feature key (or file path) to a List of
+                 # [row, col, label].
+                 data: Dict[str, List[Tuple[int, int, int]]]):
+        self.data = data
+
+    @classmethod
+    def example(cls):
+        return FeatureLabels({
+            'img1.features': [(100, 200, 3), (101, 200, 2)],
+            'img2.features': [(100, 202, 3), (101, 200, 3)],
+            'img3.features': [(100, 202, 3), (101, 200, 3)],
+            'img4.features': [(100, 202, 3), (101, 200, 3)],
+        })
+
+    @classmethod
+    def deserialize(cls, data: Dict) -> 'FeatureLabels':
+        """ Custom deserializer to convert back to tuples. """
+        return FeatureLabels(
+            data={key: [tuple(entry) for entry in value] for
+                  key, value in data['data'].items()})
+
+    @property
+    def image_keys(self):
+        return list(self.data.keys())
+
+    @property
+    def samples_per_image(self):
+        return len(next(iter(self.data.values())))
+
+    def unique_classes(self, key_list: List[str]) -> Set[int]:
+        """ Returns the set of all unique classes in the key_list subset. """
+        labels = set()
+        for im_key in key_list:
+            labels += set([label for (row, col, label) in self.data[im_key]])
+        return labels
+
+    def __len__(self):
+        return len(self.data)
 
 
 class TrainClassifierMsg(DataClass):
@@ -149,6 +202,14 @@ class TrainClassifierMsg(DataClass):
             bucketname='spacer-test',
         )
 
+    def load_train_feature_labels(self, storage: Storage) -> FeatureLabels:
+        return FeatureLabels.deserialize(
+            json.loads(storage.load_string(self.traindata_key)))
+
+    def load_val_feature_labels(self, storage: Storage) -> FeatureLabels:
+        return FeatureLabels.deserialize(
+            json.loads(storage.load_string(self.valdata_key)))
+
 
 class TrainClassifierReturnMsg(DataClass):
 
@@ -158,13 +219,13 @@ class TrainClassifierReturnMsg(DataClass):
                  # Accuracy of previous classifiers on the validation set.
                  pc_accs: List[float],
                  # Accuracy on reference set for each epoch of training.
-                 ref_acc: List[float],
+                 ref_accs: List[float],
                  # Runtime for full training execution.
                  runtime: float,
                  ):
         self.acc = acc
         self.pc_accs = pc_accs
-        self.ref_acc = ref_acc
+        self.ref_accs = ref_accs
         self.runtime = runtime
 
     @classmethod
@@ -172,7 +233,7 @@ class TrainClassifierReturnMsg(DataClass):
         return TrainClassifierReturnMsg(
             acc=0.7,
             pc_accs=[0.4, 0.5, 0.6],
-            ref_acc=[0.55, 0.65, 0.64, 0.67, 0.70],
+            ref_accs=[0.55, 0.65, 0.64, 0.67, 0.70],
             runtime=123.4,
         )
 
@@ -211,30 +272,6 @@ class TaskReturnMsg:
         self.results = results
         self.ok = ok
         self.error_message = error_message
-
-
-class FeatureLabels(DataClass):
-
-    def __init__(self,
-                 # Data maps a feature key (or file path) to a List of
-                 # [row, col, label].
-                 data: Dict[str, List[List[int]]]):
-        self.data = data
-
-    @classmethod
-    def example(cls):
-        return FeatureLabels({
-            'img1.features': [[100, 200, 3], [101, 200, 2], [103, 200, 3]],
-            'img2.features': [[100, 202, 3], [101, 200, 3], [103, 204, 3]]
-        })
-
-    @classmethod
-    def deserialize(cls, data: Dict) -> 'FeatureLabels':
-        """ Redefined here to help the Typing module. """
-        return cls(**data)
-
-    def __len__(self):
-        return len(self.data)
 
 
 class PointFeatures(DataClass):
@@ -289,18 +326,20 @@ class ImageFeatures(DataClass):
             self._rchash = {(pf.row, pf.col): enum for
                             enum, pf in enumerate(self.point_features)}
 
-    def get(self, rowcol: Tuple[int, int]) -> List[float]:
+    def __getitem__(self, rowcol: Tuple[int, int]) -> List[float]:
+        """ Returns features at (row, col) location. """
         if not self.valid_rowcol:
             raise ValueError('Method not supported for legacy features')
         return self.point_features[self._rchash[rowcol]].data
 
     @classmethod
     def example(cls):
-        point_feature = PointFeatures.example()
+        pf1 = PointFeatures(row=100, col=100, data=[1.1, 1.3, 1.12])
+        pf2 = PointFeatures(row=120, col=110, data=[1.9, 1.3, 1.12])
         return cls(
-            point_features=[point_feature, point_feature],
+            point_features=[pf1, pf2],
             valid_rowcol=True,
-            feature_dim=len(point_feature.data),
+            feature_dim=len(pf1.data),
             npoints=2
         )
 
@@ -343,3 +382,25 @@ class ImageFeatures(DataClass):
                self.valid_rowcol == other.valid_rowcol and \
                self.feature_dim == other.feature_dim and \
                self.npoints == other.npoints
+
+
+class ValResults(DataClass):
+
+    def __init__(self,
+                 scores: List[float],
+                 gt: List[int],  # Using singular for backwards compatibility.
+                 est: List[int],  # Using singular for backwards compatibility.
+                 classes: List[int]):
+
+        self.scores = scores
+        self.gt = gt
+        self.est = est
+        self.classes = classes
+
+    @classmethod
+    def example(cls):
+        return cls(scores=[.9, .8, .7],
+                   gt=[0, 1, 0],
+                   est=[0, 1, 1],
+                   classes=[121, 1222])
+

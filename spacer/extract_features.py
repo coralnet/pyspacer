@@ -9,22 +9,22 @@ from spacer.messages import ExtractFeaturesMsg, ExtractFeaturesReturnMsg, \
 from spacer.storage import Storage, download_model
 
 
-class FeatureExtractorInterface(abc.ABC):
+class FeatureExtractor(abc.ABC):
+
+    def __init__(self, msg: ExtractFeaturesMsg, storage: Storage):
+        self.msg = msg
+        self.storage = storage
 
     @abc.abstractmethod
     def __call__(self) -> Tuple[ImageFeatures, ExtractFeaturesReturnMsg]:
         pass
 
 
-class DummyExtractor(FeatureExtractorInterface):
+class DummyExtractor(FeatureExtractor):
     """
     This doesn't actually extract any features from the image,
     it just returns dummy information.
     """
-
-    def __init__(self, msg: ExtractFeaturesMsg, storage: Storage):
-        self.msg = msg
-        self.storage = storage
 
     def __call__(self, *args, **kwargs):
         return ImageFeatures(
@@ -38,11 +38,7 @@ class DummyExtractor(FeatureExtractorInterface):
         ), ExtractFeaturesReturnMsg.example()
 
 
-class VGG16CaffeExtractor(FeatureExtractorInterface):
-
-    def __init__(self, msg: ExtractFeaturesMsg, storage: Storage):
-        self.msg = msg
-        self.storage = storage
+class VGG16CaffeExtractor(FeatureExtractor):
 
     def __call__(self, *args, **kwargs):
 
@@ -82,31 +78,29 @@ class VGG16CaffeExtractor(FeatureExtractorInterface):
                                                 self.storage,
                                                 scorelayer='fc7')
 
-        return ImageFeatures(
-            point_features=[PointFeatures(row=rc[0],
-                                          col=rc[1],
-                                          data=ft.tolist())
-                            for rc, ft in zip(rowcols, feats)],
-            valid_rowcol=True,
-            feature_dim=len(feats[0]),
-            npoints=len(feats)
-        ), ExtractFeaturesReturnMsg(
-            model_was_cashed=was_cashed,
-            runtime=time.time() - t0
-        )
+        return \
+            ImageFeatures(
+                point_features=[PointFeatures(row=rc[0],
+                                              col=rc[1],
+                                              data=ft.tolist())
+                                for rc, ft in zip(rowcols, feats)],
+                valid_rowcol=True,
+                feature_dim=len(feats[0]),
+                npoints=len(feats)
+            ), ExtractFeaturesReturnMsg(
+                model_was_cashed=was_cashed,
+                runtime=time.time() - t0
+            )
 
 
-class EfficientNetExtractor(FeatureExtractorInterface):
-
-    def __init__(self, msg: ExtractFeaturesMsg, storage: Storage):
-        self.msg = msg
-        self.storage = storage
+class EfficientNetExtractor(FeatureExtractor):
 
     def __call__(self, *args, **kwargs):
         pass
 
 
-def feature_extractor_factory(msg: ExtractFeaturesMsg, storage: Storage) -> FeatureExtractorInterface:
+def feature_extractor_factory(msg: ExtractFeaturesMsg,
+                              storage: Storage) -> FeatureExtractor:
 
     assert msg.modelname in config.FEATURE_EXTRACTOR_NAMES, \
         "Model name {} not registered".format(msg.modelname)
