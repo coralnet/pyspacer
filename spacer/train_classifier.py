@@ -47,10 +47,6 @@ class LinearTrainer(ClassifierTrainer):
         val_gts, val_ests, val_scores = evaluate_classifier(
             clf, val_labels, classes, self.storage)
 
-        # Map gt and est to the index in the class list.
-        val_gts = [classes.index(member) for member in val_gts]
-        val_ests = [classes.index(member) for member in val_ests]
-
         if len(val_gts) == 0:
             raise ValueError('Not enough data in validation set.')
 
@@ -58,22 +54,21 @@ class LinearTrainer(ClassifierTrainer):
         pc_accs = []
         for pc_model_key in self.msg.pc_models_key:
             this_clf = self.storage.load_classifier(pc_model_key)
-            pc_gts, pc_ests, _ = evaluate_classifier(this_clf,
-                                                     feature_labels_val,
-                                                     classes, storage)
-            pc_accs.append(acc(pc_gts, pc_ests))
+            pc_gts, pc_ests, _ = evaluate_classifier(this_clf, val_labels,
+                                                     classes, self.storage)
+            pc_accs.append(calc_acc(pc_gts, pc_ests))
 
         return \
             clf, \
             TrainClassifierReturnMsg(
-                acc=acc(val_gts, val_ests),
+                acc=calc_acc(val_gts, val_ests),
                 pc_accs=pc_accs,
                 ref_accs=ref_accs,
                 runtime=time.time() - t0
             ), ValResults(
                 scores=val_scores,
-                gt=val_gts,
-                est=val_ests,
+                gt=[classes.index(member) for member in val_gts],
+                est=[classes.index(member) for member in val_ests],
                 classes=classes
             )
 
@@ -94,13 +89,13 @@ def train(feature_labels: FeatureLabels,
     random.shuffle(ref_set)
     ref_set = ref_set[:max_imgs_in_memory]  # Enforce memory limit.
     train_set = list(set(feature_labels.image_keys) - set(ref_set))
-    print("trainset: {}, valset: {} images".
+    print("-> Trainset: {}, valset: {} images".
           format(len(train_set), len(ref_set)))
 
     # Figure out # images per batch and batches per epoch.
-    images_per_batch = min(max_imgs_in_memory, len(train_set))
-    batches_per_epoch = int(np.ceil(len(train_set) / images_per_batch))
-    print("Using {} images per mini-batch and {} mini-batches per epoch".
+    images_per_batch, batches_per_epoch = \
+        calc_batch_size(max_imgs_in_memory, len(train_set))
+    print("-> Using {} images per mini-batch and {} mini-batches per epoch".
           format(images_per_batch, batches_per_epoch))
 
     # Identify classes common to both train and val.
@@ -108,30 +103,30 @@ def train(feature_labels: FeatureLabels,
     trainclasses = feature_labels.unique_classes(train_set)
     refclasses = feature_labels.unique_classes(ref_set)
     classes = list(trainclasses.intersection(refclasses))
-    print("trainset: {}, valset: {}, common: {} labels".format(
+    print("-> Trainset: {}, valset: {}, common: {} labels".format(
         len(trainclasses), len(refclasses), len(classes)))
     if len(classes) == 1:
         raise ValueError('Not enough classes to do training (only 1)')
 
     # Load reference data (must hold in memory for the calibration)
-    print("Loading reference data.")
+    print("-> Loading reference data.")
     refx, refy = load_batch_data(feature_labels, ref_set, classes, storage)
 
     # Initialize classifier and ref set accuracy list
-    print("Online training...")
+    print("-> Online training...")
     clf = SGDClassifier(loss='log', average=True)
     refacc = []
     for epoch in range(nbr_epochs):
-        print("Epoch {}".format(epoch))
+        print("-> Epoch {}".format(epoch))
         random.shuffle(train_set)
         mini_batches = chunkify(train_set, batches_per_epoch)
         for mb in mini_batches:
             x, y = load_batch_data(feature_labels, mb, classes, storage)
             clf.partial_fit(x, y, classes=classes)
-        refacc.append(acc(refy, clf.predict(refx)))
-        print("acc: {}".format(refacc[-1]))
+        refacc.append(calc_acc(refy, clf.predict(refx)))
+        print("-> acc: {}".format(refacc[-1]))
 
-    print("Calibrating.")
+    print("-> Calibrating.")
     clf_calibrated = CalibratedClassifierCV(clf, cv="prefit")
     clf_calibrated.fit(refx, refy)
 
@@ -150,17 +145,21 @@ def evaluate_classifier(clf: CalibratedClassifierCV,
     for imkey in feature_labels.image_keys:
         x, y = load_image_data(feature_labels, imkey, classes, storage)
         if len(x) > 0:
-            scores.extend(list(clf.predict_proba(x)))
+            scores.extend(np.max(clf.predict_proba(x)))
             est.extend(clf.predict(x))
             gt.extend(y)
 
-    maxscores = [np.max(score) for score in scores]
-
-    return gt, est, maxscores
+    return gt, est, scores
 
 
-def chunkify(lst, n):
-    return [lst[i::n] for i in range(n)]
+def chunkify(lst, nbr_chunks):
+    return [lst[i::nbr_chunks] for i in range(nbr_chunks)]
+
+
+def calc_batch_size(max_imgs_in_memory, train_set_size):
+    images_per_batch = min(max_imgs_in_memory, train_set_size)
+    batches_per_epoch = int(np.ceil(train_set_size / images_per_batch))
+    return images_per_batch, batches_per_epoch
 
 
 def load_image_data(feature_labels: FeatureLabels,
@@ -213,7 +212,7 @@ def load_batch_data(feature_labels: FeatureLabels,
     return x, y
 
 
-def acc(gt: List[int], est: List[int]) -> float:
+def calc_acc(gt: List[int], est: List[int]) -> float:
     """
     Calculate the accuracy of (agreement between) two integer valued list.
     """
