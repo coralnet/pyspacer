@@ -163,6 +163,21 @@ class TestLoadImageData(unittest.TestCase):
         self.assertEqual(y, [2])
         self.assertEqual(x[0], features.point_features[1].data)
 
+    def test_legacy_smaller_labelset(self):
+        """
+        Here we pretend the features are legacy such that row, col
+        information is not available.
+        """
+        labels, features = self.fixtures(in_order=True, valid_rowcol=True)
+
+        x, y = load_image_data(labels, self.feat_key, [1], self.storage)
+
+        self.assertEqual(y, [1, 1])
+        # Since the order is reversed, the first feature should be the second
+        # vector of point_features list. But it is not.
+        self.assertEqual(x[0], features.point_features[0].data)
+        self.assertEqual(x[1], features.point_features[2].data)
+
 
 class TestLoadBatchData(unittest.TestCase):
 
