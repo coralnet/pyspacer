@@ -22,6 +22,10 @@ class Storage(abc.ABC):
         pass
 
     @abc.abstractmethod
+    def store_image(self, path: str, content: Image) -> None:
+        pass
+
+    @abc.abstractmethod
     def load_image(self, path: str) -> Image:
         pass
 
@@ -63,6 +67,14 @@ class S3Storage(Storage):
         key = self.bucket.new_key(path)
         key.set_contents_from_string(pickle.dumps(clf, protocol=2))
 
+    def store_image(self, path: str, content: Image):
+
+        with BytesIO() as stream:
+            content.save(stream, 'JPEG')
+            stream.seek(0)
+            key = self.bucket.new_key(path)
+            key.set_contents_from_file(stream)
+
     def load_image(self, path) -> Image:
         key = self.bucket.get_key(path)
         return Image.open(BytesIO(key.get_contents_as_string()))
@@ -94,6 +106,9 @@ class LocalStorage(Storage):
     def store_classifier(self, path: str, clf: CalibratedClassifierCV):
         with open(path, 'wb') as f:
             pickle.dump(clf, f, protocol=2)
+
+    def store_image(self, path: str, content: Image):
+        content.save(path)
 
     def load_image(self, path) -> Image:
         return Image.open(path)

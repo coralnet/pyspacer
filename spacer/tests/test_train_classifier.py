@@ -77,10 +77,12 @@ class TestLoadImageData(unittest.TestCase):
             data={self.tmp_json_file_name: [(100, 100, 1), (200, 200, 2)]}
         )
 
+        fv1 = [1.1, 1.2, 1.3]
+        fv2 = [2.1, 2.2, 2.3]
         features = ImageFeatures(
             point_features=[
-                PointFeatures(200, 200, [2.1, 2.2, 2.3]),
-                PointFeatures(100, 100, [1.1, 1.2, 1.3]),
+                PointFeatures(200, 200, fv2),
+                PointFeatures(100, 100, fv1),
             ],
             valid_rowcol=True,
             feature_dim=3,
@@ -93,7 +95,7 @@ class TestLoadImageData(unittest.TestCase):
         x, y = load_image_data(labels, self.tmp_json_file_name, [1, 2], self.storage)
 
         self.assertEqual(y, [1, 2])
-        self.assertEqual(x[0], [1.1, 1.2, 1.3])
+        self.assertEqual(x[0], fv1)
 
 
 

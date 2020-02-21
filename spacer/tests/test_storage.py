@@ -5,14 +5,14 @@ import warnings
 from io import BytesIO
 
 import boto
+import numpy as np
 from PIL import Image
-
-from spacer import config
-from spacer.storage import storage_factory
-from spacer.messages import ImageFeatures
-
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.linear_model import SGDClassifier
+
+from spacer import config
+from spacer.messages import ImageFeatures
+from spacer.storage import storage_factory
 
 
 class TestLocalStorage(unittest.TestCase):
@@ -35,11 +35,14 @@ class TestLocalStorage(unittest.TestCase):
 
         img = Image.new('RGB', (100, 200))
         img.save(self.tmp_image_file_name)
-
         img2 = self.storage.load_image(self.tmp_image_file_name)
+        self.assertTrue(np.array_equal(np.array(img), np.array(img2)))
 
-        self.assertEqual(img.size[0], img2.size[0])
-        self.assertEqual(img.size[1], img2.size[1])
+    def test_load_store_image(self):
+        img = Image.new('RGB', (100, 200))
+        self.storage.store_image(self.tmp_image_file_name, img)
+        img2 = self.storage.load_image(self.tmp_image_file_name)
+        self.assertTrue(np.array_equal(np.array(img), np.array(img2)))
 
     def test_load_legacy_features(self):
         message_str = self.storage.load_string(os.path.join(
@@ -107,8 +110,13 @@ class TestS3Storage(unittest.TestCase):
 
         img2 = self.storage.load_image(self.tmp_image_key)
 
-        self.assertEqual(img.size[0], img2.size[0])
-        self.assertEqual(img.size[1], img2.size[1])
+        self.assertTrue(np.array_equal(np.array(img), np.array(img2)))
+
+    def test_load_store_image(self):
+        img = Image.new('RGB', (100, 200))
+        self.storage.store_image(self.tmp_image_key, img)
+        img2 = self.storage.load_image(self.tmp_image_key)
+        self.assertTrue(np.array_equal(np.array(img), np.array(img2)))
 
     def test_load_legacy_features(self):
         message_str = self.storage.load_string('legacy.jpg.feats')

@@ -129,7 +129,7 @@ class TestImageFeatures(unittest.TestCase):
     def test_getitem(self):
         msg = ImageFeatures.example()
         point_features = msg[(100, 100)]
-        self.assertEqual(point_features.data[0], 1.1)
+        self.assertEqual(point_features[0], 1.1)
 
 
 class TestFeatureLabels(unittest.TestCase):
