@@ -13,7 +13,7 @@ from spacer.messages import \
     TrainClassifierMsg, \
     TrainClassifierReturnMsg, \
     ValResults, \
-    FeatureLabels, \
+    ImageLabels, \
     ImageFeatures
 
 
@@ -73,7 +73,7 @@ class LinearTrainer(ClassifierTrainer):
             )
 
 
-def train(feature_labels: FeatureLabels,
+def train(feature_labels: ImageLabels,
           storage: Storage,
           nbr_epochs: int) -> Tuple[CalibratedClassifierCV, List[float]]:
     # Calculate max nbr images to keep in memory (for 5000 samples total).
@@ -134,7 +134,7 @@ def train(feature_labels: FeatureLabels,
 
 
 def evaluate_classifier(clf: CalibratedClassifierCV,
-                        feature_labels: FeatureLabels,
+                        feature_labels: ImageLabels,
                         classes: List[int],
                         storage: Storage):
     """
@@ -162,7 +162,7 @@ def calc_batch_size(max_imgs_in_memory, train_set_size):
     return images_per_batch, batches_per_epoch
 
 
-def load_image_data(feature_labels: FeatureLabels,
+def load_image_data(feature_labels: ImageLabels,
                     imkey: str,
                     classes: List[int],
                     storage: Storage) -> Tuple[List[List[float]], List[int]]:
@@ -189,7 +189,7 @@ def load_image_data(feature_labels: FeatureLabels,
     else:
         # For legacy features, we didn't store the row, col information.
         # Instead rely on ordering.
-        for _, _, label, point_feature in zip(image_labels,
+        for (_, _, label), point_feature in zip(image_labels,
                                               image_features.point_features):
             if label not in classes:
                 continue
@@ -199,7 +199,7 @@ def load_image_data(feature_labels: FeatureLabels,
     return x, y
 
 
-def load_batch_data(feature_labels: FeatureLabels,
+def load_batch_data(feature_labels: ImageLabels,
                     imkeylist: List[str],
                     classes: List[int],
                     storage: Storage) -> Tuple[List[List[float]], List[int]]:

@@ -106,7 +106,7 @@ class ExtractFeaturesReturnMsg(DataClass):
         )
 
 
-class FeatureLabels(DataClass):
+class ImageLabels(DataClass):
 
     def __init__(self,
                  # Data maps a feature key (or file path) to a List of
@@ -116,7 +116,7 @@ class FeatureLabels(DataClass):
 
     @classmethod
     def example(cls):
-        return FeatureLabels({
+        return ImageLabels({
             'img1.features': [(100, 200, 3), (101, 200, 2)],
             'img2.features': [(100, 202, 3), (101, 200, 3)],
             'img3.features': [(100, 202, 3), (101, 200, 3)],
@@ -124,9 +124,9 @@ class FeatureLabels(DataClass):
         })
 
     @classmethod
-    def deserialize(cls, data: Dict) -> 'FeatureLabels':
+    def deserialize(cls, data: Dict) -> 'ImageLabels':
         """ Custom deserializer to convert back to tuples. """
-        return FeatureLabels(
+        return ImageLabels(
             data={key: [tuple(entry) for entry in value] for
                   key, value in data['data'].items()})
 
@@ -202,12 +202,12 @@ class TrainClassifierMsg(DataClass):
             bucketname='spacer-test',
         )
 
-    def load_train_feature_labels(self, storage: Storage) -> FeatureLabels:
-        return FeatureLabels.deserialize(
+    def load_train_feature_labels(self, storage: Storage) -> ImageLabels:
+        return ImageLabels.deserialize(
             json.loads(storage.load_string(self.traindata_key)))
 
-    def load_val_feature_labels(self, storage: Storage) -> FeatureLabels:
-        return FeatureLabels.deserialize(
+    def load_val_feature_labels(self, storage: Storage) -> ImageLabels:
+        return ImageLabels.deserialize(
             json.loads(storage.load_string(self.valdata_key)))
 
 

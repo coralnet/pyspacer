@@ -15,71 +15,6 @@ from spacer.messages import ImageFeatures
 from spacer.storage import storage_factory
 
 
-class TestLocalStorage(unittest.TestCase):
-
-    def setUp(self):
-        self.tmp_image_file_name = 'tmp_image.jpg'
-        self.tmp_json_file_name = 'tmp_data.json'
-        self.tmp_model_file_name = 'tmp_model.pkl'
-        self.storage = storage_factory('local', '')
-
-    def tearDown(self):
-
-        for tmp_file in [self.tmp_json_file_name,
-                         self.tmp_image_file_name,
-                         self.tmp_model_file_name]:
-            if os.path.exists(tmp_file):
-                os.remove(tmp_file)
-
-    def test_load_image(self):
-
-        img = Image.new('RGB', (100, 200))
-        img.save(self.tmp_image_file_name)
-        img2 = self.storage.load_image(self.tmp_image_file_name)
-        self.assertTrue(np.array_equal(np.array(img), np.array(img2)))
-
-    def test_load_store_image(self):
-        img = Image.new('RGB', (100, 200))
-        self.storage.store_image(self.tmp_image_file_name, img)
-        img2 = self.storage.load_image(self.tmp_image_file_name)
-        self.assertTrue(np.array_equal(np.array(img), np.array(img2)))
-
-    def test_load_legacy_features(self):
-        message_str = self.storage.load_string(os.path.join(
-            config.LOCAL_FIXTURE_DIR, 'legacy.jpg.feats'))
-        feats = ImageFeatures.deserialize(json.loads(message_str))
-        self.assertTrue(isinstance(feats, ImageFeatures))
-        self.assertFalse(feats.valid_rowcol)
-
-    def test_string_store_load(self):
-
-        data = json.dumps({'a': 1, 'b': 2})
-
-        self.storage.store_string(self.tmp_json_file_name, data)
-        data2 = self.storage.load_string(self.tmp_json_file_name)
-        self.assertEqual(data, data2)
-
-    def test_delete(self):
-
-        data = json.dumps({'a': 1, 'b': 2})
-        self.storage.store_string(self.tmp_json_file_name, data)
-        self.storage.delete(self.tmp_json_file_name)
-        self.assertFalse(os.path.exists(self.tmp_json_file_name))
-
-    def test_load_legacy_model(self):
-        clf = self.storage.load_classifier(os.path.join(
-            config.LOCAL_FIXTURE_DIR, 'legacy.model'))
-        self.assertTrue(isinstance(clf, CalibratedClassifierCV))
-
-    def test_load_store_model(self):
-        clf = CalibratedClassifierCV(SGDClassifier())
-        self.storage.store_classifier(self.tmp_model_file_name, clf)
-        self.assertTrue(self.storage.exists(self.tmp_model_file_name))
-
-        clf2 = self.storage.load_classifier(self.tmp_model_file_name)
-        self.assertTrue(isinstance(clf2, CalibratedClassifierCV))
-
-
 @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
 class TestS3Storage(unittest.TestCase):
 
@@ -152,5 +87,102 @@ class TestS3Storage(unittest.TestCase):
         self.assertTrue(isinstance(clf2, CalibratedClassifierCV))
 
 
+class TestLocalStorage(unittest.TestCase):
+
+    def setUp(self):
+        self.tmp_image_file_name = 'tmp_image.jpg'
+        self.tmp_json_file_name = 'tmp_data.json'
+        self.tmp_model_file_name = 'tmp_model.pkl'
+        self.storage = storage_factory('local', '')
+
+    def tearDown(self):
+
+        for tmp_file in [self.tmp_json_file_name,
+                         self.tmp_image_file_name,
+                         self.tmp_model_file_name]:
+            if os.path.exists(tmp_file):
+                os.remove(tmp_file)
+
+    def test_load_image(self):
+
+        img = Image.new('RGB', (100, 200))
+        img.save(self.tmp_image_file_name)
+        img2 = self.storage.load_image(self.tmp_image_file_name)
+        self.assertTrue(np.array_equal(np.array(img), np.array(img2)))
+
+    def test_load_store_image(self):
+        img = Image.new('RGB', (100, 200))
+        self.storage.store_image(self.tmp_image_file_name, img)
+        img2 = self.storage.load_image(self.tmp_image_file_name)
+        self.assertTrue(np.array_equal(np.array(img), np.array(img2)))
+
+    def test_load_legacy_features(self):
+        message_str = self.storage.load_string(os.path.join(
+            config.LOCAL_FIXTURE_DIR, 'legacy.jpg.feats'))
+        feats = ImageFeatures.deserialize(json.loads(message_str))
+        self.assertTrue(isinstance(feats, ImageFeatures))
+        self.assertFalse(feats.valid_rowcol)
+
+    def test_string_store_load(self):
+
+        data = json.dumps({'a': 1, 'b': 2})
+
+        self.storage.store_string(self.tmp_json_file_name, data)
+        data2 = self.storage.load_string(self.tmp_json_file_name)
+        self.assertEqual(data, data2)
+
+    def test_delete(self):
+
+        data = json.dumps({'a': 1, 'b': 2})
+        self.storage.store_string(self.tmp_json_file_name, data)
+        self.storage.delete(self.tmp_json_file_name)
+        self.assertFalse(os.path.exists(self.tmp_json_file_name))
+
+    def test_load_legacy_model(self):
+        clf = self.storage.load_classifier(os.path.join(
+            config.LOCAL_FIXTURE_DIR, 'legacy.model'))
+        self.assertTrue(isinstance(clf, CalibratedClassifierCV))
+
+    def test_load_store_model(self):
+        clf = CalibratedClassifierCV(SGDClassifier())
+        self.storage.store_classifier(self.tmp_model_file_name, clf)
+        self.assertTrue(self.storage.exists(self.tmp_model_file_name))
+
+        clf2 = self.storage.load_classifier(self.tmp_model_file_name)
+        self.assertTrue(isinstance(clf2, CalibratedClassifierCV))
 
 
+class TestMemoryStorage(unittest.TestCase):
+
+    def setUp(self):
+        self.tmp_image_file_name = 'tmp_image.jpg'
+        self.tmp_json_file_name = 'tmp_data.json'
+        self.tmp_model_file_name = 'tmp_model.pkl'
+        self.storage = storage_factory('memory', '')
+
+    def test_load_store_image(self):
+        img = Image.new('RGB', (100, 200))
+        self.storage.store_image(self.tmp_image_file_name, img)
+        img2 = self.storage.load_image(self.tmp_image_file_name)
+        self.assertTrue(np.array_equal(np.array(img), np.array(img2)))
+
+    def test_string_store_load(self):
+        data = json.dumps({'a': 1, 'b': 2})
+        self.storage.store_string(self.tmp_json_file_name, data)
+        data2 = self.storage.load_string(self.tmp_json_file_name)
+        self.assertEqual(data, data2)
+
+    def test_delete(self):
+        data = json.dumps({'a': 1, 'b': 2})
+        self.storage.store_string(self.tmp_json_file_name, data)
+        self.assertTrue(self.storage.exists(self.tmp_json_file_name))
+        self.storage.delete(self.tmp_json_file_name)
+        self.assertFalse(self.storage.exists(self.tmp_json_file_name))
+
+    def test_load_store_model(self):
+        clf = CalibratedClassifierCV(SGDClassifier())
+        self.storage.store_classifier(self.tmp_model_file_name, clf)
+        self.assertTrue(self.storage.exists(self.tmp_model_file_name))
+
+        clf2 = self.storage.load_classifier(self.tmp_model_file_name)
+        self.assertTrue(isinstance(clf2, CalibratedClassifierCV))

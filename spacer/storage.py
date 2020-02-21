@@ -49,6 +49,7 @@ class Storage(abc.ABC):
 
 
 class S3Storage(Storage):
+    """ Stores objects on AWS S3 """
 
     def __init__(self, bucketname: str):
 
@@ -95,6 +96,7 @@ class S3Storage(Storage):
 
 
 class LocalStorage(Storage):
+    """ Stores objects on disk """
 
     def __init__(self):
         pass
@@ -128,6 +130,37 @@ class LocalStorage(Storage):
         return os.path.exists(path)
 
 
+class MemoryStorage(Storage):
+    """ This stores objects in RAM. Useful for testing only. """
+
+    def __init__(self):
+        self.blobs = {}
+
+    def load_classifier(self, path: str):
+        return self.blobs[path]
+
+    def store_classifier(self, path: str, clf: CalibratedClassifierCV):
+        self.blobs[path] = clf
+
+    def store_image(self, path: str, content: Image):
+        self.blobs[path] = content
+
+    def load_image(self, path: str):
+        return self.blobs[path]
+
+    def store_string(self, path: str, content: str):
+        self.blobs[path] = content
+
+    def load_string(self, path: str):
+        return self.blobs[path]
+
+    def delete(self, path: str):
+        del self.blobs[path]
+
+    def exists(self, path: str):
+        return path in self.blobs
+
+
 def storage_factory(storage_type: str, bucketname: Union[str, None]):
 
     assert storage_type in config.STORAGE_TYPES
@@ -138,6 +171,9 @@ def storage_factory(storage_type: str, bucketname: Union[str, None]):
     elif storage_type == 'local':
         print("-> Initializing local storage")
         return LocalStorage()
+    elif storage_type == 'memory':
+        print("-> Initializing memory storage")
+        return MemoryStorage()
     else:
         raise ValueError('Unknown storage type: {}'.format(storage_type))
 

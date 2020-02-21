@@ -1,12 +1,13 @@
 import unittest
 import itertools
 import json
+from typing import Tuple
 from spacer.train_classifier import calc_batch_size, chunkify, \
     load_image_data, load_batch_data, calc_acc
 
 from spacer.storage import storage_factory
 
-from spacer.messages import FeatureLabels, ImageFeatures, PointFeatures
+from spacer.messages import ImageLabels, ImageFeatures, PointFeatures
 
 
 class TestCalcBatchSize(unittest.TestCase):
@@ -63,41 +64,181 @@ class TestLoadImageData(unittest.TestCase):
 
     def setUp(self):
 
-        self.tmp_json_file_name = 'tmp_data.json'
-        self.storage = storage_factory('local', '')
+        self.feat_key = 'tmp_features'
+        self.storage = storage_factory('memory', '')
 
-    def tearDown(self):
+    def fixtures(self, in_order=True, valid_rowcol=True) \
+            -> Tuple[ImageLabels, ImageFeatures]:
 
-        for tmp_file in [self.tmp_json_file_name]:
-            self.storage.delete(tmp_file)
-
-    def test_simple(self):
-
-        labels = FeatureLabels(
-            data={self.tmp_json_file_name: [(100, 100, 1), (200, 200, 2)]}
-        )
+        labels = ImageLabels(
+            data={self.feat_key: [(100, 100, 1),
+                                  (200, 200, 2),
+                                  (300, 300, 1)]})
 
         fv1 = [1.1, 1.2, 1.3]
         fv2 = [2.1, 2.2, 2.3]
-        features = ImageFeatures(
-            point_features=[
+        fv3 = [3.1, 3.2, 3.3]
+        if in_order:
+            pfs = [
+                PointFeatures(100, 100, fv1),
+                PointFeatures(200, 200, fv2),
+                PointFeatures(300, 300, fv3),
+            ]
+        else:
+            # Position 1 and 2 switched compared to the labels.
+            pfs = [
                 PointFeatures(200, 200, fv2),
                 PointFeatures(100, 100, fv1),
-            ],
-            valid_rowcol=True,
+                PointFeatures(300, 300, fv3),
+            ]
+
+        features = ImageFeatures(
+            point_features=pfs,
+            valid_rowcol=valid_rowcol,
             feature_dim=3,
-            npoints=2
+            npoints=3
         )
 
-        self.storage.store_string(self.tmp_json_file_name,
+        self.storage.store_string(self.feat_key,
                                   json.dumps(features.serialize()))
 
-        x, y = load_image_data(labels, self.tmp_json_file_name, [1, 2], self.storage)
+        return labels, features
 
-        self.assertEqual(y, [1, 2])
-        self.assertEqual(x[0], fv1)
+    def test_simple(self):
+
+        labels, features = self.fixtures(in_order=True)
+
+        x, y = load_image_data(labels, self.feat_key, [1, 2], self.storage)
+
+        self.assertEqual(y, [1, 2, 1])
+        self.assertEqual(x[0], features.point_features[0].data)
+
+    def test_reverse(self):
+        """ here the order of features and labels are reversed.
+        But it all still works thanks to row, col matching. """
+
+        labels, features = self.fixtures(in_order=False)
+
+        x, y = load_image_data(labels, self.feat_key, [1, 2], self.storage)
+
+        self.assertEqual(y, [1, 2, 1])
+        # Since the order is reversed, the first feature should be the second
+        # vector of point_features list.
+        self.assertEqual(x[0], features.point_features[1].data)
+
+    def test_legacy_reverse(self):
+        """
+        Here we pretend the features are legacy such that row, col
+        information is not available.
+        """
+        labels, features = self.fixtures(in_order=False, valid_rowcol=False)
+
+        x, y = load_image_data(labels, self.feat_key, [1, 2], self.storage)
+
+        self.assertEqual(y, [1, 2, 1])
+        # Since the order is reversed, the first feature should be the second
+        # vector of point_features list. But it is not.
+        self.assertNotEqual(x[0], features.point_features[1].data)
+
+    def test_smaller_labelset(self):
+        """ Here we use a smaller labelset and assert
+        that the right feature vector is kept """
+
+        labels, features = self.fixtures(in_order=True, valid_rowcol=True)
+
+        x, y = load_image_data(labels, self.feat_key, [1], self.storage)
+
+        self.assertEqual(y, [1, 1])
+        self.assertEqual(x[0], features.point_features[0].data)
+        self.assertEqual(x[1], features.point_features[2].data)
+
+    def test_other_small_labelset(self):
+        """ Here we use a smaller labelset and assert
+        that the right feature vector is kept """
+
+        labels, features = self.fixtures(in_order=True, valid_rowcol=True)
+
+        x, y = load_image_data(labels, self.feat_key, [2], self.storage)
+
+        self.assertEqual(y, [2])
+        self.assertEqual(x[0], features.point_features[1].data)
 
 
+class TestLoadBatchData(unittest.TestCase):
+
+    def setUp(self):
+
+        self.feat_key1 = 'tmp_features1'
+        self.feat_key2 = 'tmp_features2'
+        self.storage = storage_factory('memory', '')
+
+    def fixtures(self, valid_rowcol=True) \
+            -> Tuple[ImageLabels, ImageFeatures, ImageFeatures]:
+
+        labels = ImageLabels(
+            data={self.feat_key1: [(100, 100, 1),
+                                   (200, 200, 2),
+                                   (300, 300, 1)],
+                  self.feat_key2: [(10, 10, 1),
+                                   (20, 20, 2),
+                                   (30, 30, 1)]})
+
+        features1 = ImageFeatures(
+            point_features=[
+                PointFeatures(100, 100, [1.1, 1.2, 1.3]),
+                PointFeatures(200, 200, [2.1, 2.2, 2.3]),
+                PointFeatures(300, 300, [3.1, 3.2, 3.3]),
+            ],
+            valid_rowcol=valid_rowcol,
+            feature_dim=3,
+            npoints=3
+        )
+
+        self.storage.store_string(self.feat_key1,
+                                  json.dumps(features1.serialize()))
+
+        features2 = ImageFeatures(
+            point_features=[
+                PointFeatures(10, 10, [10.1, 10.2, 10.3]),
+                PointFeatures(20, 20, [20.1, 20.2, 20.3]),
+                PointFeatures(30, 30, [30.1, 30.2, 30.3]),
+            ],
+            valid_rowcol=valid_rowcol,
+            feature_dim=3,
+            npoints=3
+        )
+
+        self.storage.store_string(self.feat_key2,
+                                  json.dumps(features2.serialize()))
+
+        return labels, features1, features2
+
+    def test_simple(self):
+
+        labels, features1, features2 = self.fixtures(valid_rowcol=True)
+        x, y = load_batch_data(labels, [self.feat_key1, self.feat_key2],
+                               [1, 2], self.storage)
+
+        self.assertEqual(x[0], features1.point_features[0].data)
+        self.assertEqual(x[3], features2.point_features[0].data)
+
+    def test_reverse_imkey_order(self):
+        labels, features1, features2 = self.fixtures(valid_rowcol=True)
+        x, y = load_batch_data(labels, [self.feat_key2, self.feat_key1],
+                               [1, 2], self.storage)
+
+        self.assertEqual(x[0], features2.point_features[0].data)
+        self.assertEqual(x[3], features1.point_features[0].data)
+
+    def test_one_label(self):
+
+        labels, features1, features2 = self.fixtures(valid_rowcol=True)
+        x, y = load_batch_data(labels, [self.feat_key2, self.feat_key1],
+                               [1], self.storage)
+
+        # Both images have two points with label=1
+        self.assertEqual(len(x), 4)
+        self.assertEqual(len(y), 4)
 
 
 

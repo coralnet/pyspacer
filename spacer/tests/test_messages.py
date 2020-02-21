@@ -10,7 +10,7 @@ from spacer.messages import \
     TrainClassifierMsg, \
     PointFeatures, \
     ImageFeatures, \
-    FeatureLabels, \
+    ImageLabels, \
     ValResults
 
 
@@ -136,14 +136,14 @@ class TestFeatureLabels(unittest.TestCase):
 
     def test_serialize(self):
 
-        msg = FeatureLabels.example()
-        self.assertEqual(msg, FeatureLabels.deserialize(
+        msg = ImageLabels.example()
+        self.assertEqual(msg, ImageLabels.deserialize(
             msg.serialize()))
-        self.assertEqual(msg, FeatureLabels.deserialize(
+        self.assertEqual(msg, ImageLabels.deserialize(
             json.loads(json.dumps(msg.serialize()))))
 
     def test_samples_per_image(self):
-        msg = FeatureLabels.example()
+        msg = ImageLabels.example()
         self.assertEqual(msg.samples_per_image, 2)
 
 

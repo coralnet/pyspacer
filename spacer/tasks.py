@@ -15,7 +15,7 @@ from spacer.messages import \
     ExtractFeaturesReturnMsg, \
     TrainClassifierMsg, \
     TrainClassifierReturnMsg, \
-    FeatureLabels, \
+    ImageLabels, \
     TrainClassifierReturnMsg
 
 from spacer.extract_features import feature_extractor_factory
