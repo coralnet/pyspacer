@@ -129,6 +129,40 @@ class TestCaffeExtractor(unittest.TestCase):
         self.assertEqual(features.point_features[0].row, 190)
         self.assertEqual(features.point_features[0].col, 226)
 
+    def test_regression(self):
+        """
+        This tests run the extractor on a known image and compares the
+        results to the features extracted with the
+        https://github.com/beijbom/ecs_spacer/releases/tag/1.0
+        """
+        rowcols = [(20, 265),
+                   (76, 295),
+                   (59, 274),
+                   (151, 62),
+                   (265, 234)]
+
+        msg = ExtractFeaturesMsg(
+            pk=1,
+            modelname='vgg16_coralnet_ver1',
+            bucketname='spacer-test',
+            storage_type='s3',
+            imkey='08bfc10v7t.png',
+            rowcols=rowcols,
+            outputkey='na'
+        )
+        storage = storage_factory(msg.storage_type, msg.bucketname)
+        ext = VGG16CaffeExtractor(msg, storage)
+        features_new, return_msg = ext(msg)
+
+        features_legacy = ImageFeatures.deserialize(json.loads(
+            storage.load_string('08bfc10v7t.png.featurevector')))
+        
+        for pf_new, pf_legacy in zip(features_new.point_features,
+                                     features_legacy.point_features):
+            self.assertEqual(pf_new.data, pf_legacy.data)
+            self.assertTrue(pf_legacy.row is None)
+            self.assertTrue(pf_new.row is not None)
+
 
 if __name__ == '__main__':
     unittest.main()
