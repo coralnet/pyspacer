@@ -142,7 +142,7 @@ class ImageLabels(DataClass):
         """ Returns the set of all unique classes in the key_list subset. """
         labels = set()
         for im_key in key_list:
-            labels += set([label for (row, col, label) in self.data[im_key]])
+            labels |= set([label for (row, col, label) in self.data[im_key]])
         return labels
 
     def __len__(self):
@@ -156,9 +156,9 @@ class TrainClassifierMsg(DataClass):
                  pk: int,
                  # Key for where to store the trained model.
                  model_key: str,
-                 # Key to LabeledFeatures structure with training data.
+                 # Key to ImageLabels structure with training data.
                  traindata_key: str,
-                 # Key to LabeledFeatures structure with validation data.
+                 # Key to ImageLabels structure with validation data.
                  valdata_key: str,
                  # Key to where the validation results is stored.
                  valresult_key: str,
