@@ -64,6 +64,7 @@ RUN pip3 install scikit-image
 RUN pip3 install scipy==0.19.1
 RUN pip3 install numpy==1.17.0
 RUN pip3 install coverage==5.0.3
+RUN pip3 install tqdm==4.43.0
 
 # Reduce caffe logging to not spam the console.
 ENV GLOG_minloglevel=2
