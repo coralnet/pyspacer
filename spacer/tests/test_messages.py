@@ -11,7 +11,9 @@ from spacer.messages import \
     PointFeatures, \
     ImageFeatures, \
     ImageLabels, \
-    ValResults
+    ValResults, \
+    DeployMsg, \
+    DeployReturnMsg
 
 
 class TestExtractFeaturesMsg(unittest.TestCase):
@@ -156,3 +158,26 @@ class TestValResults(unittest.TestCase):
             msg.serialize()))
         self.assertEqual(msg, ValResults.deserialize(
             json.loads(json.dumps(msg.serialize()))))
+
+
+class TestDeployMsg(unittest.TestCase):
+
+    def test_serialize(self):
+
+        msg = DeployMsg.example()
+        self.assertEqual(msg, DeployMsg.deserialize(
+            msg.serialize()))
+        self.assertEqual(msg, DeployMsg.deserialize(
+            json.loads(json.dumps(msg.serialize()))))
+
+
+class TestDeployReturnMsg(unittest.TestCase):
+
+    def test_serialize(self):
+
+        msg = DeployReturnMsg.example()
+        self.assertEqual(msg, DeployReturnMsg.deserialize(
+            msg.serialize()))
+        self.assertEqual(msg, DeployReturnMsg.deserialize(
+            json.loads(json.dumps(msg.serialize()))))
+

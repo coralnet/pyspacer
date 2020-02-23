@@ -93,7 +93,7 @@ class TestLocalStorage(unittest.TestCase):
         self.tmp_image_file_name = 'tmp_image.jpg'
         self.tmp_json_file_name = 'tmp_data.json'
         self.tmp_model_file_name = 'tmp_model.pkl'
-        self.storage = storage_factory('local', '')
+        self.storage = storage_factory('filesystem', '')
 
     def tearDown(self):
 

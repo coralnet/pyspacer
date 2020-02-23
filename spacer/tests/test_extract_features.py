@@ -18,7 +18,7 @@ class TestDummyExtractor(unittest.TestCase):
             pk=1,
             modelname='dummy',
             bucketname='spacer-test',
-            storage_type='local',
+            storage_type='memory',
             imkey='not_used',
             rowcols=[(100, 100)],
             outputkey='not_used'

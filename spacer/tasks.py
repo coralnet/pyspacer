@@ -1,27 +1,19 @@
 import json
 import os
-import pickle
-
 import time
-
-import boto
 
 import wget
 
-
-from spacer import config
+from spacer.extract_features import feature_extractor_factory
 from spacer.messages import \
     ExtractFeaturesMsg, \
     ExtractFeaturesReturnMsg, \
     TrainClassifierMsg, \
     TrainClassifierReturnMsg, \
-    ImageLabels, \
-    TrainClassifierReturnMsg
-
-from spacer.extract_features import feature_extractor_factory
-from spacer.train_classifier import trainer_factory
-
+    DeployMsg, \
+    DeployReturnMsg
 from spacer.storage import storage_factory
+from spacer.train_classifier import trainer_factory
 
 
 def extract_features_task(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
@@ -52,70 +44,40 @@ def train_classifier_task(msg: TrainClassifierMsg) -> TrainClassifierReturnMsg:
     return return_message
 
 
-def deploy(payload):
+def deploy(msg: DeployMsg) -> DeployReturnMsg:
+    """ Deploy is a combination of feature extractor and classification. """
 
-    try:
-        t1 = time.time()
+    t0 = time.time()
 
-        # Make sure the right model and prototxt are available locally.
-        was_cashed = _download_nets(payload['modelname'])
+    # Download image
+    local_impath = os.path.basename(msg.im_url)
+    wget.download(msg.im_url, local_impath)
 
-        local_impath = os.path.basename(payload['im_url'])
+    # Extract features
+    extract_features_msg = ExtractFeaturesMsg(
+        pk=0,
+        modelname=msg.feature_extractor_name,
+        bucketname='',
+        imkey=local_impath,
+        rowcols=msg.rowcols,
+        outputkey='',
+        storage_type='filesystem'
+    )
 
-        wget.download(payload['im_url'], local_impath)
+    storage = storage_factory(extract_features_msg.storage_type, '')
+    extractor = feature_extractor_factory(extract_features_msg, storage)
+    features, feats_return_message = extractor()
 
-        # Setup caffe
-        caffe.set_mode_cpu()
-        net = caffe.Net(
-            str(os.path.join(config.LOCAL_MODEL_PATH, payload['modelname'] + '.deploy.prototxt')),
-            str(os.path.join(config.LOCAL_MODEL_PATH, payload['modelname'] + '.caffemodel')),
-            caffe.TEST)
+    # Classify
+    storage = storage_factory('s3', msg.bucketname)
+    clf = storage.load_classifier(msg.classifier_key)
 
-        # Set parameters
-        pyparams = {'im_mean': [128, 128, 128],
-                    'scaling_method': 'scale',
-                    'scaling_factor': 1,
-                    'crop_size': 224,
-                    'batch_size': 10}
+    scores = [clf.predict_proba(features[(row, col)])
+              for row, col in msg.rowcols]
 
-        imlist = [local_impath]
-        imdict = {
-            local_impath: ([], 100)
-        }
-        for row, col in payload['rowcols']:
-            imdict[local_impath][0].append((row, col, 1))
-
-        # Run
-        t2 = time.time()
-        (_, _, feats) = classify_from_patchlist(imlist, imdict, pyparams, net, scorelayer='fc7')
-
-        # Download the image to be processed.
-        conn = boto.connect_s3()
-        bucket = conn.get_bucket(payload['bucketname'], validate=True)
-        key = bucket.get_key(payload['model'])
-
-        model = pickle.loads(key.get_contents_as_string(), fix_imports=True, encoding='latin1')
-
-        scores = model.predict_proba(feats)
-
-        message = {
-            'model_was_cashed': was_cashed,
-            'runtime': {
-                'total': time.time() - t1,
-                'core': time.time() - t2,
-                'per_point': (time.time() - t2) / len(payload['rowcols'])
-            },
-            'scores': [list(score) for score in scores],
-            'classes': list(model.classes_),
-            'ok': 1
-        }
-    except Exception as e:
-
-        # For deploy calls we don't use the error queue, but instead return the error message to the standard
-        # return queue.
-        message = {
-            'ok': 0,
-            'error': repr(e)
-        }
-
-    return message
+    # Return
+    return DeployReturnMsg(
+        model_was_cached=feats_return_message.model_was_cashed,
+        runtime=time.time() - t0,
+        scores=[score.tolist() for score in scores],
+        classes=list(clf.classes_))

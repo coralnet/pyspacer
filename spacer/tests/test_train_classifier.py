@@ -70,7 +70,7 @@ class TestDefaultTrainerDummyData(unittest.TestCase):
             pc_models_key=[],
             pc_pks=[],
             bucketname='',
-            storage_type='local'
+            storage_type='filesystem'
         )
 
         trainer = trainer_factory(msg, self.storage)

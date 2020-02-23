@@ -95,7 +95,7 @@ class S3Storage(Storage):
         return self.bucket.get_key(path) is not None
 
 
-class LocalStorage(Storage):
+class FileSystemStorage(Storage):
     """ Stores objects on disk """
 
     def __init__(self):
@@ -168,9 +168,9 @@ def storage_factory(storage_type: str, bucketname: Union[str, None]):
     if storage_type == 's3':
         print("-> Initializing s3 storage")
         return S3Storage(bucketname=bucketname)
-    elif storage_type == 'local':
-        print("-> Initializing local storage")
-        return LocalStorage()
+    elif storage_type == 'filesystem':
+        print("-> Initializing filesystem storage")
+        return FileSystemStorage()
     elif storage_type == 'memory':
         print("-> Initializing memory storage")
         return MemoryStorage()

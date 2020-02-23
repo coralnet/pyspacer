@@ -39,8 +39,8 @@ class DataClass(ABC):
     def __eq__(self, other):
         sd = self.__dict__
         od = other.__dict__
-        return sd.keys() == od.keys() and \
-               all([sd[key] == od[key] for key in sd])
+        return sd.keys() == od.keys() and all([sd[key] == od[key]
+                                               for key in sd])
 
 
 class ExtractFeaturesMsg(DataClass):
@@ -152,7 +152,7 @@ class ImageLabels(DataClass):
 class TrainClassifierMsg(DataClass):
 
     def __init__(self,
-                 # Primary key of the model to train
+                 # Primary key of the model to train. Not used in spacer.
                  pk: int,
                  # Key for where to store the trained model.
                  model_key: str,
@@ -238,15 +238,67 @@ class TrainClassifierReturnMsg(DataClass):
         )
 
 
-class DeployMsg:
-    pass
+class DeployMsg(DataClass):
+
+    def __init__(self,
+                 pk: int,  # Primary key of job, not used in spacer.
+                 im_url: str,  # URL of image to deploy on.
+                 feature_extractor_name: str,  # name of feature extractor
+                 rowcols: List[Tuple[int, int]],
+                 classifier_key: str,  # Key to classifier to use.
+                 bucketname: str,  # Bucket where classifier is stored.
+                 ):
+        self.pk = pk
+        self.im_url = im_url
+        self.feature_extractor_name = feature_extractor_name
+        self.rowcols = rowcols
+        self.classifier_key = classifier_key
+        self.bucketname = bucketname
+
+    @classmethod
+    def example(cls):
+        return DeployMsg(
+            pk=0,
+            im_url='www.my.image.jpg',
+            feature_extractor_name='vgg16_coralnet_ver1',
+            rowcols=[(1, 1), (2, 2)],
+            classifier_key='my/classifier/key',
+            bucketname='spacer-test'
+        )
+
+    @classmethod
+    def deserialize(cls, data: Dict) -> 'DeployMsg':
+        msg = cls(**data)
+        """ Custom deserializer to convert back to tuples. """
+        msg.rowcols = [tuple(rc) for rc in data['rowcols']]
+        return msg
 
 
-class DeployReturnMsg:
-    pass
+class DeployReturnMsg(DataClass):
+
+    def __init__(self,
+                 model_was_cached: bool,
+                 runtime: float,
+                 # Scores is a list of scores for every row, col location.
+                 scores: List[List[float]],
+                 # Maps the score index to a global class id.
+                 classes: List[int]):
+        self.model_was_cached = model_was_cached
+        self.runtime = runtime
+        self.scores = scores
+        self.classes = classes
+
+    @classmethod
+    def example(cls):
+        return DeployReturnMsg(
+            model_was_cached=True,
+            runtime=1.1,
+            scores=[[0.1, 0.2, 0.7], [0.9, 0.06, 0.04]],
+            classes=[100, 12, 44]
+        )
 
 
-class TaskMsg:
+class TaskMsg(DataClass):
 
     def __init__(self,
                  task: str,
@@ -258,7 +310,7 @@ class TaskMsg:
         self.payload = payload
 
 
-class TaskReturnMsg:
+class TaskReturnMsg(DataClass):
 
     def __init__(self,
                  original_job: TaskMsg,

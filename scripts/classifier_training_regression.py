@@ -93,7 +93,7 @@ class ClassifierRegressionTest:
                 ]
 
         # Store and compile the TrainClassifierMsg
-        storage = storage_factory('local', '')
+        storage = storage_factory('filesystem', '')
         traindata_key = os.path.join(self.source_root, 'traindata.json')
         valdata_key = os.path.join(self.source_root, 'valdata.json')
         storage.store_string(
@@ -113,7 +113,7 @@ class ClassifierRegressionTest:
             pc_models_key=[],
             pc_pks=[],
             bucketname='na',
-            storage_type='local'
+            storage_type='filesystem'
         )
 
         # Perform training
