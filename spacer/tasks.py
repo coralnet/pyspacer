@@ -2,6 +2,7 @@ import json
 import os
 import time
 
+import numpy as np
 import wget
 
 from spacer.extract_features import feature_extractor_factory
@@ -69,7 +70,7 @@ def deploy(msg: DeployMsg) -> DeployReturnMsg:
     storage = storage_factory('s3', msg.bucketname)
     clf = storage.load_classifier(msg.classifier_key)
 
-    scores = [clf.predict_proba(features[(row, col)])
+    scores = [clf.predict_proba(np.array(features[(row, col)]).reshape(1, -1))
               for row, col in msg.rowcols]
 
     # Return
