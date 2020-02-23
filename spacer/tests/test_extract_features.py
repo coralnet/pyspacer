@@ -129,6 +129,9 @@ class TestCaffeExtractor(unittest.TestCase):
         self.assertEqual(features.point_features[0].row, 190)
         self.assertEqual(features.point_features[0].col, 226)
 
+    @unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
+    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
+    @unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
     def test_regression(self):
         """
         This tests run the extractor on a known image and compares the
