@@ -54,18 +54,15 @@ def deploy(msg: DeployMsg) -> DeployReturnMsg:
     wget.download(msg.im_url, local_impath)
 
     # Extract features
-    extract_features_msg = ExtractFeaturesMsg(
+    storage = storage_factory('filesystem', '')
+    extractor = feature_extractor_factory(ExtractFeaturesMsg(
         pk=0,
         modelname=msg.feature_extractor_name,
         bucketname='',
         imkey=local_impath,
         rowcols=msg.rowcols,
         outputkey='',
-        storage_type='filesystem'
-    )
-
-    storage = storage_factory(extract_features_msg.storage_type, '')
-    extractor = feature_extractor_factory(extract_features_msg, storage)
+    ), storage)
     features, feats_return_message = extractor()
 
     # Classify

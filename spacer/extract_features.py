@@ -1,5 +1,6 @@
 import abc
 import os
+import random
 import time
 from typing import Tuple
 
@@ -24,17 +25,19 @@ class DummyExtractor(FeatureExtractor):
     """
     This doesn't actually extract any features from the image,
     it just returns dummy information.
+    Note that feature dimension is compatible with the VGG16CaffeExtractor.
     """
 
     def __call__(self, *args, **kwargs):
         return ImageFeatures(
             point_features=[PointFeatures(row=rc[0],
                                           col=rc[1],
-                                          data=[1.1, 2.2, 3.3])
+                                          data=[random.random() for _ in
+                                                range(4096)])
                             for rc in self.msg.rowcols],
             valid_rowcol=True,
             npoints=len(self.msg.rowcols),
-            feature_dim=3
+            feature_dim=4096
         ), ExtractFeaturesReturnMsg.example()
 
 
@@ -112,7 +115,8 @@ def feature_extractor_factory(msg: ExtractFeaturesMsg,
         return VGG16CaffeExtractor(msg, storage)
     elif msg.modelname == 'efficientnet_b0_imagenet':
         print("-> Initializing EfficientNetExtractor")
-        return EfficientNetExtractor(msg, storage)
+        raise NotImplementedError()
+        # return EfficientNetExtractor(msg, storage)
     elif msg.modelname == 'dummy':
         print("-> Initializing DummyExtractor")
         return DummyExtractor(msg, storage)
