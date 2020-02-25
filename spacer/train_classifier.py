@@ -17,7 +17,7 @@ from spacer.train_utils import train, evaluate_classifier, calc_acc, \
     make_random_labels
 
 
-class ClassifierTrainer(abc.ABC):
+class ClassifierTrainer(abc.ABC):  # pragma: no cover
 
     @abc.abstractmethod
     def __call__(self,

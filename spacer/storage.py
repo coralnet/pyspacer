@@ -12,7 +12,7 @@ from spacer import config
 from sklearn.calibration import CalibratedClassifierCV
 
 
-class Storage(abc.ABC):
+class Storage(abc.ABC):  # pragma: no cover
 
     @abc.abstractmethod
     def store_classifier(self, path: str, clf: CalibratedClassifierCV) -> None:

@@ -12,7 +12,7 @@ from spacer.data_classes import PointFeatures, ImageFeatures
 from spacer.storage import download_model
 
 
-class FeatureExtractor(abc.ABC):
+class FeatureExtractor(abc.ABC):  # pragma: no cover
 
     @abc.abstractmethod
     def __call__(self,
