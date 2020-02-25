@@ -192,16 +192,7 @@ class TestTaskReturnMsg(unittest.TestCase):
             json.loads(json.dumps(msg.serialize()))))
 
     def test_serialize_deploy(self):
-        task = DeployMsg.example()
-        org_msg = TaskMsg(task='deploy', payload=task)
-
-        return_task = DeployReturnMsg.example()
-        msg = TaskReturnMsg(
-            original_job=org_msg,
-            ok=True,
-            results=return_task,
-            error_message=None
-        )
+        msg = TaskReturnMsg.example()
         self.assertEqual(msg, TaskReturnMsg.deserialize(
             msg.serialize()))
         self.assertEqual(msg, TaskReturnMsg.deserialize(

@@ -3,17 +3,19 @@ This file contains a set of caffe utiiity functions copied into this repo for si
 Since support for Caffe will be deprecate, these are not cleaned up from their original state.
 """
 
-import os
 from copy import copy
+from typing import List, Tuple
 
 import caffe
 import numpy as np
+from PIL import Image
 
 
 class Transformer:
     """
     Transformer is a class for preprocessing and deprocessing images
-    according to the vgg16 pre-processing paradigm (scaling and mean subtraction.)
+    according to the vgg16 pre-processing paradigm
+    (scaling and mean subtraction.)
     """
 
     def __init__(self, mean=(0, 0, 0)):
@@ -34,7 +36,8 @@ class Transformer:
 
     def preprocess(self, im):
         """
-        preprocess() emulate the pre-processing occuring in the vgg16 caffe prototxt.
+        preprocess() emulate the pre-processing occurring
+        in the vgg16 caffe prototxt.
         """
 
         im = np.float32(im)
@@ -57,9 +60,11 @@ class Transformer:
         return np.uint8(im)
 
 
-def classify_from_imlist(im_list, net, transformer, batch_size, scorelayer='score', startlayer='conv1_1'):
+def classify_from_imlist(im_list, net, transformer, batch_size,
+                         scorelayer='score', startlayer='conv1_1'):
     """
-    classify_from_imlist classifies a list of images and returns estimated labels and scores.
+    classify_from_imlist classifies a list of images and returns
+    estimated labels and scores.
     Only support classification nets (not FCNs).
 
     Takes
@@ -76,9 +81,11 @@ def classify_from_imlist(im_list, net, transformer, batch_size, scorelayer='scor
         for i in range(batch_size):
             pos = b * batch_size + i
             if pos < len(im_list):
-                net.blobs['data'].data[i, :, :, :] = transformer.preprocess(im_list[pos])
+                net.blobs['data'].data[i, :, :, :] = \
+                    transformer.preprocess(im_list[pos])
         net.forward(start=startlayer)
-        scorelist.extend(list(copy(net.blobs[scorelayer].data).astype(np.float)))
+        scorelist.extend(list(copy(net.blobs[scorelayer].data).
+                              astype(np.float)))
 
     scorelist = scorelist[:len(im_list)]
     estlist = [np.argmax(s) for s in scorelist]
@@ -161,12 +168,16 @@ def classify_from_patchlist(im_pil: Image,
     im = im[:, :, :3]  # only keep the first three color channels
 
     # Crop patches
-    patchlist, this_gtlist = crop_patch(im, pyparams['crop_size'], scale, point_anns)
+    patchlist, this_gtlist = crop_patch(im, pyparams['crop_size'],
+                                        scale, point_anns)
 
     # Classify
     [this_estlist, this_scorelist] = \
-        classify_from_imlist(patchlist, net, transformer,
-                             pyparams['batch_size'], scorelayer=scorelayer,
+        classify_from_imlist(patchlist,
+                             net,
+                             transformer,
+                             pyparams['batch_size'],
+                             scorelayer=scorelayer,
                              startlayer=startlayer)
 
     # Store

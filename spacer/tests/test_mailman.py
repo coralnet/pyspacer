@@ -16,7 +16,7 @@ from spacer.messages import \
     DeployMsg
 
 
-class TestProcessFeatureExtract(unittest.TestCase):
+class TestProcessTask(unittest.TestCase):
 
     def setUp(self):
         warnings.simplefilter("ignore", ResourceWarning)
@@ -65,9 +65,7 @@ class TestProcessFeatureExtract(unittest.TestCase):
                       )
         return_msg = process_task(msg)
         self.assertFalse(return_msg.ok)
-        self.assertEqual(return_msg.error_message,
-                         "URLError(gaierror(8, 'nodename nor servname "
-                         "provided, or ""not known'),)")
+        self.assertTrue('URLError' in return_msg.error_message)
         self.assertTrue(type(return_msg), TaskReturnMsg)
 
     def test_failed_deploy_feature_extractor_name(self):
@@ -134,27 +132,45 @@ class TestProcessFeatureExtract(unittest.TestCase):
 
 class TestGrabMessage(unittest.TestCase):
 
+    @staticmethod
+    def purge_queue(queue, name):
+        """
+        Manually purges a SQS queue since queue.purge is only allowed
+        every 60 seconds.
+        """
+        m = queue.read()
+        while m is not None:
+            queue.delete_message(m)
+            m = queue.read()
+            print("Purged old message from {}.".format(name))
+
     def setUp(self):
         self.queue_group = 'spacer_test'
         conn = sqs.connect_to_region("us-west-2")
         self.jobqueue = conn.get_queue('{}_jobs'.format(self.queue_group))
         if self.jobqueue is None:
             self.sqs_access = False
-        else:
-            self.sqs_access = True
-        self.resqueue = conn.get_queue('{}_results'.format(self.queue_group))
-        # Manually purge, since queue.purge is only allowed every 60 seconds.
-        m = self.jobqueue.read()
-        while m is not None:
-            self.jobqueue.delete_message(m)
-            m = self.jobqueue.read()
-            print("Purged old message from jobqueue.")
+            return
 
-        m = self.resqueue.read()
-        while m is not None:
-            self.resqueue.delete_message(m)
-            m = self.resqueue.read()
-            print("Purged old message from resqueue.")
+        self.sqs_access = True
+        self.resqueue = conn.get_queue('{}_results'.format(self.queue_group))
+
+        self.purge_queue(self.jobqueue, 'jobqueue')
+        self.purge_queue(self.resqueue, 'resqueue')
+
+    def tearDown(self):
+
+        self.queue_group = 'spacer_test'
+        conn = sqs.connect_to_region("us-west-2")
+        self.jobqueue = conn.get_queue('{}_jobs'.format(self.queue_group))
+        if self.jobqueue is None:
+            self.sqs_access = False
+            return
+
+        self.sqs_access = True
+        self.resqueue = conn.get_queue('{}_results'.format(self.queue_group))
+        self.purge_queue(self.jobqueue, 'jobqueue')
+        self.purge_queue(self.resqueue, 'resqueue')
 
     def post_job_get_result(self):
         found_message = False

@@ -64,6 +64,11 @@ class TestImageFeatures(unittest.TestCase):
         point_features = msg[(100, 100)]
         self.assertEqual(point_features[0], 1.1)
 
+    def test_legacy_getitme(self):
+        msg = ImageFeatures.example()
+        msg.valid_rowcol = False
+        self.assertRaises(ValueError, msg.__getitem__, (100, 100))
+
 
 class TestFeatureLabels(unittest.TestCase):
 
