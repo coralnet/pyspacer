@@ -1,19 +1,17 @@
 import json
 
-from typing import Dict
+from boto import sqs
 
-import boto
-from boto.sqs.message import Message
-
+from spacer import config
 from spacer.messages import TaskMsg, TaskReturnMsg
 from spacer.tasks import extract_features, train_classifier, deploy
 
 
-def grab_message(queue_group='spacer'):
+def sqs_mailman(queue_group='spacer') -> bool:
     print("-> Grabbing message.")
 
     # Load default queue
-    conn = boto.sqs.connect_to_region("us-west-2")
+    conn = sqs.connect_to_region("us-west-2")
     inqueue = conn.get_queue('{}_jobs'.format(queue_group))
     resqueue = conn.get_queue('{}_results'.format(queue_group))
 
@@ -21,13 +19,13 @@ def grab_message(queue_group='spacer'):
     m = inqueue.read()
     if m is None:
         print("-> No messages in inqueue.")
-        return 1
+        return False
     task_msg_dict = json.loads(m.get_body())
 
     # Try to deserialize message
     try:
         task_msg = TaskMsg.deserialize(task_msg_dict)
-        task_return_msg = handle_message(task_msg)
+        task_return_msg = process_task(task_msg)
         return_msg_dict = task_return_msg.serialize()
     except Exception as e:
         # Handle deserialization errors directly in mailman.
@@ -36,23 +34,26 @@ def grab_message(queue_group='spacer'):
             'original_job': task_msg_dict,
             'ok': False,
             'results': None,
-            'error_message': repr(e)
+            'error_message': 'Error deserializing message: ' + repr(e)
         }
 
     # Return
-    m_out = Message()
-    m_out.set_body(json.dumps(return_msg_dict))
+    m_out = resqueue.new_message(body=json.dumps(return_msg_dict))
     resqueue.write(m_out)
     inqueue.delete_message(m)
+    return True
     
 
-def handle_message(task_msg: TaskMsg) -> TaskReturnMsg:
+def process_task(task_msg: TaskMsg) -> TaskReturnMsg:
 
     task_defs = {
         'extract_features': extract_features,
         'train_classifier': train_classifier,
         'deploy': deploy
     }
+
+    assert type(task_msg) == TaskMsg
+    assert task_msg.task in config.TASKS
 
     try:
         return_msg = TaskReturnMsg(
@@ -72,4 +73,4 @@ def handle_message(task_msg: TaskMsg) -> TaskReturnMsg:
 
 
 if __name__ == '__main__':
-    grab_message()
+    sqs_mailman()

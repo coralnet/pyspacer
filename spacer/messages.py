@@ -298,12 +298,16 @@ class TaskReturnMsg(DataClass):
     def deserialize(cls, data: Dict):
 
         original_job = TaskMsg.deserialize(data['original_job'])
-        if original_job.task == 'extract_features':
-            results = ExtractFeaturesReturnMsg.deserialize(data['results'])
-        elif original_job.task == 'train_classifier':
-            results = TrainClassifierReturnMsg.deserialize(data['results'])
+
+        if data['ok']:
+            if original_job.task == 'extract_features':
+                results = ExtractFeaturesReturnMsg.deserialize(data['results'])
+            elif original_job.task == 'train_classifier':
+                results = TrainClassifierReturnMsg.deserialize(data['results'])
+            else:
+                results = DeployReturnMsg.deserialize(data['results'])
         else:
-            results = DeployReturnMsg.deserialize(data['results'])
+            results = data['results']
 
         return TaskReturnMsg(
             original_job=original_job,
@@ -316,6 +320,6 @@ class TaskReturnMsg(DataClass):
         return {
             'original_job': self.original_job.serialize(),
             'ok': self.ok,
-            'results': self.results.serialize(),
+            'results': self.results.serialize() if self.ok else self.results,
             'error_message': self.error_message
         }
