@@ -1,23 +1,29 @@
 import abc
-import os
 import random
 import time
+from typing import List
 from typing import Tuple
 
+from PIL import Image
+
 from spacer import config
-from spacer.messages import ExtractFeaturesMsg, ExtractFeaturesReturnMsg, \
+from spacer.messages import ExtractFeaturesReturnMsg, \
     ImageFeatures, PointFeatures
-from spacer.storage import Storage, download_model
+from spacer.storage import download_model
 
 
 class FeatureExtractor(abc.ABC):
 
-    def __init__(self, msg: ExtractFeaturesMsg, storage: Storage):
-        self.msg = msg
-        self.storage = storage
+    @abc.abstractmethod
+    def __call__(self,
+                 im: Image,
+                 rowcols: List[Tuple[int, int]]) \
+            -> Tuple[ImageFeatures, ExtractFeaturesReturnMsg]:
+        pass
 
     @abc.abstractmethod
-    def __call__(self) -> Tuple[ImageFeatures, ExtractFeaturesReturnMsg]:
+    def feature_dim(self) -> int:
+        """ Returns the feature dimension of extractor. """
         pass
 
 
@@ -27,58 +33,56 @@ class DummyExtractor(FeatureExtractor):
     it just returns dummy information.
     Note that feature dimension is compatible with the VGG16CaffeExtractor.
     """
+    def __init__(self, feature_dim):
+        self.feature_dim = feature_dim
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, im, rowcols):
         return ImageFeatures(
             point_features=[PointFeatures(row=rc[0],
                                           col=rc[1],
                                           data=[random.random() for _ in
-                                                range(4096)])
-                            for rc in self.msg.rowcols],
+                                                range(self.feature_dim)])
+                            for rc in rowcols],
             valid_rowcol=True,
-            npoints=len(self.msg.rowcols),
+            npoints=len(rowcols),
             feature_dim=4096
         ), ExtractFeaturesReturnMsg.example()
+
+    def feature_dim(self):
+        return self.feature_dim
 
 
 class VGG16CaffeExtractor(FeatureExtractor):
 
-    def __call__(self, *args, **kwargs):
+    def __init__(self):
+
+        # Cache models and prototxt locally.
+        self.modeldef_path, _ = download_model(
+            'vgg16_coralnet_ver1.deploy.prototxt')
+        self.modelweighs_path, self.model_was_cashed = download_model(
+            'vgg16_coralnet_ver1.caffemodel')
+
+    def __call__(self, im, rowcols):
 
         # We should only reach this line if it is confirmed caffe is available
-        # This suppresses most of the superfluous caffe logging.
-        os.environ['GLOG_minloglevel'] = '3'
         from spacer.caffe_utils import classify_from_patchlist
 
         t0 = time.time()
 
-        # Cache models and prototxt locally.
-        modeldef_path, _ = download_model(
-            self.msg.modelname + '.deploy.prototxt')
-        modelweighs_path, was_cashed = download_model(
-            self.msg.modelname + '.caffemodel')
+        # Set caffe parameters
+        caffe_params = {'im_mean': [128, 128, 128],
+                        'scaling_method': 'scale',
+                        'crop_size': 224,
+                        'batch_size': 10}
 
-        # Set parameters
-        pyparams = {'im_mean': [128, 128, 128],
-                    'scaling_method': 'scale',
-                    'scaling_factor': 1,
-                    'crop_size': 224,
-                    'batch_size': 10}
+        # The imdict data structure needs a label, set to 1, it's not used.
+        rowcollabels = [(row, col, 1) for row, col in rowcols]
 
-        # The imdict data structure needs a label, it's not used.
-        dummy_label = 1
-        # The imheight in centimeters are not used by the algorithm.
-        dummy_imheight = 100
-        rowcols = [(row, col, dummy_label) for
-                   row, col in self.msg.rowcols]
-        imdict = {self.msg.imkey: (rowcols, dummy_imheight)}
-
-        # Run
-        (_, _, feats) = classify_from_patchlist(imdict,
-                                                pyparams,
-                                                modeldef_path,
-                                                modelweighs_path,
-                                                self.storage,
+        (_, _, feats) = classify_from_patchlist(im,
+                                                rowcollabels,
+                                                caffe_params,
+                                                self.modeldef_path,
+                                                self.modelweighs_path,
                                                 scorelayer='fc7')
 
         return \
@@ -91,34 +95,40 @@ class VGG16CaffeExtractor(FeatureExtractor):
                 feature_dim=len(feats[0]),
                 npoints=len(feats)
             ), ExtractFeaturesReturnMsg(
-                model_was_cashed=was_cashed,
+                model_was_cashed=self.model_was_cashed,
                 runtime=time.time() - t0
             )
+
+    def feature_dim(self):
+        return 4096
 
 
 class EfficientNetExtractor(FeatureExtractor):
 
-    def __call__(self, *args, **kwargs):
-        pass
+    def __call__(self, im, rowcols):
+        raise NotImplementedError
+
+    def feature_dim(self):
+        raise NotImplementedError
 
 
-def feature_extractor_factory(msg: ExtractFeaturesMsg,
-                              storage: Storage) -> FeatureExtractor:
+def feature_extractor_factory(modelname,
+                              dummy_featuredim=4096) -> FeatureExtractor:
 
-    assert msg.modelname in config.FEATURE_EXTRACTOR_NAMES, \
-        "Model name {} not registered".format(msg.modelname)
+    assert modelname in config.FEATURE_EXTRACTOR_NAMES, \
+        "Model name {} not registered".format(modelname)
 
-    if msg.modelname == 'vgg16_coralnet_ver1':
+    if modelname == 'vgg16_coralnet_ver1':
         assert config.HAS_CAFFE, \
-            "Need Caffe installed to instantiate {}".format(msg.modelname)
+            "Need Caffe installed to instantiate {}".format(modelname)
         print("-> Initializing VGG16CaffeExtractor")
-        return VGG16CaffeExtractor(msg, storage)
-    elif msg.modelname == 'efficientnet_b0_imagenet':
+        return VGG16CaffeExtractor()
+    elif modelname == 'efficientnet_b0_imagenet':
         print("-> Initializing EfficientNetExtractor")
         raise NotImplementedError()
-        # return EfficientNetExtractor(msg, storage)
-    elif msg.modelname == 'dummy':
+        # return EfficientNetExtractor()
+    elif modelname == 'dummy':
         print("-> Initializing DummyExtractor")
-        return DummyExtractor(msg, storage)
+        return DummyExtractor(dummy_featuredim)
     else:
-        raise ValueError('Unknown modelname: {}'.format(msg.modelname))
+        raise ValueError('Unknown modelname: {}'.format(modelname))

@@ -161,7 +161,7 @@ class MemoryStorage(Storage):
         return path in self.blobs
 
 
-def storage_factory(storage_type: str, bucketname: Union[str, None]):
+def storage_factory(storage_type: str, bucketname: Union[str, None] = None):
 
     assert storage_type in config.STORAGE_TYPES
 

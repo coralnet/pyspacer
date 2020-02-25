@@ -1,11 +1,10 @@
-import json
-
 from abc import ABC, abstractmethod
 from pprint import pformat
 from typing import List, Tuple, Dict, Union, Optional, Set
 
+import numpy as np
+
 from spacer import config
-from spacer.storage import Storage
 
 
 class DataClass(ABC):
@@ -47,7 +46,7 @@ class ExtractFeaturesMsg(DataClass):
 
     def __init__(self,
                  pk: int,
-                 modelname: str,
+                 feature_extractor_name: str,
                  bucketname: str,
                  imkey: str,
                  rowcols: List[Tuple[int, int]],  # List of [row, col] entries.
@@ -56,13 +55,13 @@ class ExtractFeaturesMsg(DataClass):
                  ):
 
         assert storage_type in config.STORAGE_TYPES
-        assert modelname in config.FEATURE_EXTRACTOR_NAMES
+        assert feature_extractor_name in config.FEATURE_EXTRACTOR_NAMES
         assert isinstance(rowcols, List)
         assert len(rowcols) > 0, "Invalid message, rowcols entry is empty."
         assert len(rowcols[0]) == 2
 
         self.pk = pk
-        self.modelname = modelname
+        self.feature_extractor_name = feature_extractor_name
         self.bucketname = bucketname
         self.imkey = imkey
         self.storage_type = storage_type
@@ -80,7 +79,7 @@ class ExtractFeaturesMsg(DataClass):
     def example(cls) -> 'ExtractFeaturesMsg':
         return ExtractFeaturesMsg(
             pk=1,
-            modelname='vgg16_coralnet_ver1',
+            feature_extractor_name='vgg16_coralnet_ver1',
             bucketname='spacer-test',
             imkey='edinburgh3.jpg',
             rowcols=[(100, 100)],
@@ -156,6 +155,8 @@ class TrainClassifierMsg(DataClass):
                  pk: int,
                  # Key for where to store the trained model.
                  model_key: str,
+                 # Name of trainer to use.
+                 trainer_name: str,
                  # Key to ImageLabels structure with training data.
                  traindata_key: str,
                  # Key to ImageLabels structure with validation data.
@@ -175,8 +176,11 @@ class TrainClassifierMsg(DataClass):
                  storage_type: str = 's3',
                  ):
 
+        assert trainer_name in config.TRAINER_NAMES
+
         self.pk = pk
         self.model_key = model_key
+        self.trainer_name = trainer_name
         self.traindata_key = traindata_key
         self.valdata_key = valdata_key
         self.valresult_key = valresult_key
@@ -191,6 +195,7 @@ class TrainClassifierMsg(DataClass):
         return TrainClassifierMsg(
             pk=1,
             model_key='my_trained_model',
+            trainer_name='minibatch',
             traindata_key='my_traindata',
             valdata_key='my_valdata',
             valresult_key='my_valresults',
@@ -201,14 +206,6 @@ class TrainClassifierMsg(DataClass):
             pc_pks=[1, 2, 3],
             bucketname='spacer-test',
         )
-
-    def load_train_feature_labels(self, storage: Storage) -> ImageLabels:
-        return ImageLabels.deserialize(
-            json.loads(storage.load_string(self.traindata_key)))
-
-    def load_val_feature_labels(self, storage: Storage) -> ImageLabels:
-        return ImageLabels.deserialize(
-            json.loads(storage.load_string(self.valdata_key)))
 
 
 class TrainClassifierReturnMsg(DataClass):
@@ -247,6 +244,7 @@ class DeployMsg(DataClass):
                  rowcols: List[Tuple[int, int]],
                  classifier_key: str,  # Key to classifier to use.
                  bucketname: str,  # Bucket where classifier is stored.
+                 storage_type: str = 's3',
                  ):
         self.pk = pk
         self.im_url = im_url
@@ -254,6 +252,7 @@ class DeployMsg(DataClass):
         self.rowcols = rowcols
         self.classifier_key = classifier_key
         self.bucketname = bucketname
+        self.storage_type = storage_type
 
     @classmethod
     def example(cls):
@@ -434,6 +433,22 @@ class ImageFeatures(DataClass):
                self.valid_rowcol == other.valid_rowcol and \
                self.feature_dim == other.feature_dim and \
                self.npoints == other.npoints
+
+    @classmethod
+    def make_random(cls,
+                    point_labels: List[int],
+                    feature_dim: int):
+        pfs = [PointFeatures(row=itt,
+                             col=itt,
+                             data=list(np.random.multivariate_normal(
+                                 np.ones(feature_dim) * label,
+                                 np.eye(feature_dim))))
+               for itt, label in enumerate(point_labels)]
+
+        return ImageFeatures(point_features=pfs,
+                             valid_rowcol=True,
+                             feature_dim=feature_dim,
+                             npoints=len(point_labels))
 
 
 class ValResults(DataClass):

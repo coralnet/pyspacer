@@ -137,13 +137,13 @@ def crop_simple(im, center, crop_size):
     return im[upper: upper + crop_size, left: left + crop_size, :]
 
 
-def classify_from_patchlist(imdict,
-                            pyparams,
-                            modeldef_path,
-                            modelweighs_path,
-                            storage,
-                            scorelayer='score',
-                            startlayer='conv1_1'):
+def classify_from_patchlist(im_pil: Image,
+                            point_anns: List[Tuple[int, int, int]],
+                            pyparams: dict,
+                            modeldef_path: str,
+                            modelweighs_path: str,
+                            scorelayer: str ='score',
+                            startlayer: str ='conv1_1'):
     # Setup caffe
     caffe.set_mode_cpu()
     net = caffe.Net(modeldef_path, modelweighs_path, caffe.TEST)
@@ -151,30 +151,27 @@ def classify_from_patchlist(imdict,
     scale = 1
     estlist, scorelist, gtlist = [], [], []
     transformer = Transformer(pyparams['im_mean'])
-    for imname in imdict:
 
-        (point_anns, height_cm) = imdict[os.path.basename(imname)]
+    # Convert to numpy (call 2 times due to a bug)
+    im = np.asarray(im_pil)
+    im = np.asarray(im_pil)
 
-        # Load image
-        im_pil = storage.load_image(imname)
-        im = np.asarray(im_pil)
+    if len(im.shape) == 2 or im.shape[2] == 1:
+        im = gray2rgb(im)
+    im = im[:, :, :3]  # only keep the first three color channels
 
-        # Do it a second time due to bug
-        im = np.asarray(im_pil)
-        if len(im.shape) == 2 or im.shape[2] == 1:
-            im = gray2rgb(im)
-        im = im[:, :, :3]  # only keep the first three color channels
+    # Crop patches
+    patchlist, this_gtlist = crop_patch(im, pyparams['crop_size'], scale, point_anns)
 
-        # Crop patches
-        patchlist, this_gtlist = crop_patch(im, pyparams['crop_size'], scale, point_anns)
+    # Classify
+    [this_estlist, this_scorelist] = \
+        classify_from_imlist(patchlist, net, transformer,
+                             pyparams['batch_size'], scorelayer=scorelayer,
+                             startlayer=startlayer)
 
-        # Classify
-        [this_estlist, this_scorelist] = classify_from_imlist(patchlist, net, transformer, pyparams['batch_size'],
-                                                              scorelayer=scorelayer, startlayer=startlayer)
-
-        # Store
-        gtlist.extend(this_gtlist)
-        estlist.extend(this_estlist)
-        scorelist.extend(this_scorelist)
+    # Store
+    gtlist.extend(this_gtlist)
+    estlist.extend(this_estlist)
+    scorelist.extend(this_scorelist)
 
     return gtlist, estlist, scorelist

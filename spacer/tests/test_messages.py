@@ -48,7 +48,7 @@ class TestExtractFeaturesMsg(unittest.TestCase):
                           msg.serialize())
 
         msg = ExtractFeaturesMsg.example()
-        msg.modelname = 'invalid_modelname'
+        msg.feature_extractor_name = 'invalid_modelname'
         self.assertRaises(AssertionError,
                           ExtractFeaturesMsg.deserialize,
                           msg.serialize())

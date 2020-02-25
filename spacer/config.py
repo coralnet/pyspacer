@@ -15,6 +15,9 @@ FEATURE_EXTRACTOR_NAMES = ['dummy',
                            'vgg16_coralnet_ver1',
                            'efficientnet_b0_imagenet']
 
+TRAINER_NAMES = ['dummy',
+                 'minibatch']
+
 MODELS_BUCKET = 'spacer-tools'
 
 STORAGE_TYPES = ['s3', 'filesystem', 'memory']

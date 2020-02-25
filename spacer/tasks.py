@@ -4,6 +4,7 @@ import time
 
 import numpy as np
 import wget
+from PIL import Image
 
 from spacer.extract_features import feature_extractor_factory
 from spacer.messages import \
@@ -18,14 +19,14 @@ from spacer.train_classifier import trainer_factory
 
 
 def extract_features_task(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
-
     print("-> Extracting features for image pk:{}.".format(msg.pk))
 
     storage = storage_factory(msg.storage_type, msg.bucketname)
-    extractor = feature_extractor_factory(msg, storage)
-    features, return_message = extractor()
+    extractor = feature_extractor_factory(msg.feature_extractor_name)
+    features, return_msg = extractor(storage.load_image(msg.imkey),
+                                     msg.rowcols)
     storage.store_string(msg.outputkey, json.dumps(features.serialize()))
-    return return_message
+    return return_msg
 
 
 def train_classifier_task(msg: TrainClassifierMsg) -> TrainClassifierReturnMsg:
@@ -55,19 +56,12 @@ def deploy(msg: DeployMsg) -> DeployReturnMsg:
     wget.download(msg.im_url, local_impath)
 
     # Extract features
-    storage = storage_factory('filesystem', '')
-    extractor = feature_extractor_factory(ExtractFeaturesMsg(
-        pk=0,
-        modelname=msg.feature_extractor_name,
-        bucketname='',
-        imkey=local_impath,
-        rowcols=msg.rowcols,
-        outputkey='',
-    ), storage)
-    features, feats_return_message = extractor()
+    extractor = feature_extractor_factory(msg.feature_extractor_name)
+    features, feats_return_message = extractor(Image.open(local_impath),
+                                               msg.rowcols)
 
     # Classify
-    storage = storage_factory('s3', msg.bucketname)
+    storage = storage_factory(msg.storage_type, msg.bucketname)
     clf = storage.load_classifier(msg.classifier_key)
 
     scores = [clf.predict_proba(np.array(features[(row, col)]).reshape(1, -1))

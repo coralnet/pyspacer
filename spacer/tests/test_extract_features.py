@@ -2,13 +2,15 @@ import json
 import unittest
 import warnings
 
+from PIL import Image
+
 from spacer import config
+from spacer.extract_features import DummyExtractor, VGG16CaffeExtractor
 from spacer.messages import \
     ExtractFeaturesMsg, \
     ExtractFeaturesReturnMsg, \
     ImageFeatures
 from spacer.storage import storage_factory
-from spacer.extract_features import DummyExtractor, VGG16CaffeExtractor
 
 
 class TestDummyExtractor(unittest.TestCase):
@@ -16,7 +18,7 @@ class TestDummyExtractor(unittest.TestCase):
     def test_simple(self):
         msg = ExtractFeaturesMsg(
             pk=1,
-            modelname='dummy',
+            feature_extractor_name='dummy',
             bucketname='spacer-test',
             storage_type='memory',
             imkey='not_used',
@@ -24,10 +26,9 @@ class TestDummyExtractor(unittest.TestCase):
             outputkey='not_used'
         )
 
-        storage = storage_factory(msg.storage_type, msg.bucketname)
-        ext = DummyExtractor(msg, storage)
+        ext = DummyExtractor(4096)
 
-        features, return_msg = ext(msg)
+        features, return_msg = ext(Image.new('RGB', (100, 100)), msg.rowcols)
 
         self.assertTrue(isinstance(return_msg, ExtractFeaturesReturnMsg))
         self.assertTrue(isinstance(features, ImageFeatures))
@@ -49,7 +50,7 @@ class TestCaffeExtractor(unittest.TestCase):
 
         msg = ExtractFeaturesMsg(
             pk=1,
-            modelname='vgg16_coralnet_ver1',
+            feature_extractor_name='vgg16_coralnet_ver1',
             bucketname='spacer-test',
             storage_type='s3',
             imkey='edinburgh3.jpg',
@@ -80,7 +81,7 @@ class TestCaffeExtractor(unittest.TestCase):
 
         msg = ExtractFeaturesMsg(
             pk=1,
-            modelname='vgg16_coralnet_ver1',
+            feature_extractor_name='vgg16_coralnet_ver1',
             bucketname='spacer-test',
             storage_type='s3',
             imkey='kh6dydiix0.jpeg',
@@ -110,7 +111,7 @@ class TestCaffeExtractor(unittest.TestCase):
         """
         msg = ExtractFeaturesMsg(
             pk=1,
-            modelname='vgg16_coralnet_ver1',
+            feature_extractor_name='vgg16_coralnet_ver1',
             bucketname='spacer-test',
             storage_type='s3',
             imkey='sfq2mr5qbs.jpeg',
@@ -146,7 +147,7 @@ class TestCaffeExtractor(unittest.TestCase):
 
         msg = ExtractFeaturesMsg(
             pk=1,
-            modelname='vgg16_coralnet_ver1',
+            feature_extractor_name='vgg16_coralnet_ver1',
             bucketname='spacer-test',
             storage_type='s3',
             imkey='08bfc10v7t.png',

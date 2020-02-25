@@ -4,7 +4,7 @@ import os
 
 from spacer import tasks
 
-from spacer.messages import DeployMsg, DeployReturnMsg
+from spacer.messages import DeployMsg
 
 
 class TestDeploy(unittest.TestCase):

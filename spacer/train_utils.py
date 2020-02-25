@@ -1,4 +1,6 @@
 import json
+import string
+import random
 from typing import Tuple, List
 
 import numpy as np
@@ -177,3 +179,32 @@ def calc_acc(gt: List[int], est: List[int]) -> float:
             raise TypeError('Input est must be an array of ints')
 
     return float(sum([(g == e) for (g, e) in zip(gt, est)])) / len(gt)
+
+
+def make_random_labels(im_count,
+                       class_list,
+                       points_per_image,
+                       feature_dim,
+                       storage) -> ImageLabels:
+    """
+    Utility method for testing that generates an ImageLabels instance
+    complete with stored ImageFeatures.
+    """
+    labels = ImageLabels(data={})
+    for i in range(im_count):
+
+        # Generate random features (using labels to draw from a Gaussian).
+        point_labels = np.random.choice(class_list, points_per_image).tolist()
+        feats = ImageFeatures.make_random(point_labels, feature_dim)
+
+        # Generate a random string as imkey.
+        imkey = ''.join(random.choice(string.ascii_uppercase + string.digits)
+                        for _ in range(20))
+
+        # Store
+        storage.store_string(imkey, json.dumps(feats.serialize()))
+        labels.data[imkey] = [
+            (pf.row, pf.col, pl) for pf, pl in
+            zip(feats.point_features, point_labels)
+        ]
+    return labels
