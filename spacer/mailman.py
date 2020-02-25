@@ -6,7 +6,7 @@ import boto
 from boto.sqs.message import Message
 
 from spacer.messages import TaskMsg, TaskReturnMsg
-from spacer.tasks import extract_features_task, train_classifier_task, deploy
+from spacer.tasks import extract_features, train_classifier, deploy
 
 
 def grab_message(queue_group='spacer'):
@@ -49,8 +49,8 @@ def grab_message(queue_group='spacer'):
 def handle_message(task_msg: TaskMsg) -> TaskReturnMsg:
 
     task_defs = {
-        'extract_features': extract_features_task,
-        'train_classifier': train_classifier_task,
+        'extract_features': extract_features,
+        'train_classifier': train_classifier,
         'deploy': deploy
     }
 

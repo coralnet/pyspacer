@@ -2,7 +2,6 @@ import json
 import os
 import time
 
-import numpy as np
 import wget
 from PIL import Image
 
@@ -18,9 +17,9 @@ from spacer.storage import storage_factory
 from spacer.train_classifier import trainer_factory
 
 
-def extract_features_task(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
-    print("-> Extracting features for image pk:{}.".format(msg.pk))
+def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
 
+    print("-> Extracting features for image pk:{}.".format(msg.pk))
     storage = storage_factory(msg.storage_type, msg.bucketname)
     extractor = feature_extractor_factory(msg.feature_extractor_name)
     features, return_msg = extractor(storage.load_image(msg.imkey),
@@ -29,15 +28,20 @@ def extract_features_task(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
     return return_msg
 
 
-def train_classifier_task(msg: TrainClassifierMsg) -> TrainClassifierReturnMsg:
+def train_classifier(msg: TrainClassifierMsg) -> TrainClassifierReturnMsg:
+
     print("Training classifier pk:{}.".format(msg.pk))
-
     storage = storage_factory(msg.storage_type, msg.bucketname)
-
-    trainer = trainer_factory(msg, storage)
+    trainer = trainer_factory(msg.trainer_name)
 
     # Do the actual training
-    clf, val_results, return_message = trainer()
+    clf, val_results, return_message = trainer(
+        msg.traindata_key,
+        msg.valdata_key,
+        msg.nbr_epochs,
+        msg.pc_models_key,
+        storage
+    )
 
     # Store
     storage.store_classifier(msg.model_key, clf)

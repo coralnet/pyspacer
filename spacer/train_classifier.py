@@ -63,27 +63,26 @@ class DummyTrainer(ClassifierTrainer):
         labels = make_random_labels(self.n_traindata, self.class_list,
                                     self.points_per_image, self.feature_dim,
                                     storage)
-        # storage.store_string('traindata', json.dumps(labels.serialize()))
 
         # Call the train routine on dummy data to make sure the classifier
         # is trained and calibrated (so that it won't return NaNs when called).
         clf, ref_accs = train(labels, storage, nbr_epochs)
 
         nbr_val_pts = self.n_valdata*self.points_per_image
-        val_gts = np.random.choice(range(len(self.class_list)), nbr_val_pts)
-        val_ests = np.random.choice(range(len(self.class_list)), nbr_val_pts)
+        val_gts = np.random.choice(len(self.class_list), nbr_val_pts).tolist()
+        val_ests = np.random.choice(len(self.class_list), nbr_val_pts).tolist()
 
         return \
             clf, \
             ValResults(
-                scores=np.random.random(nbr_val_pts),
+                scores=np.random.random(nbr_val_pts).tolist(),
                 gt=val_gts,
                 est=val_ests,
                 classes=self.class_list
             ), \
             TrainClassifierReturnMsg(
                 acc=calc_acc(val_gts, val_ests),
-                pc_accs=np.random.random(len(pc_models_key)),
+                pc_accs=np.random.random(len(pc_models_key)).tolist(),
                 ref_accs=ref_accs,
                 runtime=time.time() - t0
             )
