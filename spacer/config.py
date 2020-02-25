@@ -11,16 +11,30 @@ warnings.simplefilter("ignore", ResourceWarning)
 
 LOCAL_MODEL_PATH = '/workspace/models'
 
-FEATURE_EXTRACTOR_NAMES = ['dummy',
-                           'vgg16_coralnet_ver1',
-                           'efficientnet_b0_imagenet']
+TASKS = [
+    'extract_features',
+    'train_classifier',
+    'deploy'
+]
 
-TRAINER_NAMES = ['dummy',
-                 'minibatch']
+FEATURE_EXTRACTOR_NAMES = [
+    'dummy',
+    'vgg16_coralnet_ver1',
+    'efficientnet_b0_imagenet'
+]
+
+TRAINER_NAMES = [
+    'dummy',
+    'minibatch'
+]
 
 MODELS_BUCKET = 'spacer-tools'
 
-STORAGE_TYPES = ['s3', 'filesystem', 'memory']
+STORAGE_TYPES = [
+    's3',
+    'filesystem',
+    'memory'
+]
 
 LOCAL_FIXTURE_DIR = os.path.join(os.path.dirname(
     os.path.abspath(__file__)), 'tests', 'fixtures')

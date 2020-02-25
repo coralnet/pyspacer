@@ -6,8 +6,8 @@ import glob
 import tqdm
 
 from spacer.messages import \
-    ImageLabels, \
     TrainClassifierMsg
+from spacer.data_classes import ImageLabels
 from spacer.storage import storage_factory
 from spacer.train_classifier import trainer_factory
 

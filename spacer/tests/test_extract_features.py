@@ -8,8 +8,8 @@ from spacer import config
 from spacer.extract_features import DummyExtractor, VGG16CaffeExtractor
 from spacer.messages import \
     ExtractFeaturesMsg, \
-    ExtractFeaturesReturnMsg, \
-    ImageFeatures
+    ExtractFeaturesReturnMsg
+from spacer.data_classes import ImageFeatures
 from spacer.storage import storage_factory
 
 

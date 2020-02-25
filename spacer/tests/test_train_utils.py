@@ -3,7 +3,7 @@ import json
 import unittest
 from typing import Tuple
 
-from spacer.messages import ImageLabels, ImageFeatures, PointFeatures
+from spacer.data_classes import ImageLabels, PointFeatures, ImageFeatures
 from spacer.storage import storage_factory
 from spacer.train_utils import calc_batch_size, chunkify, calc_acc, \
     load_image_data, load_batch_data

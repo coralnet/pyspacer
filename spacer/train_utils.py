@@ -7,7 +7,7 @@ import numpy as np
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.linear_model import SGDClassifier
 
-from spacer.messages import ImageLabels, ImageFeatures
+from spacer.data_classes import ImageLabels, ImageFeatures
 from spacer.storage import Storage
 
 

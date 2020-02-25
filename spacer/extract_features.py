@@ -7,8 +7,8 @@ from typing import Tuple
 from PIL import Image
 
 from spacer import config
-from spacer.messages import ExtractFeaturesReturnMsg, \
-    ImageFeatures, PointFeatures
+from spacer.messages import ExtractFeaturesReturnMsg
+from spacer.data_classes import PointFeatures, ImageFeatures
 from spacer.storage import download_model
 
 

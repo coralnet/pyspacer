@@ -9,9 +9,8 @@ from collections import defaultdict
 from sklearn.calibration import CalibratedClassifierCV
 
 from spacer.messages import \
-    TrainClassifierReturnMsg, \
-    ValResults, \
-    ImageLabels
+    TrainClassifierReturnMsg
+from spacer.data_classes import ImageLabels, ValResults
 
 from spacer.storage import Storage
 from spacer.train_utils import train, evaluate_classifier, calc_acc, \

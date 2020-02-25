@@ -64,7 +64,7 @@ def deploy(msg: DeployMsg) -> DeployReturnMsg:
     storage = storage_factory(msg.storage_type, msg.bucketname)
     clf = storage.load_classifier(msg.classifier_key)
 
-    scores = [clf.predict_proba(np.array(features[(row, col)]).reshape(1, -1))
+    scores = [clf.predict_proba(features.get_array((row, col)))
               for row, col in msg.rowcols]
 
     # Return
