@@ -5,7 +5,7 @@ import warnings
 from PIL import Image
 
 from spacer import config
-from spacer.extract_features import DummyExtractor, VGG16CaffeExtractor
+from spacer.extract_features import feature_extractor_factory
 from spacer.messages import \
     ExtractFeaturesMsg, \
     ExtractFeaturesReturnMsg
@@ -26,7 +26,8 @@ class TestDummyExtractor(unittest.TestCase):
             outputkey='not_used'
         )
 
-        ext = DummyExtractor(4096)
+        ext = feature_extractor_factory(msg.feature_extractor_name,
+                                        dummy_featuredim=4096)
 
         features, return_msg = ext(Image.new('RGB', (100, 100)), msg.rowcols)
 
@@ -59,9 +60,10 @@ class TestCaffeExtractor(unittest.TestCase):
         )
 
         storage = storage_factory(msg.storage_type, msg.bucketname)
-        ext = VGG16CaffeExtractor(msg, storage)
+        ext = feature_extractor_factory(msg.feature_extractor_name)
 
-        features, return_msg = ext(msg)
+        features, return_msg = ext(storage.load_image(msg.imkey),
+                                   msg.rowcols)
 
         self.assertTrue(isinstance(return_msg, ExtractFeaturesReturnMsg))
         self.assertTrue(isinstance(features, ImageFeatures))
@@ -88,10 +90,12 @@ class TestCaffeExtractor(unittest.TestCase):
             rowcols=[(148, 50), (60, 425)],
             outputkey='dummy',
         )
-        storage = storage_factory(msg.storage_type, msg.bucketname)
-        ext = VGG16CaffeExtractor(msg, storage)
 
-        features, return_msg = ext(msg)
+        storage = storage_factory(msg.storage_type, msg.bucketname)
+        ext = feature_extractor_factory(msg.feature_extractor_name)
+
+        features, return_msg = ext(storage.load_image(msg.imkey),
+                                   msg.rowcols)
 
         self.assertTrue(isinstance(return_msg, ExtractFeaturesReturnMsg))
         self.assertTrue(isinstance(features, ImageFeatures))
@@ -119,9 +123,10 @@ class TestCaffeExtractor(unittest.TestCase):
             outputkey='dummy'
         )
         storage = storage_factory(msg.storage_type, msg.bucketname)
-        ext = VGG16CaffeExtractor(msg, storage)
+        ext = feature_extractor_factory(msg.feature_extractor_name)
 
-        features, return_msg = ext(msg)
+        features, return_msg = ext(storage.load_image(msg.imkey),
+                                   msg.rowcols)
 
         self.assertTrue(isinstance(return_msg, ExtractFeaturesReturnMsg))
         self.assertTrue(isinstance(features, ImageFeatures))
@@ -155,8 +160,9 @@ class TestCaffeExtractor(unittest.TestCase):
             outputkey='na'
         )
         storage = storage_factory(msg.storage_type, msg.bucketname)
-        ext = VGG16CaffeExtractor(msg, storage)
-        features_new, return_msg = ext(msg)
+        ext = feature_extractor_factory(msg.feature_extractor_name)
+
+        features_new, _ = ext(storage.load_image(msg.imkey), msg.rowcols)
 
         features_legacy = ImageFeatures.deserialize(json.loads(
             storage.load_string('08bfc10v7t.png.featurevector')))

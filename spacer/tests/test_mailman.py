@@ -180,6 +180,7 @@ class TestGrabMessage(unittest.TestCase):
         m_result = self.post_job_get_result()
 
         body = json.loads(m_result.get_body())
+
         self.assertFalse(body['ok'])
         self.assertEqual(body['error_message'],
                          "Error deserializing message: KeyError('task',)")
