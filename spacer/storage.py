@@ -171,11 +171,9 @@ def storage_factory(storage_type: str, bucketname: Union[str, None] = None):
     elif storage_type == 'filesystem':
         print("-> Initializing filesystem storage")
         return FileSystemStorage()
-    elif storage_type == 'memory':
+    else:
         print("-> Initializing memory storage")
         return MemoryStorage()
-    else:
-        raise ValueError('Unknown storage type: {}'.format(storage_type))
 
 
 def download_model(keyname: str) -> Tuple[str, bool]:

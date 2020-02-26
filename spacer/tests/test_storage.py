@@ -192,5 +192,7 @@ class TestFactory(unittest.TestCase):
 
     def test_bad_storage_type(self):
 
-        self.assertRaises(ValueError, storage_factory, 'not_a_valid_storage')
+        self.assertRaises(AssertionError,
+                          storage_factory,
+                          'not_a_valid_storage')
 
