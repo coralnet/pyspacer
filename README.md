@@ -28,7 +28,7 @@ If you want to enter the docker container do: `docker run -it test3:Dockerfile b
 
 First generate report
 
-    coverage run --source=. --omit=spacer/tests/* -m unittest
+    coverage run --source=spacer --omit=spacer/tests/* -m unittest
     
 Render simple with
     

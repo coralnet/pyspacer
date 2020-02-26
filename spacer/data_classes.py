@@ -5,7 +5,7 @@ from typing import Dict, List, Tuple, Set, Optional, Union
 import numpy as np
 
 
-class DataClass(ABC):
+class DataClass(ABC):  # pragma: no cover
 
     @classmethod
     @abstractmethod

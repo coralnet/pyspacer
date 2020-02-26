@@ -182,7 +182,7 @@ def download_model(keyname: str) -> Tuple[str, bool]:
     """ Utility method to download model with to local cache. """
 
     destination = os.path.join(config.LOCAL_MODEL_PATH, keyname)
-    if not os.path.isfile(destination):
+    if not os.path.isfile(destination):  # pragma: no cover
         print("-> Downloading {}".format(keyname))
         conn = boto.connect_s3()
         bucket = conn.get_bucket(config.MODELS_BUCKET, validate=True)

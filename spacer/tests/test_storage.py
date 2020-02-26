@@ -186,3 +186,11 @@ class TestMemoryStorage(unittest.TestCase):
 
         clf2 = self.storage.load_classifier(self.tmp_model_file_name)
         self.assertTrue(isinstance(clf2, CalibratedClassifierCV))
+
+
+class TestFactory(unittest.TestCase):
+
+    def test_bad_storage_type(self):
+
+        self.assertRaises(ValueError, storage_factory, 'not_a_valid_storage')
+
