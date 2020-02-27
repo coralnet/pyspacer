@@ -21,6 +21,7 @@ class FeatureExtractor(abc.ABC):  # pragma: no cover
             -> Tuple[ImageFeatures, ExtractFeaturesReturnMsg]:
         pass
 
+    @property
     @abc.abstractmethod
     def feature_dim(self) -> int:
         """ Returns the feature dimension of extractor. """
@@ -34,7 +35,7 @@ class DummyExtractor(FeatureExtractor):
     Note that feature dimension is compatible with the VGG16CaffeExtractor.
     """
     def __init__(self, feature_dim):
-        self.feature_dim = feature_dim
+        self._feature_dim = feature_dim
 
     def __call__(self, im, rowcols):
         return ImageFeatures(
@@ -48,8 +49,9 @@ class DummyExtractor(FeatureExtractor):
             feature_dim=4096
         ), ExtractFeaturesReturnMsg.example()
 
+    @property
     def feature_dim(self):
-        return self.feature_dim
+        return self._feature_dim
 
 
 class VGG16CaffeExtractor(FeatureExtractor):
@@ -99,6 +101,7 @@ class VGG16CaffeExtractor(FeatureExtractor):
                 runtime=time.time() - t0
             )
 
+    @property
     def feature_dim(self):
         return 4096
 
