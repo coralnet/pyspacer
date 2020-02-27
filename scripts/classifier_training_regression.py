@@ -1,15 +1,15 @@
 import glob
 import json
 import os
-import re
 
 import boto
 import fire
 import tqdm
 
+import warnings
+
 from spacer import config
 from spacer.data_classes import ImageLabels
-from spacer.messages import TrainClassifierMsg
 from spacer.storage import storage_factory
 from spacer.train_classifier import trainer_factory
 
@@ -27,12 +27,13 @@ class ClassifierRegressionTest:
 
     @staticmethod
     def _cache_local(source_root, image_root, export_name, source_id):
+
         """ Download source data to local """
         conn = boto.connect_s3()
         bucket = conn.get_bucket('spacer-trainingdata', validate=True)
         if not os.path.exists(source_root):
             os.mkdir(source_root)
-        if not os.path.exists(self.image_root):
+        if not os.path.exists(image_root):
             os.mkdir(image_root)
 
         mdkey = bucket.get_key('{}/s{}/meta.json'.format(
@@ -55,38 +56,42 @@ class ClassifierRegressionTest:
             if not os.path.exists(local_path):
                 key.get_contents_to_filename(local_path)
 
-    def run(self,
-            source_id: int,
-            local_path: str,
-            export_name: str = 'beta_export_v2'):
+    def train(self,
+              source_id: int,
+              local_path: str,
+              export_name: str = 'beta_export_v2'):
+
+        # Sci-kit learns calibration step throws out a ton of warnings.
+        # That we don't need to see here.
+        warnings.simplefilter('ignore', RuntimeWarning)
 
         source_root = os.path.join(local_path, 's{}'.format(source_id))
         image_root = os.path.join(source_root, 'images')
 
         # Download all data to local.
-        # Train and eval Will run much faster that way.
+        # Train and eval will run much faster that way...
+        print('Downloading data for source id: {}.'.format(source_id))
         self._cache_local(source_root, image_root, export_name, source_id)
 
         # Create the train and val ImageLabels data structures.
-        print("-> Assembling train and val data.")
+        print('-> Assembling train and val data for source id: {}'.format(
+            source_id))
         files = glob.glob(os.path.join(image_root, "*.json"))
         train_labels = ImageLabels(data={})
         val_labels = ImageLabels(data={})
-        p = re.compile('([0-9]*).anns.json')
         for itt, filename in enumerate(files):
             if 'anns' in filename:
                 with open(filename) as fp:
                     anns = json.load(fp)
-                # Get primary key for this image.
-                # This is how CoralNet divides up val vs train.
-                # TODO: get train/val split from metadata file.
-                pk = int(p.findall(filename)[0])
-                if pk % 8 == 0:
-                    labels = val_labels
-                else:
+                meta_filename = filename.replace('anns', 'meta')
+                with open(meta_filename) as fp:
+                    meta = json.load(fp)
+                if meta['in_trainset']:
                     labels = train_labels
-                feature_key = filename.replace('anns', 'features')
-                labels.data[feature_key] = [
+                else:
+                    assert meta['in_valset']
+                    labels = val_labels
+                labels.data[filename.replace('anns', 'features')] = [
                     (ann['row'], ann['col'], ann['label']) for ann in anns
                 ]
 
@@ -101,25 +106,20 @@ class ClassifierRegressionTest:
             valdata_key,
             json.dumps(val_labels.serialize()))
 
-        msg = TrainClassifierMsg(
-            pk=1,
-            model_key='na',
-            traindata_key=traindata_key,
-            valdata_key=valdata_key,
-            valresult_key='na',
-            nbr_epochs=5,
-            pc_models_key=[],
-            pc_pks=[],
-            bucketname='na',
-            storage_type='filesystem'
-        )
-
         # Perform training
-        print("-> Training.")
-        trainer = trainer_factory(msg, storage)
-        clf, val_results, return_message = trainer()
-        # TODO, compare to accuracy in source level metadata
-        print(return_message.acc)
+        print("-> Training...")
+        trainer = trainer_factory('minibatch')
+        clf, val_results, return_message = trainer(
+            traindata_key, valdata_key, 5, [], storage)
+        with open(os.path.join(source_root, 'meta.json')) as fp:
+            source_meta = json.load(fp)
+
+        print('Re-trained {} ({}). Old acc: {:.1f}, new acc: {:.1f}'.format(
+            source_meta['name'],
+            source_meta['pk'],
+            100 * float(source_meta['best_robot_accuracy']),
+            100 * return_message.acc)
+        )
 
     @staticmethod
     def list(export_name: str = 'beta_export_v2'):
@@ -129,18 +129,20 @@ class ClassifierRegressionTest:
                                config.AWS_SECRET_ACCESS_KEY)
         bucket = conn.get_bucket('spacer-trainingdata', validate=True)
 
-        source_keys = bucket.list(prefix='{}/s'.format(export_name))
+        source_keys = bucket.list(prefix='{}/s'.format(export_name),
+                                  delimiter='images')
+        meta_keys = [key for key in source_keys if key.name.endswith('json')]
 
-        for source_key in source_keys:
-
-            print(source_key.name)
-            meta_key_name = '{}/{}/meta.json'.format(export_name,
-                                                     source_key.name)
-            print(meta_key_name)
-            meta_key = bucket.get_key(meta_key_name)
-
-            md = json.loads(meta_key.get_content_to_string())
-            print(md)
+        header_format = '{:>30}, {:>4}, {:>6}, {}\n{}'
+        print(header_format.format('Name', 'id', 'n_imgs', 'acc (%)', '-'*53))
+        entry_format = '{:>30}, {:>4}, {:>6}, {:.1f}%'
+        for meta_key in meta_keys:
+            md = json.loads(meta_key.get_contents_as_string().decode('UTF-8'))
+            print(entry_format.format(
+                md['name'][:20],
+                md['pk'],
+                md['nbr_confirmed_images'],
+                100*float(md['best_robot_accuracy'])))
 
 
 if __name__ == '__main__':
