@@ -22,18 +22,6 @@ class Transformer:
         self.mean = np.array(mean, dtype=np.float32)
         self.scale = 1.0
 
-    def set_mean(self, mean):
-        """
-        Set the mean to subtract for centering the data.
-        """
-        self.mean = mean
-
-    def set_scale(self, scale):
-        """
-        Set the data scaling.
-        """
-        self.scale = scale
-
     def preprocess(self, im):
         """
         preprocess() emulate the pre-processing occurring
@@ -91,15 +79,6 @@ def classify_from_imlist(im_list, net, transformer, batch_size,
     estlist = [np.argmax(s) for s in scorelist]
 
     return estlist, scorelist
-
-
-def rgb2gray(im):
-    """ Converts RGB to gray scale """
-    im = copy(im)
-    m = np.mean(im, axis=2)
-    for i in range(3):
-        im[:, :, i] = m
-    return im
 
 
 def gray2rgb(im):

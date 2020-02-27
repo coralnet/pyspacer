@@ -206,24 +206,6 @@ class TestSQSMailman(unittest.TestCase):
         self.assertEqual(body['error_message'],
                          "Error deserializing message: KeyError('task',)")
 
-    def test_valid_body_but_failed_process(self):
-
-        if not self.sqs_access:
-            return 1
-
-        m_job = self.jobqueue.new_message(body=json.dumps(
-            TaskMsg.example().serialize()))
-        self.jobqueue.write(m_job)
-
-        m_result = self.post_job_get_result()
-
-        body = json.loads(m_result.get_body())
-        return_msg = TaskReturnMsg.deserialize(body)
-        self.assertFalse(return_msg.ok)
-        self.assertEqual(return_msg.error_message,
-                         'ValueError("unknown url '
-                         'type: \'www.my.image.jpg\'",)')
-
     def test_nominal_train_classifier(self):
 
         msg = TaskMsg(
@@ -251,8 +233,6 @@ class TestSQSMailman(unittest.TestCase):
 
         self.assertTrue(return_msg.ok)
         self.assertTrue(type(return_msg.results), TrainClassifierReturnMsg)
-
-
 
 
 if __name__ == '__main__':
