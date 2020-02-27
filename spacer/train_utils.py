@@ -1,12 +1,13 @@
 import json
-import string
 import random
+import string
 from typing import Tuple, List
 
 import numpy as np
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.linear_model import SGDClassifier
 
+from spacer import config
 from spacer.data_classes import ImageLabels, ImageFeatures
 from spacer.storage import Storage
 
@@ -15,7 +16,7 @@ def train(labels: ImageLabels,
           storage: Storage,
           nbr_epochs: int) -> Tuple[CalibratedClassifierCV, List[float]]:
 
-    if len(labels) < 10:
+    if len(labels) < config.MIN_TRAINIMAGES:
         raise ValueError('Not enough training samples.')
 
     # Calculate max nbr images to keep in memory (for 5000 samples total).
@@ -181,11 +182,11 @@ def calc_acc(gt: List[int], est: List[int]) -> float:
     return float(sum([(g == e) for (g, e) in zip(gt, est)])) / len(gt)
 
 
-def make_random_labels(im_count,
-                       class_list,
-                       points_per_image,
-                       feature_dim,
-                       storage) -> ImageLabels:
+def make_random_data(im_count,
+                     class_list,
+                     points_per_image,
+                     feature_dim,
+                     storage) -> ImageLabels:
     """
     Utility method for testing that generates an ImageLabels instance
     complete with stored ImageFeatures.

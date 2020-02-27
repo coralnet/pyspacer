@@ -1,15 +1,114 @@
 import itertools
 import json
+import warnings
 import unittest
 from typing import Tuple
 
+from spacer import config
 from spacer.data_classes import ImageLabels, PointFeatures, ImageFeatures
 from spacer.storage import storage_factory
-from spacer.train_utils import calc_batch_size, chunkify, calc_acc, \
-    load_image_data, load_batch_data
+from spacer.train_utils import train, calc_batch_size, chunkify, calc_acc, \
+    load_image_data, load_batch_data, make_random_data, evaluate_classifier
+
+from spacer.train_classifier import trainer_factory
+
+
+class TestTrain(unittest.TestCase):
+
+    def setUp(self):
+        warnings.simplefilter("ignore", ResourceWarning)
+
+    def test_nominal(self):
+
+        n_traindata = config.MIN_TRAINIMAGES + 1
+        points_per_image = 20
+        feature_dim = 5
+        class_list = [1, 2]
+        num_epochs = 4
+        storage = storage_factory('memory')
+
+        labels = make_random_data(n_traindata,
+                                  class_list,
+                                  points_per_image,
+                                  feature_dim,
+                                  storage)
+
+        clf_calibrated, ref_acc = train(labels, storage, num_epochs)
+
+        self.assertEqual(len(ref_acc), num_epochs)
+
+    def test_too_few_images(self):
+        n_traindata = config.MIN_TRAINIMAGES - 1
+        points_per_image = 20
+        feature_dim = 5
+        class_list = [1, 2]
+        num_epochs = 4
+        storage = storage_factory('memory')
+
+        labels = make_random_data(n_traindata,
+                                  class_list,
+                                  points_per_image,
+                                  feature_dim,
+                                  storage)
+
+        self.assertRaises(ValueError, train, labels, storage, num_epochs)
+
+    def test_too_few_classes(self):
+        """ Can't train with only 1 class! """
+        n_traindata = config.MIN_TRAINIMAGES + 1
+        points_per_image = 20
+        feature_dim = 5
+        class_list = [1]
+        num_epochs = 4
+        storage = storage_factory('memory')
+
+        labels = make_random_data(n_traindata,
+                                  class_list,
+                                  points_per_image,
+                                  feature_dim,
+                                  storage)
+
+        self.assertRaises(ValueError, train, labels, storage, num_epochs)
+
+
+class TestEvaluateClassifier(unittest.TestCase):
+
+    def setUp(self):
+        warnings.simplefilter("ignore", ResourceWarning)
+
+    def test_nominal(self):
+
+        # Generate a classifier first using the dummy trainer
+        trainer = trainer_factory('dummy',
+                                  dummy_kwargs={'feature_dim': 5,
+                                                'class_list': [1, 2]})
+        clf,  _, _ = trainer('n/a', 'n/a', 2, [], storage_factory('memory'))
+        storage = storage_factory('memory')
+        val_data = make_random_data(3, [1, 2], 4, 5, storage)
+        gts, ests, scores = evaluate_classifier(clf, val_data, [1, 2], storage)
+        self.assertTrue(1 in gts)
+        self.assertTrue(2 in gts)
+
+    def test_no_gt(self):
+        # Generate a classifier first using the dummy trainer
+        trainer = trainer_factory('dummy',
+                                  dummy_kwargs={'feature_dim': 5,
+                                                'class_list': [1, 2]})
+        clf, _, _ = trainer('n/a', 'n/a', 2, [], storage_factory('memory'))
+        storage = storage_factory('memory')
+
+        # Note here that class_list for the val_data doesn't include
+        # any samples from classes [1, 2] so the gt will be empty,
+        # which will raise an exception.
+        val_data = make_random_data(3, [3], 4, 5, storage)
+        self.assertRaises(ValueError, evaluate_classifier,
+                          clf, val_data, [1, 2], storage)
 
 
 class TestCalcBatchSize(unittest.TestCase):
+
+    def setUp(self):
+        warnings.simplefilter("ignore", ResourceWarning)
 
     def test1(self):
 
@@ -29,6 +128,9 @@ class TestCalcBatchSize(unittest.TestCase):
 
 
 class TestChunkify(unittest.TestCase):
+
+    def setUp(self):
+        warnings.simplefilter("ignore", ResourceWarning)
 
     def test1(self):
         out = chunkify(list(range(10)), 3)
@@ -65,6 +167,7 @@ class TestLoadImageData(unittest.TestCase):
 
         self.feat_key = 'tmp_features'
         self.storage = storage_factory('memory', '')
+        warnings.simplefilter("ignore", ResourceWarning)
 
     def fixtures(self, in_order=True, valid_rowcol=True) \
             -> Tuple[ImageLabels, ImageFeatures]:
@@ -167,7 +270,7 @@ class TestLoadImageData(unittest.TestCase):
         Here we pretend the features are legacy such that row, col
         information is not available.
         """
-        labels, features = self.fixtures(in_order=True, valid_rowcol=True)
+        labels, features = self.fixtures(in_order=True, valid_rowcol=False)
 
         x, y = load_image_data(labels, self.feat_key, [1], self.storage)
 
@@ -185,6 +288,7 @@ class TestLoadBatchData(unittest.TestCase):
         self.feat_key1 = 'tmp_features1'
         self.feat_key2 = 'tmp_features2'
         self.storage = storage_factory('memory', '')
+        warnings.simplefilter("ignore", ResourceWarning)
 
     def fixtures(self, valid_rowcol=True) \
             -> Tuple[ImageLabels, ImageFeatures, ImageFeatures]:

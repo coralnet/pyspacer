@@ -130,7 +130,7 @@ class TestProcessTask(unittest.TestCase):
         self.assertTrue(type(return_msg), TaskReturnMsg)
 
 
-class TestGrabMessage(unittest.TestCase):
+class TestSQSMailman(unittest.TestCase):
 
     @staticmethod
     def purge_queue(queue, name):
@@ -184,6 +184,11 @@ class TestGrabMessage(unittest.TestCase):
             time.sleep(1)
             m_result = self.resqueue.read()
         return m_result
+
+    def test_empty_queue(self):
+        found_message = sqs_mailman(queue_group=self.queue_group)
+        # Queue should be purge by setUp.
+        self.assertFalse(found_message)
 
     def test_nonsense_body(self):
         if not self.sqs_access:

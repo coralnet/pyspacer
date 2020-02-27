@@ -12,7 +12,7 @@ from sklearn.linear_model import SGDClassifier
 
 from spacer import config
 from spacer.data_classes import ImageFeatures
-from spacer.storage import storage_factory
+from spacer.storage import storage_factory, download_model
 
 
 @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
@@ -195,4 +195,25 @@ class TestFactory(unittest.TestCase):
         self.assertRaises(AssertionError,
                           storage_factory,
                           'not_a_valid_storage')
+
+
+class TestDownloadModel(unittest.TestCase):
+
+    def test_nominal(self):
+
+        keyname = 'vgg16_coralnet_ver1.deploy.prototxt'
+        destination = os.path.join(config.LOCAL_MODEL_PATH, keyname)
+        storage = storage_factory('filesystem')
+        if storage.exists(destination):
+            storage.delete(destination)
+
+        destination_, was_cached = download_model(keyname)
+        self.assertFalse(was_cached)
+        self.assertTrue(storage.exists(destination))
+        self.assertEqual(destination_, destination)
+
+        destination_, was_cached = download_model(keyname)
+        self.assertTrue(was_cached)
+
+
 

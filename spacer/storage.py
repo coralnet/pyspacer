@@ -177,10 +177,15 @@ def storage_factory(storage_type: str, bucketname: Union[str, None] = None):
 
 
 def download_model(keyname: str) -> Tuple[str, bool]:
-    """ Utility method to download model with to local cache. """
+    """
+    Utility method to download model to local cache.
+    This is not part of the storage interface since it is a special case,
+    and models need to be downloaded to a specific destination folder to be
+    shared with host filesystem.
+    """
 
     destination = os.path.join(config.LOCAL_MODEL_PATH, keyname)
-    if not os.path.isfile(destination):  # pragma: no cover
+    if not os.path.isfile(destination):
         print("-> Downloading {}".format(keyname))
         conn = boto.connect_s3()
         bucket = conn.get_bucket(config.MODELS_BUCKET, validate=True)

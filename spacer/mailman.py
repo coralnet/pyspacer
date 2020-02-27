@@ -73,4 +73,4 @@ def process_task(task_msg: TaskMsg) -> TaskReturnMsg:
 
 
 if __name__ == '__main__':
-    sqs_mailman()
+    sqs_mailman()  # pragma: no cover

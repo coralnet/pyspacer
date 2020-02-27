@@ -14,7 +14,7 @@ from spacer.data_classes import ImageLabels, ValResults
 
 from spacer.storage import Storage
 from spacer.train_utils import train, evaluate_classifier, calc_acc, \
-    make_random_labels
+    make_random_data
 
 
 class ClassifierTrainer(abc.ABC):  # pragma: no cover
@@ -60,9 +60,9 @@ class DummyTrainer(ClassifierTrainer):
         t0 = time.time()
         np.random.seed(0)
 
-        labels = make_random_labels(self.n_traindata, self.class_list,
-                                    self.points_per_image, self.feature_dim,
-                                    storage)
+        labels = make_random_data(self.n_traindata, self.class_list,
+                                  self.points_per_image, self.feature_dim,
+                                  storage)
 
         # Call the train routine on dummy data to make sure the classifier
         # is trained and calibrated (so that it won't return NaNs when called).

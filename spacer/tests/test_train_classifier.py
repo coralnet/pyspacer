@@ -1,6 +1,7 @@
 import json
 import unittest
 import random
+import warnings
 
 import numpy as np
 
@@ -8,17 +9,18 @@ from spacer import config
 
 from spacer.storage import storage_factory
 from spacer.train_classifier import trainer_factory
-from spacer.train_utils import make_random_labels
+from spacer.train_utils import make_random_data
 
 
 @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
 class TestDefaultTrainerDummyData(unittest.TestCase):
 
     def setUp(self):
+        warnings.simplefilter("ignore", ResourceWarning)
         np.random.seed(0)
         random.seed(0)
 
-    def test_gaussian(self):
+    def test_nominal(self):
         n_valdata = 20
         n_traindata = 200
         points_per_image = 20
@@ -28,18 +30,18 @@ class TestDefaultTrainerDummyData(unittest.TestCase):
         num_epochs = 4
 
         # First create data to train on.
-        labels = make_random_labels(n_valdata,
-                                    class_list,
-                                    points_per_image,
-                                    feature_dim,
-                                    storage)
+        labels = make_random_data(n_valdata,
+                                  class_list,
+                                  points_per_image,
+                                  feature_dim,
+                                  storage)
         storage.store_string('valdata', json.dumps(labels.serialize()))
 
-        labels = make_random_labels(n_traindata,
-                                    class_list,
-                                    points_per_image,
-                                    feature_dim,
-                                    storage)
+        labels = make_random_data(n_traindata,
+                                  class_list,
+                                  points_per_image,
+                                  feature_dim,
+                                  storage)
         storage.store_string('traindata', json.dumps(labels.serialize()))
 
         # Then use the dummy-trainer to train two "previous" classifier
@@ -72,6 +74,9 @@ class TestDefaultTrainerDummyData(unittest.TestCase):
 
 
 class TestDummyTrainer(unittest.TestCase):
+
+    def setUp(self):
+        warnings.simplefilter("ignore", ResourceWarning)
 
     def test_nominal(self):
         storage = storage_factory('memory')

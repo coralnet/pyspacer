@@ -39,6 +39,9 @@ STORAGE_TYPES = [
 LOCAL_FIXTURE_DIR = os.path.join(os.path.dirname(
     os.path.abspath(__file__)), 'tests', 'fixtures')
 
+# The train_classifier task require as least this many images.
+MIN_TRAINIMAGES = 10
+
 # Check access to select which tests to run.
 HAS_CAFFE = importlib.util.find_spec("caffe") is not None
 
