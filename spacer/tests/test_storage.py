@@ -25,7 +25,8 @@ class TestS3Storage(unittest.TestCase):
         self.tmp_model_key = 'tmp_model.pkl'
         self.storage = storage_factory('s3', 'spacer-test')
 
-        conn = boto.connect_s3()
+        conn = boto.connect_s3(config.AWS_ACCESS_KEY_ID,
+                               config.AWS_SECRET_ACCESS_KEY)
         self.bucket = conn.get_bucket('spacer-test')
 
     def tearDown(self):
@@ -199,6 +200,7 @@ class TestFactory(unittest.TestCase):
 
 class TestDownloadModel(unittest.TestCase):
 
+    @unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
     def test_nominal(self):
 
         keyname = 'vgg16_coralnet_ver1.deploy.prototxt'

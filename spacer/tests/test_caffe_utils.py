@@ -4,7 +4,6 @@ import numpy as np
 from PIL import Image
 
 from spacer import config
-from spacer.caffe_utils import classify_from_patchlist, gray2rgb, Transformer
 from spacer.storage import download_model
 
 
@@ -12,6 +11,7 @@ from spacer.storage import download_model
 class TestTransformer(unittest.TestCase):
 
     def test_process(self):
+        from spacer.caffe_utils import Transformer
         trans = Transformer()
         im_pil = Image.new('RGB', (50, 50))
         im_arr = np.asarray(im_pil)
@@ -29,6 +29,7 @@ class TestClassifyFromPatchList(unittest.TestCase):
             'vgg16_coralnet_ver1.caffemodel')
 
     def test_rgb(self):
+        from spacer.caffe_utils import classify_from_patchlist
 
         caffe_params = {'im_mean': [128, 128, 128],
                         'scaling_method': 'scale',
@@ -46,6 +47,7 @@ class TestClassifyFromPatchList(unittest.TestCase):
         self.assertEqual(len(feats[0]), 4096)
 
     def test_gray(self):
+        from spacer.caffe_utils import classify_from_patchlist
         caffe_params = {'im_mean': [128, 128, 128],
                         'scaling_method': 'scale',
                         'crop_size': 224,
@@ -66,7 +68,7 @@ class TestClassifyFromPatchList(unittest.TestCase):
 class TestGray2RGB(unittest.TestCase):
 
     def test_nominal(self):
-
+        from spacer.caffe_utils import gray2rgb
         out_arr = gray2rgb(np.array(Image.new('L', (200, 200))))
         out_im = Image.fromarray(out_arr)
         self.assertEqual(out_im.mode, "RGB")

@@ -4,6 +4,7 @@ import warnings
 
 from PIL import Image
 
+from spacer import config
 from spacer.messages import \
     ExtractFeaturesMsg, \
     ExtractFeaturesReturnMsg, \
@@ -11,7 +12,6 @@ from spacer.messages import \
     TrainClassifierReturnMsg, \
     DeployMsg, \
     DeployReturnMsg
-
 from spacer.tasks import extract_features, train_classifier, deploy
 
 
@@ -78,6 +78,7 @@ class TestDeploy(unittest.TestCase):
         if os.path.exists('baboon.png'):
             os.remove('baboon.png')
 
+    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to tests')
     def test_deploy_simple(self):
         msg = DeployMsg(
             pk=0,

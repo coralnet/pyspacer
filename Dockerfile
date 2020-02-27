@@ -32,7 +32,8 @@ WORKDIR $CAFFE_ROOT
 ENV CLONE_TAG=1.0
 
 RUN git clone -b ${CLONE_TAG} --depth 1 https://github.com/BVLC/caffe.git . && \
-    cd python && for req in $(cat requirements.txt) pydot 'python-dateutil>2'; do pip3 install $req; done && cd .. && \
+    cd python && for req in $(cat requirements.txt) pydot 'python-dateutil>2'; \
+    do pip3 install $req; done && cd .. && \
     mkdir build && cd build && \
     cmake -DCPU_ONLY=1 -Dpython_version=3 .. && \
     make -j"$(nproc)"
@@ -44,7 +45,8 @@ RUN echo "$CAFFE_ROOT/build/lib" >> /etc/ld.so.conf.d/caffe.conf && ldconfig
 
 WORKDIR /workspace
 
-# Note, the proper way to use the mapler dockerfile would be to inherit FROM that definition.
+# Note, the proper way to use the mapler dockerfile would be to inherit
+# FROM that definition.
 # But when trying that it was compiled with CUDA, so it gave me trouble.
 # Start spacer Custom comments
 
@@ -65,21 +67,17 @@ RUN pip3 install scipy==0.19.1
 RUN pip3 install numpy==1.17.0
 RUN pip3 install coverage==5.0.3
 RUN pip3 install tqdm==4.43.0
+RUN pip3 install fire==0.2.1
 
 # Reduce caffe logging to not spam the console.
 ENV GLOG_minloglevel=2
-
-WORKDIR /root/.aws
-COPY secrets credentials
 
 WORKDIR /workspace
 COPY . spacer
 RUN PYTHONPATH=$PYTHONPATH:/workspace/spacer
 RUN mkdir models
 
-
 WORKDIR spacer
-# RUN pip3 install -r requirements.txt
-CMD coverage run --source=. --omit=spacer/tests/* -m unittest; coverage report -m
+CMD coverage run --source=spacer --omit=spacer/tests/* -m unittest; coverage report -m
 
 

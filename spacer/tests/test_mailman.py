@@ -6,6 +6,7 @@ import time
 
 from boto import sqs
 
+from spacer import config
 from spacer.mailman import process_task, sqs_mailman
 from spacer.messages import \
     TaskMsg, \
@@ -130,6 +131,7 @@ class TestProcessTask(unittest.TestCase):
         self.assertTrue(type(return_msg), TaskReturnMsg)
 
 
+@unittest.skipUnless(config.HAS_SQS_QUEUE_ACCESS, 'No SQS access.')
 class TestSQSMailman(unittest.TestCase):
 
     @staticmethod
@@ -146,14 +148,18 @@ class TestSQSMailman(unittest.TestCase):
 
     def setUp(self):
         self.queue_group = 'spacer_test'
-        conn = sqs.connect_to_region("us-west-2")
-        self.jobqueue = conn.get_queue('{}_jobs'.format(self.queue_group))
+        self.conn = sqs.connect_to_region(
+            "us-west-2",
+            aws_access_key_id=config.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=config.AWS_SECRET_ACCESS_KEY
+        )
+        self.jobqueue = self.conn.get_queue('{}_jobs'.format(self.queue_group))
         if self.jobqueue is None:
             self.sqs_access = False
             return
 
         self.sqs_access = True
-        self.resqueue = conn.get_queue('{}_results'.format(self.queue_group))
+        self.resqueue = self.conn.get_queue('{}_results'.format(self.queue_group))
 
         self.purge_queue(self.jobqueue, 'jobqueue')
         self.purge_queue(self.resqueue, 'resqueue')
@@ -161,14 +167,13 @@ class TestSQSMailman(unittest.TestCase):
     def tearDown(self):
 
         self.queue_group = 'spacer_test'
-        conn = sqs.connect_to_region("us-west-2")
-        self.jobqueue = conn.get_queue('{}_jobs'.format(self.queue_group))
+        self.jobqueue = self.conn.get_queue('{}_jobs'.format(self.queue_group))
         if self.jobqueue is None:
             self.sqs_access = False
             return
 
         self.sqs_access = True
-        self.resqueue = conn.get_queue('{}_results'.format(self.queue_group))
+        self.resqueue = self.conn.get_queue('{}_results'.format(self.queue_group))
         self.purge_queue(self.jobqueue, 'jobqueue')
         self.purge_queue(self.resqueue, 'resqueue')
 
@@ -210,7 +215,7 @@ class TestSQSMailman(unittest.TestCase):
 
         msg = TaskMsg(
             task='train_classifier',
-            payload = TrainClassifierMsg(
+            payload=TrainClassifierMsg(
                 pk=0,
                 model_key='my_model',
                 trainer_name='dummy',

@@ -7,3 +7,4 @@ numpy==1.17.0
 Pillow==5.1.0
 coverage==5.0.3
 tqdm==4.43.0
+fire==0.2.1
