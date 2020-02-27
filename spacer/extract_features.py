@@ -127,8 +127,6 @@ def feature_extractor_factory(modelname,
         print("-> Initializing EfficientNetExtractor")
         raise NotImplementedError()
         # return EfficientNetExtractor()
-    elif modelname == 'dummy':
+    else:
         print("-> Initializing DummyExtractor")
         return DummyExtractor(dummy_featuredim)
-    else:
-        raise ValueError('Unknown modelname: {}'.format(modelname))

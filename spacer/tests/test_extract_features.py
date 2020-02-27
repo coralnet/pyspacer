@@ -38,6 +38,13 @@ class TestDummyExtractor(unittest.TestCase):
         self.assertEqual(features.point_features[0].row, 100)
         self.assertEqual(features.point_features[0].col, 100)
 
+    def test_dims(self):
+
+        feature_dim = 42
+        ext = feature_extractor_factory('dummy',
+                                        dummy_featuredim=feature_dim)
+        self.assertEqual(ext.feature_dim, feature_dim)
+
 
 class TestCaffeExtractor(unittest.TestCase):
 
@@ -71,6 +78,12 @@ class TestCaffeExtractor(unittest.TestCase):
         # Check some feature metadata
         self.assertEqual(features.point_features[0].row, 100)
         self.assertEqual(features.point_features[0].col, 100)
+
+    @unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
+    @unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
+    def test_dims(self):
+        ext = feature_extractor_factory('vgg16_coralnet_ver1')
+        self.assertEqual(ext.feature_dim, 4096)
 
     @unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
     @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')

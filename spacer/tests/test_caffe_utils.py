@@ -4,8 +4,19 @@ import numpy as np
 from PIL import Image
 
 from spacer import config
-from spacer.caffe_utils import classify_from_patchlist, gray2rgb
+from spacer.caffe_utils import classify_from_patchlist, gray2rgb, Transformer
 from spacer.storage import download_model
+
+
+@unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
+class TestTransformer(unittest.TestCase):
+
+    def test_process(self):
+        trans = Transformer()
+        im_pil = Image.new('RGB', (50, 50))
+        im_arr = np.asarray(im_pil)
+        im_arr2 = trans.deprocess(trans.preprocess(im_arr))
+        self.assertTrue(np.array_equal(im_arr, im_arr2))
 
 
 @unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
