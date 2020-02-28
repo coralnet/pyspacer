@@ -15,8 +15,8 @@ warnings.simplefilter("ignore", ResourceWarning)
 secrets_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                             '..', 'secrets.json')
 
-if not os.path.exists(secrets_path):
-    RuntimeWarning('secrets.json not found')  # pragma: no cover
+if not os.path.exists(secrets_path):  # pragma: no cover
+    RuntimeWarning('secrets.json not found')
     AWS_ACCESS_KEY_ID = ''
     AWS_SECRET_ACCESS_KEY = ''
 else:
