@@ -1,3 +1,7 @@
+# PySpacer
+
+[![Build Status](https://travis-ci.org/beijbom/pyspacer.svg?branch=master)](https://travis-ci.org/beijbom/pyspacer)
+
 This repository provide utilities to extract features from random point locations in images and then training classifiers over those features.
 It is used heavily with `https://github.com/beijbom/coralnet`.
 
