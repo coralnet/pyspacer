@@ -69,6 +69,8 @@ RUN pip3 install scikit-image==0.15.0
 RUN pip3 install scipy==0.19.1
 RUN pip3 install numpy==1.17.0
 RUN pip3 install Pillow==6.2.0
+RUN pip3 install torch==1.4.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+RUN pip3 install torchvision==0.5.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
 
 
 # Reduce caffe logging to not spam the console.
