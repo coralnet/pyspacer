@@ -46,7 +46,7 @@ def sqs_mailman(queue_group='spacer') -> bool:
     resqueue.write(m_out)
     inqueue.delete_message(m)
     return True
-    
+
 
 def process_task(task_msg: TaskMsg) -> TaskReturnMsg:
 
@@ -56,7 +56,7 @@ def process_task(task_msg: TaskMsg) -> TaskReturnMsg:
         'deploy': deploy
     }
 
-    assert type(task_msg) == TaskMsg
+    assert isinstance(task_msg, TaskMsg)
     assert task_msg.task in config.TASKS
 
     try:

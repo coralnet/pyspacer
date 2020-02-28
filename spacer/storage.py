@@ -6,46 +6,44 @@ from typing import Union, Tuple
 
 import boto
 from PIL import Image
+from sklearn.calibration import CalibratedClassifierCV
 
 from spacer import config
-
-from sklearn.calibration import CalibratedClassifierCV
 
 
 class Storage(abc.ABC):  # pragma: no cover
 
     @abc.abstractmethod
     def store_classifier(self, path: str, clf: CalibratedClassifierCV) -> None:
-        pass
+        """ Stores a classifier instance """
 
+    @abc.abstractmethod
     def load_classifier(self, path: str) -> CalibratedClassifierCV:
-        pass
+        """ Loads a classifier instance """
 
     @abc.abstractmethod
     def store_image(self, path: str, content: Image) -> None:
-        pass
+        """ Stores a PIL image instance """
 
     @abc.abstractmethod
     def load_image(self, path: str) -> Image:
-        pass
+        """ Loads a PIL image instance """
 
     @abc.abstractmethod
     def store_string(self, path: str, content: str) -> None:
-        pass
+        """ Stores a string """
 
     @abc.abstractmethod
     def load_string(self, path: str) -> str:
-        pass
+        """ Loads a string """
 
     @abc.abstractmethod
     def delete(self, path: str) -> None:
         """ Deletes the file if it exists """
-        pass
 
     @abc.abstractmethod
     def exists(self, path: str) -> bool:
         """ Checks if file exists """
-        pass
 
 
 class S3Storage(Storage):
@@ -169,10 +167,10 @@ def storage_factory(storage_type: str, bucketname: Union[str, None] = None):
     if storage_type == 's3':
         print("-> Initializing s3 storage")
         return S3Storage(bucketname=bucketname)
-    elif storage_type == 'filesystem':
+    if storage_type == 'filesystem':
         print("-> Initializing filesystem storage")
         return FileSystemStorage()
-    else:
+    if storage_type == 'memory':
         print("-> Initializing memory storage")
         return MemoryStorage()
 

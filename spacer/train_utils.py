@@ -112,7 +112,7 @@ def load_image_data(labels: ImageLabels,
                     classes: List[int],
                     storage: Storage) -> Tuple[List[List[float]], List[int]]:
     """
-    Loads features and labels for image and mathches feature with labels.
+    Loads features and labels for image and matches feature with labels.
     """
 
     # Load features for this image.
@@ -192,7 +192,7 @@ def make_random_data(im_count,
     complete with stored ImageFeatures.
     """
     labels = ImageLabels(data={})
-    for i in range(im_count):
+    for _ in range(im_count):
 
         # Generate random features (using labels to draw from a Gaussian).
         point_labels = np.random.choice(class_list, points_per_image).tolist()

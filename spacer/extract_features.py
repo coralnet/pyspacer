@@ -19,13 +19,12 @@ class FeatureExtractor(abc.ABC):  # pragma: no cover
                  im: Image,
                  rowcols: List[Tuple[int, int]]) \
             -> Tuple[ImageFeatures, ExtractFeaturesReturnMsg]:
-        pass
+        """ Runs the feature extraction """
 
     @property
     @abc.abstractmethod
     def feature_dim(self) -> int:
         """ Returns the feature dimension of extractor. """
-        pass
 
 
 class DummyExtractor(FeatureExtractor):
@@ -69,7 +68,7 @@ class VGG16CaffeExtractor(FeatureExtractor):
         # We should only reach this line if it is confirmed caffe is available
         from spacer.caffe_utils import classify_from_patchlist
 
-        t0 = time.time()
+        start_time = time.time()
 
         # Set caffe parameters
         caffe_params = {'im_mean': [128, 128, 128],
@@ -98,7 +97,7 @@ class VGG16CaffeExtractor(FeatureExtractor):
                 npoints=len(feats)
             ), ExtractFeaturesReturnMsg(
                 model_was_cashed=self.model_was_cashed,
-                runtime=time.time() - t0
+                runtime=time.time() - start_time
             )
 
     @property
@@ -111,6 +110,7 @@ class EfficientNetExtractor(FeatureExtractor):
     def __call__(self, im, rowcols):
         raise NotImplementedError
 
+    @property
     def feature_dim(self):
         raise NotImplementedError
 
@@ -126,10 +126,9 @@ def feature_extractor_factory(modelname,
             "Need Caffe installed to instantiate {}".format(modelname)
         print("-> Initializing VGG16CaffeExtractor")
         return VGG16CaffeExtractor()
-    elif modelname == 'efficientnet_b0_imagenet':
+    if modelname == 'efficientnet_b0_imagenet':
         print("-> Initializing EfficientNetExtractor")
-        raise NotImplementedError()
-        # return EfficientNetExtractor()
-    else:
+        return EfficientNetExtractor()
+    if modelname == 'dummy':
         print("-> Initializing DummyExtractor")
         return DummyExtractor(dummy_featuredim)

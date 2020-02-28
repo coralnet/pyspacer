@@ -82,7 +82,7 @@ class TestEvaluateClassifier(unittest.TestCase):
         trainer = trainer_factory('dummy',
                                   dummy_kwargs={'feature_dim': 5,
                                                 'class_list': [1, 2]})
-        clf,  _, _ = trainer('n/a', 'n/a', 2, [], storage_factory('memory'))
+        clf, _, _ = trainer('n/a', 'n/a', 2, [], storage_factory('memory'))
         storage = storage_factory('memory')
         val_data = make_random_data(3, [1, 2], 4, 5, storage)
         gts, ests, scores = evaluate_classifier(clf, val_data, [1, 2], storage)

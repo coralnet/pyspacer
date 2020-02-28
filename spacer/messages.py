@@ -200,8 +200,8 @@ class DeployMsg(DataClass):
 
     @classmethod
     def deserialize(cls, data: Dict) -> 'DeployMsg':
-        msg = cls(**data)
         """ Custom deserializer to convert back to tuples. """
+        msg = cls(**data)
         msg.rowcols = [tuple(rc) for rc in data['rowcols']]
         return msg
 
@@ -252,9 +252,9 @@ class TaskMsg(DataClass):
         assert task in config.TASKS
         if task == 'extract_features':
             return TaskMsg(task, ExtractFeaturesMsg.deserialize(payload))
-        elif task == 'train_classifier':
+        if task == 'train_classifier':
             return TaskMsg(task, TrainClassifierMsg.deserialize(payload))
-        elif task == 'deploy':
+        if task == 'deploy':
             return TaskMsg(task, DeployMsg.deserialize(payload))
 
     def serialize(self):

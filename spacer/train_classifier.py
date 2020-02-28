@@ -1,17 +1,16 @@
 import abc
-import time
 import json
-import numpy as np
-from typing import Tuple, List, Dict
-from spacer import config
+import time
 from collections import defaultdict
+from typing import Tuple, List
 
+import numpy as np
 from sklearn.calibration import CalibratedClassifierCV
 
+from spacer import config
+from spacer.data_classes import ImageLabels, ValResults
 from spacer.messages import \
     TrainClassifierReturnMsg
-from spacer.data_classes import ImageLabels, ValResults
-
 from spacer.storage import Storage
 from spacer.train_utils import train, evaluate_classifier, calc_acc, \
     make_random_data
@@ -144,5 +143,5 @@ def trainer_factory(trainer_name: str, dummy_kwargs=defaultdict(str)) \
     assert trainer_name in config.TRAINER_NAMES
     if trainer_name == 'minibatch':
         return MiniBatchTrainer()
-    elif trainer_name == 'dummy':
+    if trainer_name == 'dummy':
         return DummyTrainer(**dummy_kwargs)
