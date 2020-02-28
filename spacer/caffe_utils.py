@@ -128,8 +128,8 @@ def classify_from_patchlist(im_pil: Image,
                             pyparams: dict,
                             modeldef_path: str,
                             modelweighs_path: str,
-                            scorelayer: str ='score',
-                            startlayer: str ='conv1_1'):
+                            scorelayer: str = 'score',
+                            startlayer: str = 'conv1_1'):
     # Setup caffe
     caffe.set_mode_cpu()
     net = caffe.Net(modeldef_path, modelweighs_path, caffe.TEST)
@@ -139,8 +139,8 @@ def classify_from_patchlist(im_pil: Image,
     transformer = Transformer(pyparams['im_mean'])
 
     # Convert to numpy (call 2 times due to a bug)
-    im = np.asarray(im_pil)
-    im = np.asarray(im_pil)
+    # im = np.asarray(im_pil)
+    im = np.array(im_pil)
 
     if len(im.shape) == 2 or im.shape[2] == 1:
         im = gray2rgb(im)

@@ -45,15 +45,15 @@ RUN echo "$CAFFE_ROOT/build/lib" >> /etc/ld.so.conf.d/caffe.conf && ldconfig
 
 WORKDIR /workspace
 
-# Note, the proper way to use the mapler dockerfile would be to inherit
-# FROM that definition.
-# But when trying that it was compiled with CUDA, so it gave me trouble.
-# Start spacer Custom comments
+# The proper way to use the mapler dockerfile would be to inherit
+# from that definition. But even mapler/caffe-py3:cpu was compiled with CUDA,
+# so it gave me trouble when running on my dev. laptop.
+# Instead this build the image from ubuntu.
+
+LABEL maintainer oscar.beijbom@gmail.com
 
 RUN apt-get update
 RUN apt-get install vim -y
-
-LABEL maintainer oscar.beijbom@gmail.com
 
 # These could be run from requirements.txt after the COPY below
 # But by doing it explicitly the docker build can cache them for faster builds.
@@ -61,13 +61,14 @@ RUN pip3 install --upgrade pip
 
 RUN pip3 install boto==2.49.0
 RUN pip3 install wget==3.2
-RUN pip3 install scikit-learn==0.17.1
-RUN pip3 install scikit-image
-RUN pip3 install scipy==0.19.1
-RUN pip3 install numpy==1.17.0
 RUN pip3 install coverage==5.0.3
 RUN pip3 install tqdm==4.43.0
 RUN pip3 install fire==0.2.1
+RUN pip3 install scikit-learn==0.17.1
+RUN pip3 install scikit-image==0.15.0
+RUN pip3 install scipy==0.19.1
+RUN pip3 install numpy==1.17.0
+
 
 # Reduce caffe logging to not spam the console.
 ENV GLOG_minloglevel=2
@@ -79,5 +80,3 @@ RUN mkdir models
 
 WORKDIR spacer
 CMD coverage run --source=spacer --omit=spacer/tests/* -m unittest; coverage report -m
-
-

@@ -1,7 +1,7 @@
 boto==2.49.0
 wget==3.2
 scikit-learn==0.17.1
-scikit-image
+scikit-image==0.15.0
 scipy==0.19.1
 numpy==1.17.0
 Pillow==5.1.0

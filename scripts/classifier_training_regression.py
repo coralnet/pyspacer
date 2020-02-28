@@ -59,6 +59,7 @@ class ClassifierRegressionTest:
     def train(self,
               source_id: int,
               local_path: str,
+              n_epochs: int = 5,
               export_name: str = 'beta_export_v2'):
 
         # Sci-kit learns calibration step throws out a ton of warnings.
@@ -110,7 +111,7 @@ class ClassifierRegressionTest:
         print("-> Training...")
         trainer = trainer_factory('minibatch')
         clf, val_results, return_message = trainer(
-            traindata_key, valdata_key, 5, [], storage)
+            traindata_key, valdata_key, n_epochs, [], storage)
         with open(os.path.join(source_root, 'meta.json')) as fp:
             source_meta = json.load(fp)
 

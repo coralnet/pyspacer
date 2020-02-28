@@ -36,7 +36,7 @@ class TestClassifyFromPatchList(unittest.TestCase):
                         'crop_size': 224,
                         'batch_size': 10}
 
-        gt, est, feats = classify_from_patchlist(
+        _, _, feats = classify_from_patchlist(
             Image.new('RGB', (600, 600)),
             [(300, 300, 1)],
             caffe_params,
@@ -53,7 +53,7 @@ class TestClassifyFromPatchList(unittest.TestCase):
                         'crop_size': 224,
                         'batch_size': 10}
 
-        gt, est, feats = classify_from_patchlist(
+        _, _, feats = classify_from_patchlist(
             Image.new('L', (600, 600)),
             [(300, 300, 1)],
             caffe_params,
@@ -76,5 +76,3 @@ class TestGray2RGB(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-
-

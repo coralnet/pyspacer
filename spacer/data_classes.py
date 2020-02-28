@@ -82,7 +82,7 @@ class ImageLabels(DataClass):
         """ Returns the set of all unique classes in the key_list subset. """
         labels = set()
         for im_key in key_list:
-            labels |= set([label for (row, col, label) in self.data[im_key]])
+            labels |= {label for (row, col, label) in self.data[im_key]}
         return labels
 
     def __len__(self):
@@ -192,14 +192,14 @@ class ImageFeatures(DataClass):
                 feature_dim=len(data[0]),
                 npoints=len(data)
             )
-        else:
-            return ImageFeatures(
-                point_features=[PointFeatures.deserialize(feat)
-                                for feat in data['point_features']],
-                valid_rowcol=data['valid_rowcol'],
-                feature_dim=data['feature_dim'],
-                npoints=data['npoints']
-            )
+
+        return ImageFeatures(
+            point_features=[PointFeatures.deserialize(feat)
+                            for feat in data['point_features']],
+            valid_rowcol=data['valid_rowcol'],
+            feature_dim=data['feature_dim'],
+            npoints=data['npoints']
+        )
 
     def __eq__(self, other):
         return all([a == b for a, b in zip(self.point_features,
