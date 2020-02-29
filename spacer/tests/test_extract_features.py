@@ -45,7 +45,7 @@ class TestDummyExtractor(unittest.TestCase):
                                         dummy_featuredim=feature_dim)
         self.assertEqual(ext.feature_dim, feature_dim)
 
-@unittest.skip
+
 class TestCaffeExtractor(unittest.TestCase):
 
     def setUp(self):
