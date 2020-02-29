@@ -31,8 +31,8 @@ def get_secret(key):
 
 
 def get_aws_credentials() -> Tuple[Optional[str], Optional[str]]:
-    aws_key_id = os.environ['SPACER_AWS_ACCESS_KEY_ID']
-    aws_key_secret = os.environ['SPACER_AWS_SECRET_ACCESS_KEY']
+    aws_key_id = os.getenv('SPACER_AWS_ACCESS_KEY_ID')
+    aws_key_secret = os.getenv('SPACER_AWS_SECRET_ACCESS_KEY')
 
     if not aws_key_id:
         aws_key_id = get_secret('SPACER_AWS_ACCESS_KEY_ID')
@@ -67,7 +67,14 @@ def get_sqs_conn():
         aws_secret_access_key=aws_key_secret)
 
 
-LOCAL_MODEL_PATH = os.environ['SPACER_LOCAL_MODEL_PATH']
+def get_local_model_path():
+    local_model_path = os.getenv('SPACER_LOCAL_MODEL_PATH')
+    if local_model_path is None:
+        return get_secret('SPACER_LOCAL_MODEL_PATH')
+    return local_model_path
+
+
+LOCAL_MODEL_PATH = get_local_model_path()
 
 assert LOCAL_MODEL_PATH is not None, \
     "SPACER_LOCAL_MODEL_PATH environmental variable must be set."
