@@ -11,11 +11,7 @@ def sqs_mailman(queue_group='spacer') -> bool:
     print("-> Grabbing message.")
 
     # Load default queue
-    conn = sqs.connect_to_region(
-        "us-west-2",
-        aws_access_key_id=config.AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=config.AWS_SECRET_ACCESS_KEY
-    )
+    conn = config.get_sqs_conn()
     inqueue = conn.get_queue('{}_jobs'.format(queue_group))
     resqueue = conn.get_queue('{}_results'.format(queue_group))
 

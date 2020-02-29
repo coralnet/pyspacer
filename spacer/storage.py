@@ -50,9 +50,7 @@ class S3Storage(Storage):
     """ Stores objects on AWS S3 """
 
     def __init__(self, bucketname: str):
-
-        conn = boto.connect_s3(config.AWS_ACCESS_KEY_ID,
-                               config.AWS_SECRET_ACCESS_KEY)
+        conn = config.get_s3_conn()
         self.bucket = conn.get_bucket(bucketname)
 
     def load_classifier(self, path: str):
@@ -182,12 +180,11 @@ def download_model(keyname: str) -> Tuple[str, bool]:
     and models need to be downloaded to a specific destination folder to be
     shared with host filesystem.
     """
-
+    assert config.HAS_S3_MODEL_ACCESS, "Need access to model bucket."
     destination = os.path.join(config.LOCAL_MODEL_PATH, keyname)
     if not os.path.isfile(destination):
         print("-> Downloading {}".format(keyname))
-        conn = boto.connect_s3(config.AWS_ACCESS_KEY_ID,
-                               config.AWS_SECRET_ACCESS_KEY)
+        conn = config.get_s3_conn()
         bucket = conn.get_bucket(config.MODELS_BUCKET, validate=True)
         key = bucket.get_key(keyname)
         key.get_contents_to_filename(destination)

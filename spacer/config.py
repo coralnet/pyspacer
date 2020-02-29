@@ -2,8 +2,9 @@ import importlib
 import json
 import os
 import warnings
-import boto
+from typing import Tuple, Optional
 
+import boto
 from boto import sqs
 
 # Per discussion in https://github.com/boto/boto3/issues/454,
@@ -11,27 +12,65 @@ from boto import sqs
 warnings.simplefilter("ignore", ResourceWarning)
 
 
-# Load secrets from secrets.json
-secrets_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                            '..', 'secrets.json')
-
-if not os.path.exists(secrets_path):  # pragma: no cover
-    RuntimeWarning('secrets.json not found')
-    AWS_ACCESS_KEY_ID = ''
-    AWS_SECRET_ACCESS_KEY = ''
-else:
-    try:
-        with open(secrets_path) as fp:
-            secrets = json.load(fp)
-        AWS_ACCESS_KEY_ID = secrets['AWS_ACCESS_KEY_ID']
-        AWS_SECRET_ACCESS_KEY = secrets['AWS_SECRET_ACCESS_KEY']
-    except Exception as err:  # pragma: no cover
-        RuntimeWarning('Unable to parse secrets.json: {}'.format(repr(err)))
-        AWS_ACCESS_KEY_ID = ''
-        AWS_SECRET_ACCESS_KEY = ''
+def get_secret(key):
+    """ Try to load AWS access credentials from secrets.json file """
+    secrets_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                '..', 'secrets.json')
+    if not os.path.exists(secrets_path):  # pragma: no cover
+        RuntimeWarning('secrets.json not found')
+        return None
+    else:
+        try:
+            with open(secrets_path) as fp:
+                secrets = json.load(fp)
+            return secrets[key]
+        except Exception as err:  # pragma: no cover
+            RuntimeWarning(
+                'Unable to parse secrets.json: {}'.format(repr(err)))
+            return None
 
 
-LOCAL_MODEL_PATH = '/workspace/models'
+def get_aws_credentials() -> Tuple[Optional[str], Optional[str]]:
+    aws_key_id = os.environ['SPACER_AWS_ACCESS_KEY_ID']
+    aws_key_secret = os.environ['SPACER_AWS_SECRET_ACCESS_KEY']
+
+    if not aws_key_id:
+        aws_key_id = get_secret('SPACER_AWS_ACCESS_KEY_ID')
+    if not aws_key_secret:
+        aws_key_secret = get_secret('SPACER_AWS_SECRET_ACCESS_KEY')
+
+    return aws_key_id, aws_key_secret
+
+
+def get_s3_conn():
+    """
+    Returns a boto s3 connection.
+    - It first looks for credentials in the environmental vars.
+    - If not found there it looks in secrets.json
+    - If not found there it will default to credentials in ~/.aws/credentials
+    """
+    aws_key_id, aws_key_secret = get_aws_credentials()
+    return boto.connect_s3(aws_key_id, aws_key_secret)
+
+
+def get_sqs_conn():
+    """
+    Returns a connection to SQS.
+    - It first looks for credentials in the environmental vars.
+    - If not found there it looks in secrets.json
+    - If not found there it will default to credentials in ~/.aws/credentials
+    """
+    aws_key_id, aws_key_secret = get_aws_credentials()
+    return sqs.connect_to_region(
+        "us-west-2",
+        aws_access_key_id=aws_key_id,
+        aws_secret_access_key=aws_key_secret)
+
+
+LOCAL_MODEL_PATH = os.environ['SPACER_LOCAL_MODEL_PATH']
+
+assert LOCAL_MODEL_PATH is not None, \
+    "SPACER_LOCAL_MODEL_PATH environmental variable must be set."
 
 TASKS = [
     'extract_features',
@@ -67,7 +106,7 @@ MIN_TRAINIMAGES = 10
 # Check access to select which tests to run.
 HAS_CAFFE = importlib.util.find_spec("caffe") is not None
 
-conn = boto.connect_s3(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+conn = get_s3_conn()
 try:
     bucket = conn.get_bucket('spacer-test', validate=True)
     HAS_S3_TEST_ACCESS = True
@@ -82,11 +121,7 @@ except boto.exception.S3ResponseError as err:  # pragma: no cover
     print("-> No connection to spacer-tools bucket, can't download models")
     HAS_S3_MODEL_ACCESS = False
 
-inqueue = sqs.connect_to_region(
-        "us-west-2",
-        aws_access_key_id=AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=AWS_SECRET_ACCESS_KEY
-).get_queue('spacer_test_jobs')
+inqueue = get_sqs_conn().get_queue('spacer_test_jobs')
 
 if inqueue is None:  # pragma: no cover
     HAS_SQS_QUEUE_ACCESS = False

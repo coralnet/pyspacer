@@ -29,7 +29,7 @@ class ClassifierRegressionTest:
     def _cache_local(source_root, image_root, export_name, source_id):
 
         """ Download source data to local """
-        conn = boto.connect_s3()
+        conn = config.get_s3_conn()
         bucket = conn.get_bucket('spacer-trainingdata', validate=True)
         if not os.path.exists(source_root):
             os.mkdir(source_root)
@@ -126,8 +126,7 @@ class ClassifierRegressionTest:
     def list(export_name: str = 'beta_export_v2'):
         """ Lists sources available in export. """
 
-        conn = boto.connect_s3(config.AWS_ACCESS_KEY_ID,
-                               config.AWS_SECRET_ACCESS_KEY)
+        conn = config.get_s3_conn()
         bucket = conn.get_bucket('spacer-trainingdata', validate=True)
 
         source_keys = bucket.list(prefix='{}/s'.format(export_name),

@@ -148,11 +148,7 @@ class TestSQSMailman(unittest.TestCase):
 
     def setUp(self):
         self.queue_group = 'spacer_test'
-        self.conn = sqs.connect_to_region(
-            "us-west-2",
-            aws_access_key_id=config.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=config.AWS_SECRET_ACCESS_KEY
-        )
+        self.conn = config.get_sqs_conn()
         self.jobqueue = self.conn.get_queue('{}_jobs'.format(self.queue_group))
         if self.jobqueue is None:
             self.sqs_access = False
