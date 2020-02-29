@@ -129,7 +129,6 @@ class TestProcessTask(unittest.TestCase):
         self.assertTrue(type(return_msg), TaskReturnMsg)
 
 
-@unittest.skipIf(os.getenv('IS_TRAVIS_BUILD'), 'Not thread-safe, skipping')
 @unittest.skipUnless(config.HAS_SQS_QUEUE_ACCESS, 'No SQS access.')
 class TestSQSMailman(unittest.TestCase):
 
