@@ -1,3 +1,9 @@
+"""
+Defines data-classes for input and output types.
+Each data-class can serialize itself to a structure of JSON-friendly
+python-native data-structures such that it can be stored.
+"""
+
 from abc import ABC, abstractmethod
 from pprint import pformat
 from typing import Dict, List, Tuple, Set, Optional, Union

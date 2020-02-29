@@ -1,7 +1,6 @@
 import os
 import unittest
 import warnings
-
 from PIL import Image
 
 from spacer import config

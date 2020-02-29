@@ -1,3 +1,7 @@
+"""
+Contains config and settings for the repo.
+"""
+
 import importlib
 import json
 import os

@@ -1,15 +1,14 @@
 import json
 import unittest
 import warnings
-
 from PIL import Image
 
 from spacer import config
+from spacer.data_classes import ImageFeatures
 from spacer.extract_features import feature_extractor_factory
 from spacer.messages import \
     ExtractFeaturesMsg, \
     ExtractFeaturesReturnMsg
-from spacer.data_classes import ImageFeatures
 from spacer.storage import storage_factory
 
 

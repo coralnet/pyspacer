@@ -1,11 +1,14 @@
+"""
+Defines storage ABC; implementations; and factory.
+"""
+
 import abc
 import os
 import pickle
+from PIL import Image
 from io import BytesIO
 from typing import Union, Tuple
 
-import boto
-from PIL import Image
 from sklearn.calibration import CalibratedClassifierCV
 
 from spacer import config

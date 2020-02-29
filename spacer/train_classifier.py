@@ -1,3 +1,7 @@
+"""
+Defines train-classifier ABC; implementations; and factory.
+"""
+
 import abc
 import json
 import time

@@ -1,14 +1,17 @@
+"""
+Defines feature-extractor ABC; implementations; and factory.
+"""
+
 import abc
 import random
 import time
+from PIL import Image
 from typing import List
 from typing import Tuple
 
-from PIL import Image
-
 from spacer import config
-from spacer.messages import ExtractFeaturesReturnMsg
 from spacer.data_classes import PointFeatures, ImageFeatures
+from spacer.messages import ExtractFeaturesReturnMsg
 from spacer.storage import download_model
 
 

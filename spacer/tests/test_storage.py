@@ -2,11 +2,10 @@ import json
 import os
 import unittest
 import warnings
+from PIL import Image
 from io import BytesIO
 
-import boto
 import numpy as np
-from PIL import Image
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.linear_model import SGDClassifier
 

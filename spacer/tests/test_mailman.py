@@ -1,10 +1,8 @@
 import json
 import os
+import time
 import unittest
 import warnings
-import time
-
-from boto import sqs
 
 from spacer import config
 from spacer.mailman import process_task, sqs_mailman

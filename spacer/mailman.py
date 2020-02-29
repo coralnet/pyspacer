@@ -1,6 +1,8 @@
-import json
+"""
+Defines the highest-level method for task handling through AWS SQS.
+"""
 
-from boto import sqs
+import json
 
 from spacer import config
 from spacer.messages import TaskMsg, TaskReturnMsg
