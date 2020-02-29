@@ -1,8 +1,22 @@
+"""
+This file provides scripts for
+1) listing all extracted data in spacer-trainingdata bucket.
+2) Re-train a classifier and compared to performance on CoralNet
+
+To use do:
+
+python classifier_training_regression.py list
+
+python classifier_training_regression.py source_id ~/tmp_folder
+
+where source_id is an integer defining which source to train.
+"""
+
+
 import glob
 import json
 import os
 
-import boto
 import fire
 import tqdm
 
