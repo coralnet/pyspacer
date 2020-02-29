@@ -2,11 +2,10 @@ import json
 import os
 import unittest
 import warnings
+from PIL import Image
 from io import BytesIO
 
-import boto
 import numpy as np
-from PIL import Image
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.linear_model import SGDClassifier
 
@@ -25,8 +24,7 @@ class TestS3Storage(unittest.TestCase):
         self.tmp_model_key = 'tmp_model.pkl'
         self.storage = storage_factory('s3', 'spacer-test')
 
-        conn = boto.connect_s3(config.AWS_ACCESS_KEY_ID,
-                               config.AWS_SECRET_ACCESS_KEY)
+        conn = config.get_s3_conn()
         self.bucket = conn.get_bucket('spacer-test')
 
     def tearDown(self):

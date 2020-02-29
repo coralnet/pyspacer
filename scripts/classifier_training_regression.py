@@ -1,8 +1,22 @@
+"""
+This file provides scripts for
+1) listing all extracted data in spacer-trainingdata bucket.
+2) Re-train a classifier and compared to performance on CoralNet
+
+To use do:
+
+python classifier_training_regression.py list
+
+python classifier_training_regression.py source_id ~/tmp_folder
+
+where source_id is an integer defining which source to train.
+"""
+
+
 import glob
 import json
 import os
 
-import boto
 import fire
 import tqdm
 
@@ -29,7 +43,7 @@ class ClassifierRegressionTest:
     def _cache_local(source_root, image_root, export_name, source_id):
 
         """ Download source data to local """
-        conn = boto.connect_s3()
+        conn = config.get_s3_conn()
         bucket = conn.get_bucket('spacer-trainingdata', validate=True)
         if not os.path.exists(source_root):
             os.mkdir(source_root)
@@ -126,8 +140,7 @@ class ClassifierRegressionTest:
     def list(export_name: str = 'beta_export_v2'):
         """ Lists sources available in export. """
 
-        conn = boto.connect_s3(config.AWS_ACCESS_KEY_ID,
-                               config.AWS_SECRET_ACCESS_KEY)
+        conn = config.get_s3_conn()
         bucket = conn.get_bucket('spacer-trainingdata', validate=True)
 
         source_keys = bucket.list(prefix='{}/s'.format(export_name),

@@ -1,9 +1,13 @@
+"""
+Defines the highest level methods for completing tasks.
+"""
+
 import json
 import os
 import time
+from PIL import Image
 
 import wget
-from PIL import Image
 
 from spacer.extract_features import feature_extractor_factory
 from spacer.messages import \

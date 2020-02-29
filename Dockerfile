@@ -1,3 +1,9 @@
+# The proper way to use the mapler dockerfile would be to inherit
+# from that definition. But mapler/caffe-py3:cpu was compiled with CUDA,
+# so it gave me trouble when running on my dev. laptop.
+# So instead this build the image from ubuntu.
+
+
 FROM nvidia/cuda:8.0-cudnn6-devel-ubuntu16.04
 LABEL maintainer maplerme@gmail.com
 
@@ -45,10 +51,7 @@ RUN echo "$CAFFE_ROOT/build/lib" >> /etc/ld.so.conf.d/caffe.conf && ldconfig
 
 WORKDIR /workspace
 
-# The proper way to use the mapler dockerfile would be to inherit
-# from that definition. But even mapler/caffe-py3:cpu was compiled with CUDA,
-# so it gave me trouble when running on my dev. laptop.
-# Instead this build the image from ubuntu.
+# Starting from here are spacer-specific commands.
 
 LABEL maintainer oscar.beijbom@gmail.com
 
@@ -71,8 +74,6 @@ RUN pip3 install scikit-learn==0.17.1
 RUN pip3 install scikit-image==0.15.0
 RUN pip3 install torch==1.4.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
 RUN pip3 install torchvision==0.5.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
-
-
 
 # Reduce caffe logging to not spam the console.
 ENV GLOG_minloglevel=2

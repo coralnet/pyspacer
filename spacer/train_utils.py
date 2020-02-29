@@ -1,3 +1,7 @@
+"""
+Utility methods for training classifiers.
+"""
+
 import json
 import random
 import string

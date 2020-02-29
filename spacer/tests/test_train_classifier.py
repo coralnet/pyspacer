@@ -1,12 +1,11 @@
 import json
-import unittest
 import random
+import unittest
 import warnings
 
 import numpy as np
 
 from spacer import config
-
 from spacer.storage import storage_factory
 from spacer.train_classifier import trainer_factory
 from spacer.train_utils import make_random_data

@@ -1,5 +1,7 @@
 """
-This file contains all messages and data-structures used in spacer.
+Defines message types as data-classes.
+Each data-class can serialize itself to a structure of JSON-friendly
+python-native data-structures such that it can be stored.
 """
 
 from typing import List, Tuple, Dict, Union, Optional
