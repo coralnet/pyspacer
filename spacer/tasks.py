@@ -17,6 +17,9 @@ from spacer.messages import \
     TrainClassifierReturnMsg, \
     DeployMsg, \
     DeployReturnMsg
+    #ClassifyFeatMsg, \
+    #ClassifyReturnMsg, \
+
 from spacer.storage import storage_factory
 from spacer.train_classifier import trainer_factory
 
@@ -53,6 +56,8 @@ def train_classifier(msg: TrainClassifierMsg) -> TrainClassifierReturnMsg:
                          json.dumps(val_results.serialize()))
     return return_message
 
+#def classify_features(msg: ClassifyFeatMsg) -> ClassifyReturnMsg:
+#    pass
 
 def deploy(msg: DeployMsg) -> DeployReturnMsg:
     """ Deploy is a combination of feature extractor and classification. """

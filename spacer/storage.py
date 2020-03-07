@@ -9,9 +9,21 @@ from PIL import Image
 from io import BytesIO
 from typing import Union, Tuple
 
-from sklearn.calibration import CalibratedClassifierCV
+from sklearn.calibration import CalibratedClassifierCV, LabelEncoder
 
 from spacer import config
+
+
+def patch_legacy(clf: CalibratedClassifierCV) -> CalibratedClassifierCV:
+    """
+    Upgrades models trained on sklearn 0.17.1 to 0.22.2
+    Note: this in only tested for inference.
+    """
+    assert len(clf.calibrated_classifiers_) == 1
+    assert all(clf.classes_ == clf.calibrated_classifiers_[0].classes_)
+    clf.calibrated_classifiers_[0].label_encoder_ = LabelEncoder()
+    clf.calibrated_classifiers_[0].label_encoder_.fit(clf.classes_)
+    return clf
 
 
 class Storage(abc.ABC):  # pragma: no cover
@@ -61,8 +73,11 @@ class S3Storage(Storage):
 
         # Make sure pickle.loads is compatible with legacy classifiers which
         # were stored using pickle.dumps in python 2.7.
-        return pickle.loads(key.get_contents_as_string(), fix_imports=True,
-                            encoding='latin1')
+        clf = pickle.loads(key.get_contents_as_string(), fix_imports=True,
+                           encoding='latin1')
+        if not hasattr(clf.calibrated_classifiers_[0], 'label_encoder'):
+            clf = patch_legacy(clf)
+        return clf
 
     def store_classifier(self, path: str, clf: CalibratedClassifierCV):
         key = self.bucket.new_key(path)
@@ -103,7 +118,11 @@ class FileSystemStorage(Storage):
 
     def load_classifier(self, path: str) -> CalibratedClassifierCV:
         with open(path, 'rb') as f:
-            return pickle.load(f, encoding='latin1')
+            clf = pickle.load(f, encoding='latin1')
+
+        if not hasattr(clf.calibrated_classifiers_[0], 'label_encoder'):
+            clf = patch_legacy(clf)
+        return clf
 
     def store_classifier(self, path: str, clf: CalibratedClassifierCV):
         with open(path, 'wb') as f:
