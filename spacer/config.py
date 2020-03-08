@@ -17,7 +17,7 @@ warnings.simplefilter("ignore", ResourceWarning)
 
 
 def get_secret(key):
-    """ Try to load AWS access credentials from secrets.json file """
+    """ Try to load settings from secrets.json file """
     secrets_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 '..', 'secrets.json')
     if not os.path.exists(secrets_path):  # pragma: no cover
