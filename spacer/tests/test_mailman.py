@@ -46,8 +46,8 @@ class TestProcessTask(unittest.TestCase):
                       ))
         return_msg = process_task(msg)
         self.assertFalse(return_msg.ok)
-        self.assertEqual(return_msg.error_message,
-                         "KeyError('image_that_is_missing',)")
+        self.assertIn("KeyError", return_msg.error_message)
+        self.assertIn("image_that_is_missing", return_msg.error_message)
         self.assertTrue(type(return_msg), TaskReturnMsg)
 
     def test_failed_deploy_url(self):
@@ -81,9 +81,9 @@ class TestProcessTask(unittest.TestCase):
                       )
         return_msg = process_task(msg)
         self.assertFalse(return_msg.ok)
-        self.assertEqual(return_msg.error_message,
-                         "AssertionError('Model name invalid_name "
-                         "not registered',)")
+        self.assertIn("AssertionError", return_msg.error_message)
+        self.assertIn("Model name invalid_name not registered",
+                      return_msg.error_message)
         self.assertTrue(type(return_msg), TaskReturnMsg)
 
     def test_failed_deploy_classifier_key(self):
@@ -100,8 +100,8 @@ class TestProcessTask(unittest.TestCase):
                       )
         return_msg = process_task(msg)
         self.assertFalse(return_msg.ok)
-        self.assertEqual(return_msg.error_message,
-                         "KeyError('no_classifier_here',)")
+        self.assertIn("KeyError", return_msg.error_message)
+        self.assertIn("no_classifier_here", return_msg.error_message)
         self.assertTrue(type(return_msg), TaskReturnMsg)
 
     def test_failed_train_classifier(self):
@@ -124,8 +124,8 @@ class TestProcessTask(unittest.TestCase):
                       )
         return_msg = process_task(msg)
         self.assertFalse(return_msg.ok)
-        self.assertEqual(return_msg.error_message,
-                         "KeyError('my_traindata',)")
+        self.assertIn("KeyError", return_msg.error_message)
+        self.assertIn("my_traindata", return_msg.error_message)
         self.assertTrue(type(return_msg), TaskReturnMsg)
 
 

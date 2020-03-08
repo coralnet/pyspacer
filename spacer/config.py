@@ -83,6 +83,9 @@ LOCAL_MODEL_PATH = get_local_model_path()
 assert LOCAL_MODEL_PATH is not None, \
     "SPACER_LOCAL_MODEL_PATH environmental variable must be set."
 
+assert os.path.exists(LOCAL_MODEL_PATH), "LOCAL_MODEL_PATH is set, " \
+                                         "but path doesn't exist"
+
 TASKS = [
     'extract_features',
     'train_classifier',
@@ -139,3 +142,5 @@ if inqueue is None:  # pragma: no cover
     print('-> No access to SQS found.')
 else:
     HAS_SQS_QUEUE_ACCESS = True
+
+
