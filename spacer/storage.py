@@ -19,6 +19,7 @@ def patch_legacy(clf: CalibratedClassifierCV) -> CalibratedClassifierCV:
     Upgrades models trained on sklearn 0.17.1 to 0.22.2
     Note: this in only tested for inference.
     """
+    print("patching legacy classifier")
     assert len(clf.calibrated_classifiers_) == 1
     assert all(clf.classes_ == clf.calibrated_classifiers_[0].classes_)
     clf.calibrated_classifiers_[0].label_encoder_ = LabelEncoder()
@@ -75,7 +76,8 @@ class S3Storage(Storage):
         # were stored using pickle.dumps in python 2.7.
         clf = pickle.loads(key.get_contents_as_string(), fix_imports=True,
                            encoding='latin1')
-        if not hasattr(clf.calibrated_classifiers_[0], 'label_encoder'):
+        if hasattr(clf, 'calibrated_classifiers_') and not \
+                hasattr(clf.calibrated_classifiers_[0], 'label_encoder'):
             clf = patch_legacy(clf)
         return clf
 
@@ -120,7 +122,8 @@ class FileSystemStorage(Storage):
         with open(path, 'rb') as f:
             clf = pickle.load(f, encoding='latin1')
 
-        if not hasattr(clf.calibrated_classifiers_[0], 'label_encoder'):
+        if hasattr(clf, 'calibrated_classifiers_') and not \
+                hasattr(clf.calibrated_classifiers_[0], 'label_encoder'):
             clf = patch_legacy(clf)
         return clf
 
