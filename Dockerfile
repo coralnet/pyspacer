@@ -68,17 +68,16 @@ RUN pip3 install coverage==5.0.3
 RUN pip3 install tqdm==4.43.0
 RUN pip3 install fire==0.2.1
 RUN pip3 install Pillow==6.2.0
-RUN pip3 install numpy==1.17.5
-RUN pip3 install scipy==1.2.3
+RUN pip3 install numpy==1.18.1
 RUN pip3 install scikit-learn==0.22.1
 RUN pip3 install scikit-image==0.15.0
-RUN pip3 install torch==1.4.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
-RUN pip3 install torchvision==0.5.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+RUN pip3 install torch==1.4.0
+RUN pip3 install torchvision==0.5.0
 
 # Reduce caffe logging to not spam the console.
 ENV GLOG_minloglevel=2
 
-ENV SPACER_LOCAL_MODEL_PATH=/workspace/spacer
+ENV SPACER_LOCAL_MODEL_PATH=/workspace/models
 WORKDIR /workspace
 COPY . spacer
 RUN PYTHONPATH=$PYTHONPATH:/workspace/spacer

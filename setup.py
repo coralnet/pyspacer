@@ -24,7 +24,7 @@ setuptools.setup(
         'wget==3.2',
         'tqdm==4.43.0',
         'Pillow==6.2.0',
-        'numpy==1.17.5',
+        'numpy>=1.17.5',
         'scikit-learn==0.22.1',
         'scikit-image==0.15.0',
         'torch==1.4.0',
