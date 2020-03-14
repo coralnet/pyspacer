@@ -5,13 +5,18 @@ Defines storage ABC; implementations; and factory.
 import abc
 import os
 import pickle
+import wget
 from PIL import Image
 from io import BytesIO
 from typing import Union, Tuple
 
+from urllib.error import URLError, HTTPError, ContentTooShortError
+
 from sklearn.calibration import CalibratedClassifierCV, LabelEncoder
 
 from spacer import config
+
+from spacer.messages import DataLocation
 
 
 def patch_legacy(clf: CalibratedClassifierCV) -> CalibratedClassifierCV:
@@ -60,6 +65,48 @@ class Storage(abc.ABC):  # pragma: no cover
     @abc.abstractmethod
     def exists(self, path: str) -> bool:
         """ Checks if file exists """
+
+
+class URLStorage(Storage):
+    """ Loads items from URLs. Does not support store operations. """
+
+    def __init__(self):
+        self.fs_storage = FileSystemStorage()
+
+    @staticmethod
+    def _load(url, local_load_method):
+        tmp_path = wget.download(url)
+        item = local_load_method(tmp_path)
+        os.remove(tmp_path)
+        return item
+
+    def load_image(self, url: str):
+        return self._load(url, self.fs_storage.load_image)
+
+    def load_classifier(self, url: str):
+        return self._load(url, self.fs_storage.load_classifier)
+
+    def load_string(self, url: str):
+        return self._load(url, self.fs_storage.load_string)
+
+    def store_image(self, path: str, content: Image):
+        raise TypeError('Store operation not supported for URL storage.')
+
+    def store_classifier(self, path: str, clf: CalibratedClassifierCV):
+        raise TypeError('Store operation not supported for URL storage.')
+
+    def store_string(self, path: str, content: str):
+        raise TypeError('Store operation not supported for URL storage.')
+
+    def delete(self, url: str) -> None:
+        raise TypeError('Store operation not supported for URL storage.')
+
+    def exists(self, url: str) -> bool:
+        try:
+            wget.download(url)
+        except URLError:
+            return False
+        return True
 
 
 class S3Storage(Storage):
@@ -219,3 +266,33 @@ def download_model(keyname: str) -> Tuple[str, bool]:
         was_cashed = True
 
     return destination, was_cashed
+
+
+def load(loc: DataLocation, data_type: str):
+    """ Helper method to load any data type from a DataLocation """
+
+    storage = storage_factory(loc.storage_type, loc.bucket_name)
+    if data_type == 'image':
+        return storage.load_image(loc.key)
+    if data_type == 'clf':
+        return storage.load_classifier(loc.key)
+    if data_type == 'string':
+        return storage.load_string(loc.key)
+    else:
+        raise ValueError('data_type {} not recognized'.format(data_type))
+
+
+def store(loc: DataLocation,
+          content: Union[Image, CalibratedClassifierCV, str],
+          data_type: str):
+    """ Helper method to store any data type to a DataLocation """
+
+    storage = storage_factory(loc.storage_type, loc.bucket_name)
+    if data_type == 'image':
+        return storage.store_image(loc.key, content)
+    if data_type == 'clf':
+        return storage.store_classifier(loc.key, content)
+    if data_type == 'string':
+        return storage.load_string(loc.key, content)
+    else:
+        raise ValueError('data_type {} not recognized'.format(data_type))
