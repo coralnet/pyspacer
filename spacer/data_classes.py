@@ -56,7 +56,7 @@ class ImageLabels(DataClass):
 
     def __init__(self,
                  # Data maps a feature key (or file path) to a List of
-                 # [row, col, label].
+                 # (row, col, label).
                  data: Dict[str, List[Tuple[int, int, int]]]):
         self.data = data
 

@@ -8,7 +8,8 @@ from spacer.data_classes import ImageFeatures
 from spacer.extract_features import feature_extractor_factory
 from spacer.messages import \
     ExtractFeaturesMsg, \
-    ExtractFeaturesReturnMsg
+    ExtractFeaturesReturnMsg, \
+    DataLocation
 from spacer.storage import storage_factory
 
 
@@ -16,13 +17,13 @@ class TestDummyExtractor(unittest.TestCase):
 
     def test_simple(self):
         msg = ExtractFeaturesMsg(
-            pk=1,
+            job_token='1',
             feature_extractor_name='dummy',
-            bucketname='spacer-test',
-            storage_type='memory',
-            imkey='not_used',
             rowcols=[(100, 100)],
-            outputkey='not_used'
+            image_loc=DataLocation(storage_type='memory',
+                                   key='not_used'),
+            feature_loc=DataLocation(storage_type='memory',
+                                     key='not_used')
         )
 
         ext = feature_extractor_factory(msg.feature_extractor_name,

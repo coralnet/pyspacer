@@ -10,7 +10,7 @@ from spacer.messages import \
     TrainClassifierMsg, \
     TrainClassifierReturnMsg, \
     DeployMsg, \
-    DeployReturnMsg
+    ClassifyReturnMsg
 from spacer.tasks import extract_features, train_classifier, deploy
 
 
@@ -90,7 +90,7 @@ class TestDeploy(unittest.TestCase):
 
         return_msg = deploy(msg)
         self.assertEqual(len(return_msg.scores), len(msg.rowcols))
-        self.assertTrue(type(return_msg.scores), DeployReturnMsg)
+        self.assertTrue(type(return_msg.scores), ClassifyReturnMsg)
 
 
 if __name__ == '__main__':

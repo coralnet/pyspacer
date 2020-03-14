@@ -108,7 +108,8 @@ MODELS_BUCKET = 'spacer-tools'
 STORAGE_TYPES = [
     's3',
     'filesystem',
-    'memory'
+    'memory',
+    'url'
 ]
 
 LOCAL_FIXTURE_DIR = os.path.join(os.path.dirname(

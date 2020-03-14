@@ -16,7 +16,7 @@ from spacer.messages import \
     TrainClassifierMsg, \
     TrainClassifierReturnMsg, \
     DeployMsg, \
-    DeployReturnMsg
+    ClassifyReturnMsg
     #ClassifyFeatMsg, \
     #ClassifyReturnMsg, \
 
@@ -26,7 +26,7 @@ from spacer.train_classifier import trainer_factory
 
 def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
 
-    print("-> Extracting features for image pk:{}.".format(msg.pk))
+    print("-> Extracting features for job:{}.".format(msg.job_token))
     storage = storage_factory(msg.storage_type, msg.bucketname)
     extractor = feature_extractor_factory(msg.feature_extractor_name)
     features, return_msg = extractor(storage.load_image(msg.imkey),
@@ -59,7 +59,8 @@ def train_classifier(msg: TrainClassifierMsg) -> TrainClassifierReturnMsg:
 #def classify_features(msg: ClassifyFeatMsg) -> ClassifyReturnMsg:
 #    pass
 
-def deploy(msg: DeployMsg) -> DeployReturnMsg:
+
+def deploy(msg: DeployMsg) -> ClassifyReturnMsg:
     """ Deploy is a combination of feature extractor and classification. """
 
     t0 = time.time()
@@ -77,12 +78,12 @@ def deploy(msg: DeployMsg) -> DeployReturnMsg:
     storage = storage_factory(msg.storage_type, msg.bucketname)
     clf = storage.load_classifier(msg.classifier_key)
 
-    scores = [clf.predict_proba(features.get_array((row, col)))
-              for row, col in msg.rowcols]
+    scores = [(row, col, clf.predict_proba(features.get_array((row, col))).
+               tolist()) for row, col in msg.rowcols]
 
     # Return
-    return DeployReturnMsg(
+    return ClassifyReturnMsg(
         model_was_cached=feats_return_message.model_was_cashed,
         runtime=time.time() - t0,
-        scores=[score.tolist() for score in scores],
+        scores=scores,
         classes=list(clf.classes_))

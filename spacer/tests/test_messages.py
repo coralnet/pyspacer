@@ -7,7 +7,7 @@ from spacer.messages import \
     TrainClassifierMsg, \
     TrainClassifierReturnMsg, \
     DeployMsg, \
-    DeployReturnMsg, \
+    ClassifyReturnMsg, \
     TaskMsg, \
     TaskReturnMsg
 
@@ -25,24 +25,10 @@ class TestExtractFeaturesMsg(unittest.TestCase):
     def test_missing_fields_in_serialized_message(self):
 
         data = ExtractFeaturesMsg.example().serialize()
-        del data['pk']  # Delete one of the keys.
-        self.assertRaises(TypeError, ExtractFeaturesMsg.deserialize, data)
-
-    def test_missing_storage_type_in_serialized_message(self):
-
-        data = ExtractFeaturesMsg.example().serialize()
-        #  Delete storage_key. Should still work since it is optional.
-        del data['storage_type']
-        msg = ExtractFeaturesMsg.deserialize(data)
-        self.assertEqual(msg.storage_type, 's3')
+        del data['job_token']  # Delete one of the keys.
+        self.assertRaises(KeyError, ExtractFeaturesMsg.deserialize, data)
 
     def test_asserts(self):
-        msg = ExtractFeaturesMsg.example()
-        msg.storage_type = 'invalid_storage'
-        self.assertRaises(AssertionError,
-                          ExtractFeaturesMsg.deserialize,
-                          msg.serialize())
-
         msg = ExtractFeaturesMsg.example()
         msg.feature_extractor_name = 'invalid_modelname'
         self.assertRaises(AssertionError,
@@ -118,10 +104,10 @@ class TestDeployReturnMsg(unittest.TestCase):
 
     def test_serialize(self):
 
-        msg = DeployReturnMsg.example()
-        self.assertEqual(msg, DeployReturnMsg.deserialize(
+        msg = ClassifyReturnMsg.example()
+        self.assertEqual(msg, ClassifyReturnMsg.deserialize(
             msg.serialize()))
-        self.assertEqual(msg, DeployReturnMsg.deserialize(
+        self.assertEqual(msg, ClassifyReturnMsg.deserialize(
             json.loads(json.dumps(msg.serialize()))))
 
 
