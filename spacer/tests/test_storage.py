@@ -14,6 +14,31 @@ from spacer.data_classes import ImageFeatures
 from spacer.storage import storage_factory, download_model
 
 
+class TestURLStorage(unittest.TestCase):
+
+    def setUp(self):
+        self.storage = storage_factory('url')
+
+    def test_load_image(self):
+        img = self.storage.load_image(
+            'https://spacer-test.s3-us-west-2.amazonaws.com/08bfc10v7t.png')
+        self.assertTrue(isinstance(img, Image.Image))
+
+    def test_load_classifier(self):
+        clf = self.storage.load_classifier(
+            'https://spacer-test.s3-us-west-2.amazonaws.com/legacy.model')
+        self.assertTrue(isinstance(clf, CalibratedClassifierCV))
+
+    def test_load_string(self):
+        features_json = self.storage.load_string(
+            'https://spacer-test.s3-us-west-2.amazonaws.com/'
+            '08bfc10v7t.png.featurevector'
+        )
+        self.assertTrue(isinstance(features_json, str))
+        feats = ImageFeatures.deserialize(json.loads(features_json))
+        self.assertTrue(isinstance(feats, ImageFeatures))
+
+
 @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
 class TestS3Storage(unittest.TestCase):
 
@@ -45,6 +70,7 @@ class TestS3Storage(unittest.TestCase):
         img2 = self.storage.load_image(self.tmp_image_key)
 
         self.assertTrue(np.array_equal(np.array(img), np.array(img2)))
+        self.assertTrue(isinstance(img2, Image.Image))
 
     def test_load_store_image(self):
         img = Image.new('RGB', (100, 200))
@@ -108,6 +134,7 @@ class TestLocalStorage(unittest.TestCase):
         img.save(self.tmp_image_file_name)
         img2 = self.storage.load_image(self.tmp_image_file_name)
         self.assertTrue(np.array_equal(np.array(img), np.array(img2)))
+        self.assertTrue(isinstance(img2, Image.Image))
 
     def test_load_store_image(self):
         img = Image.new('RGB', (100, 200))
@@ -164,6 +191,7 @@ class TestMemoryStorage(unittest.TestCase):
         self.storage.store_image(self.tmp_image_file_name, img)
         img2 = self.storage.load_image(self.tmp_image_file_name)
         self.assertTrue(np.array_equal(np.array(img), np.array(img2)))
+        self.assertTrue(isinstance(img2, Image.Image))
 
     def test_string_store_load(self):
         data = json.dumps({'a': 1, 'b': 2})
@@ -216,4 +244,7 @@ class TestDownloadModel(unittest.TestCase):
         self.assertTrue(was_cached)
 
 
+class TestLoadStoreMethods(unittest.TestCase):
+    """ Test the load and store 'wrapper' methods. """
+    # TODO
 

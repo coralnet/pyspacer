@@ -10,7 +10,7 @@ from PIL import Image
 from io import BytesIO
 from typing import Union, Tuple
 
-from urllib.error import URLError, HTTPError, ContentTooShortError
+from urllib.error import URLError
 
 from sklearn.calibration import CalibratedClassifierCV, LabelEncoder
 
@@ -24,7 +24,7 @@ def patch_legacy(clf: CalibratedClassifierCV) -> CalibratedClassifierCV:
     Upgrades models trained on sklearn 0.17.1 to 0.22.2
     Note: this in only tested for inference.
     """
-    print("patching legacy classifier")
+    print("-> Patching legacy classifier.")
     assert len(clf.calibrated_classifiers_) == 1
     assert all(clf.classes_ == clf.calibrated_classifiers_[0].classes_)
     clf.calibrated_classifiers_[0].label_encoder_ = LabelEncoder()
@@ -73,11 +73,10 @@ class URLStorage(Storage):
     def __init__(self):
         self.fs_storage = FileSystemStorage()
 
-    @staticmethod
-    def _load(url, local_load_method):
+    def _load(self, url, local_load_method):
         tmp_path = wget.download(url)
         item = local_load_method(tmp_path)
-        os.remove(tmp_path)
+        self.fs_storage.delete(tmp_path)
         return item
 
     def load_image(self, url: str):
@@ -243,6 +242,9 @@ def storage_factory(storage_type: str, bucketname: Union[str, None] = None):
     if storage_type == 'memory':
         print("-> Initializing memory storage")
         return MemoryStorage()
+    if storage_type == 'url':
+        print("-> Initializing URL storage")
+        return URLStorage()
 
 
 def download_model(keyname: str) -> Tuple[str, bool]:
@@ -283,7 +285,7 @@ def load(loc: DataLocation, data_type: str):
 
 
 def store(loc: DataLocation,
-          content: Union[Image, CalibratedClassifierCV, str],
+          content: Union[Image.Image, CalibratedClassifierCV, str],
           data_type: str):
     """ Helper method to store any data type to a DataLocation """
 
@@ -293,6 +295,6 @@ def store(loc: DataLocation,
     if data_type == 'clf':
         return storage.store_classifier(loc.key, content)
     if data_type == 'string':
-        return storage.load_string(loc.key, content)
+        return storage.store_string(loc.key, content)
     else:
         raise ValueError('data_type {} not recognized'.format(data_type))
