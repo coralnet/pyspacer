@@ -38,6 +38,36 @@ class TestURLStorage(unittest.TestCase):
         feats = ImageFeatures.deserialize(json.loads(features_json))
         self.assertTrue(isinstance(feats, ImageFeatures))
 
+    def test_exists(self):
+        self.assertTrue(self.storage.exists(
+            'https://spacer-test.s3-us-west-2.amazonaws.com/08bfc10v7t.png'))
+        self.assertFalse(self.storage.exists(
+            'not_even_a_url'
+        ))
+        self.assertFalse(self.storage.exists(
+            'https://not-a-real-domain/image.png'
+        ))
+
+    def test_unsupported_methods(self):
+        self.assertRaises(TypeError,
+                          self.storage.store_image,
+                          'dummy_url',
+                          Image.new('RGB', (200, 200)))
+
+        self.assertRaises(TypeError,
+                          self.storage.store_classifier,
+                          'dummy_url',
+                          'classifier')
+
+        self.assertRaises(TypeError,
+                          self.storage.store_string,
+                          'dummy_url',
+                          json.dumps('sdf'))
+
+        self.assertRaises(TypeError,
+                          self.storage.delete,
+                          'dummy_url')
+
 
 @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
 class TestS3Storage(unittest.TestCase):

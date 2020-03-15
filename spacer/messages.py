@@ -213,43 +213,55 @@ class TrainClassifierReturnMsg(DataClass):
         )
 
 
-class DeployMsg(DataClass):
+class ClassifyImageMsg(DataClass):
     """ Specifies the deploy task. """
 
     def __init__(self,
-                 pk: int,  # Primary key of job, not used in spacer.
-                 im_url: str,  # URL of image to deploy on.
+                 job_token: str,  # Primary key of job, not used in spacer.
+                 image_loc: DataLocation,  # Location of image to classify.
                  feature_extractor_name: str,  # name of feature extractor
                  rowcols: List[Tuple[int, int]],
-                 classifier_key: str,  # Key to classifier to use.
-                 bucketname: str,  # Bucket where classifier is stored.
-                 storage_type: str = 's3',
+                 classifier_loc: DataLocation,  # Location of classifier to use.
                  ):
-        self.pk = pk
-        self.im_url = im_url
+        self.job_token = job_token
+        self.image_loc = image_loc
         self.feature_extractor_name = feature_extractor_name
         self.rowcols = rowcols
-        self.classifier_key = classifier_key
-        self.bucketname = bucketname
-        self.storage_type = storage_type
+        self.classifier_loc = classifier_loc
 
     @classmethod
     def example(cls):
-        return DeployMsg(
-            pk=0,
-            im_url='www.my.image.jpg',
+        return ClassifyImageMsg(
+            job_token='my_job',
+            image_loc=DataLocation('url',
+                                   'https://spacer-test.s3-us-west-2.'
+                                   'amazonaws.com/08bfc10v7t.png'),
             feature_extractor_name='vgg16_coralnet_ver1',
             rowcols=[(1, 1), (2, 2)],
-            classifier_key='my/classifier/key',
-            bucketname='spacer-test'
+            classifier_loc=DataLocation('url',
+                                        'https://spacer-test.s3-us-west-2.'
+                                        'amazonaws.com/legacy.model')
         )
 
+    def serialize(self):
+        return {
+            'job_token': self.job_token,
+            'image_loc': self.image_loc.serialize(),
+            'feature_extractor_name': self.feature_extractor_name,
+            'rowcols': self.rowcols,
+            'classifier_loc': self.classifier_loc.serialize()
+        }
+
     @classmethod
-    def deserialize(cls, data: Dict) -> 'DeployMsg':
+    def deserialize(cls, data: Dict) -> 'ClassifyImageMsg':
         """ Custom deserializer to convert back to tuples. """
-        msg = cls(**data)
-        msg.rowcols = [tuple(rc) for rc in data['rowcols']]
-        return msg
+        return ClassifyImageMsg(
+            job_token=data['job_token'],
+            image_loc=DataLocation.deserialize(data['image_log']),
+            feature_extractor_name=data['feature_extractor_name'],
+            rowcols=data['rowcols'],
+            classifier_loc=DataLocation.deserialize(data['classifier_loc'])
+        )
 
 
 class ClassifyReturnMsg(DataClass):

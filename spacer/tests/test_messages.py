@@ -6,7 +6,7 @@ from spacer.messages import \
     ExtractFeaturesReturnMsg, \
     TrainClassifierMsg, \
     TrainClassifierReturnMsg, \
-    DeployMsg, \
+    ClassifyImageMsg, \
     ClassifyReturnMsg, \
     TaskMsg, \
     TaskReturnMsg
@@ -89,14 +89,14 @@ class TestTrainClassifierReturnMsg(unittest.TestCase):
             json.loads(json.dumps(msg.serialize()))))
 
 
-class TestDeployMsg(unittest.TestCase):
+class TestClassifyImageMsg(unittest.TestCase):
 
     def test_serialize(self):
 
-        msg = DeployMsg.example()
-        self.assertEqual(msg, DeployMsg.deserialize(
+        msg = ClassifyImageMsg.example()
+        self.assertEqual(msg, ClassifyImageMsg.deserialize(
             msg.serialize()))
-        self.assertEqual(msg, DeployMsg.deserialize(
+        self.assertEqual(msg, ClassifyImageMsg.deserialize(
             json.loads(json.dumps(msg.serialize()))))
 
 

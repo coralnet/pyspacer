@@ -15,12 +15,12 @@ from spacer.messages import \
     ExtractFeaturesReturnMsg, \
     TrainClassifierMsg, \
     TrainClassifierReturnMsg, \
-    DeployMsg, \
+    ClassifyImageMsg, \
     ClassifyReturnMsg
     #ClassifyFeatMsg, \
     #ClassifyReturnMsg, \
 
-from spacer.storage import storage_factory
+from spacer.storage import store, load, storage_factory
 from spacer.train_classifier import trainer_factory
 
 
@@ -60,24 +60,20 @@ def train_classifier(msg: TrainClassifierMsg) -> TrainClassifierReturnMsg:
 #    pass
 
 
-def deploy(msg: DeployMsg) -> ClassifyReturnMsg:
+def deploy(msg: ClassifyImageMsg) -> ClassifyReturnMsg:
     """ Deploy is a combination of feature extractor and classification. """
 
     t0 = time.time()
 
     # Download image
-    local_impath = os.path.basename(msg.im_url)
-    wget.download(msg.im_url, local_impath)
+    img = load(msg.image_loc, 'image')
 
     # Extract features
     extractor = feature_extractor_factory(msg.feature_extractor_name)
-    features, feats_return_message = extractor(Image.open(local_impath),
-                                               msg.rowcols)
+    features, feats_return_message = extractor(img, msg.rowcols)
 
     # Classify
-    storage = storage_factory(msg.storage_type, msg.bucketname)
-    clf = storage.load_classifier(msg.classifier_key)
-
+    clf = load(msg.classifier_loc, 'clf')
     scores = [(row, col, clf.predict_proba(features.get_array((row, col))).
                tolist()) for row, col in msg.rowcols]
 

@@ -105,6 +105,8 @@ class URLStorage(Storage):
             wget.download(url)
         except URLError:
             return False
+        except ValueError:
+            return False
         return True
 
 
