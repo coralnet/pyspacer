@@ -102,11 +102,12 @@ class URLStorage(Storage):
 
     def exists(self, url: str) -> bool:
         try:
-            wget.download(url)
+            tmp_path = wget.download(url)
         except URLError:
             return False
         except ValueError:
             return False
+        self.fs_storage.delete(tmp_path)
         return True
 
 

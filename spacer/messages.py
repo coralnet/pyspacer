@@ -296,7 +296,7 @@ class TaskMsg(DataClass):
                  task: str,
                  payload: Union[ExtractFeaturesMsg,
                                 TrainClassifierMsg,
-                                DeployMsg]):
+                                ClassifyImageMsg]):
 
         assert task in config.TASKS
 
@@ -313,7 +313,7 @@ class TaskMsg(DataClass):
         if task == 'train_classifier':
             return TaskMsg(task, TrainClassifierMsg.deserialize(payload))
         if task == 'deploy':
-            return TaskMsg(task, DeployMsg.deserialize(payload))
+            return TaskMsg(task, ClassifyImageMsg.deserialize(payload))
 
     def serialize(self):
         return {
@@ -324,7 +324,7 @@ class TaskMsg(DataClass):
     @classmethod
     def example(cls):
         return TaskMsg(task='deploy',
-                       payload=DeployMsg.example())
+                       payload=ClassifyImageMsg.example())
 
 
 class TaskReturnMsg(DataClass):
