@@ -21,7 +21,7 @@ from spacer.messages import DataLocation
 
 def patch_legacy(clf: CalibratedClassifierCV) -> CalibratedClassifierCV:
     """
-    Upgrades models trained on sklearn 0.17.1 to 0.22.2
+    Upgrades models trained on scikit-learn 0.17.1 to 0.22.2
     Note: this in only tested for inference.
     """
     print("-> Patching legacy classifier.")

@@ -6,6 +6,7 @@ from spacer.messages import \
     ExtractFeaturesReturnMsg, \
     TrainClassifierMsg, \
     TrainClassifierReturnMsg, \
+    ClassifyFeaturesMsg, \
     ClassifyImageMsg, \
     ClassifyReturnMsg, \
     TaskMsg, \
@@ -100,7 +101,18 @@ class TestClassifyImageMsg(unittest.TestCase):
             json.loads(json.dumps(msg.serialize()))))
 
 
-class TestDeployReturnMsg(unittest.TestCase):
+class TestClassifyFeaturesMsg(unittest.TestCase):
+
+    def test_serialize(self):
+
+        msg = ClassifyFeaturesMsg.example()
+        self.assertEqual(msg, ClassifyFeaturesMsg.deserialize(
+            msg.serialize()))
+        self.assertEqual(msg, ClassifyFeaturesMsg.deserialize(
+            json.loads(json.dumps(msg.serialize()))))
+
+
+class TestClassifyReturnMsg(unittest.TestCase):
 
     def test_serialize(self):
 
@@ -131,10 +143,19 @@ class TestTaskMsg(unittest.TestCase):
         self.assertEqual(msg, TaskMsg.deserialize(
             json.loads(json.dumps(msg.serialize()))))
 
-    def test_serialize_deploy(self):
+    def test_serialize_classify_features(self):
 
-        task = DeployMsg.example()
-        msg = TaskMsg(task='deploy', payload=task)
+        task = ClassifyFeaturesMsg.example()
+        msg = TaskMsg(task='classify_features', payload=task)
+        self.assertEqual(msg, TaskMsg.deserialize(
+            msg.serialize()))
+        self.assertEqual(msg, TaskMsg.deserialize(
+            json.loads(json.dumps(msg.serialize()))))
+
+    def test_serialize_classify_image(self):
+
+        task = ClassifyImageMsg.example()
+        msg = TaskMsg(task='classify_image', payload=task)
         self.assertEqual(msg, TaskMsg.deserialize(
             msg.serialize()))
         self.assertEqual(msg, TaskMsg.deserialize(
@@ -177,7 +198,7 @@ class TestTaskReturnMsg(unittest.TestCase):
         self.assertEqual(msg, TaskReturnMsg.deserialize(
             json.loads(json.dumps(msg.serialize()))))
 
-    def test_serialize_deploy(self):
+    def test_serialize_classify(self):
         msg = TaskReturnMsg.example()
         self.assertEqual(msg, TaskReturnMsg.deserialize(
             msg.serialize()))
@@ -185,8 +206,8 @@ class TestTaskReturnMsg(unittest.TestCase):
             json.loads(json.dumps(msg.serialize()))))
 
     def test_serialize_error(self):
-        task = DeployMsg.example()
-        org_msg = TaskMsg(task='deploy', payload=task)
+        task = ClassifyImageMsg.example()
+        org_msg = TaskMsg(task='classify_image', payload=task)
 
         msg = TaskReturnMsg(
             original_job=org_msg,

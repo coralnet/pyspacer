@@ -213,8 +213,48 @@ class TrainClassifierReturnMsg(DataClass):
         )
 
 
+class ClassifyFeaturesMsg(DataClass):
+    """ Specifies the classify_features task. """
+
+    def __init__(self,
+                 job_token: str,
+                 feature_loc: DataLocation,
+                 classifier_loc: DataLocation):
+        self.job_token = job_token
+        self.feature_loc = feature_loc
+        self.classifier_loc = classifier_loc
+
+    @classmethod
+    def example(cls):
+        return ClassifyFeaturesMsg(
+            job_token='my_job',
+            feature_loc=DataLocation(storage_type='url',
+                                     key='https://spacer-test.s3-us-west-2.'
+                                         'amazonaws.com/08bfc10v7t.png.'
+                                         'featurevector'),
+            classifier_loc=DataLocation(storage_type='url',
+                                        key='https://spacer-test.s3-us-west-2.'
+                                        'amazonaws.com/legacy.model')
+        )
+
+    def serialize(self):
+        return {
+            'job_token': self.job_token,
+            'feature_loc': self.feature_loc.serialize(),
+            'classifier_loc': self.classifier_loc.serialize(),
+        }
+
+    @classmethod
+    def deserialize(cls, data: Dict):
+        return ClassifyFeaturesMsg(
+            job_token=data['job_token'],
+            feature_loc=DataLocation.deserialize(data['feature_loc']),
+            classifier_loc=DataLocation.deserialize(data['classifier_loc'])
+        )
+
+
 class ClassifyImageMsg(DataClass):
-    """ Specifies the deploy task. """
+    """ Specifies the classify_image task. """
 
     def __init__(self,
                  job_token: str,  # Primary key of job, not used in spacer.
@@ -233,13 +273,13 @@ class ClassifyImageMsg(DataClass):
     def example(cls):
         return ClassifyImageMsg(
             job_token='my_job',
-            image_loc=DataLocation('url',
-                                   'https://spacer-test.s3-us-west-2.'
+            image_loc=DataLocation(storage_type='url',
+                                   key='https://spacer-test.s3-us-west-2.'
                                    'amazonaws.com/08bfc10v7t.png'),
             feature_extractor_name='vgg16_coralnet_ver1',
             rowcols=[(1, 1), (2, 2)],
-            classifier_loc=DataLocation('url',
-                                        'https://spacer-test.s3-us-west-2.'
+            classifier_loc=DataLocation(storage_type='url',
+                                        key='https://spacer-test.s3-us-west-2.'
                                         'amazonaws.com/legacy.model')
         )
 
@@ -257,15 +297,15 @@ class ClassifyImageMsg(DataClass):
         """ Custom deserializer to convert back to tuples. """
         return ClassifyImageMsg(
             job_token=data['job_token'],
-            image_loc=DataLocation.deserialize(data['image_log']),
+            image_loc=DataLocation.deserialize(data['image_loc']),
             feature_extractor_name=data['feature_extractor_name'],
-            rowcols=data['rowcols'],
+            rowcols=[(row, col) for row, col in data['rowcols']],
             classifier_loc=DataLocation.deserialize(data['classifier_loc'])
         )
 
 
 class ClassifyReturnMsg(DataClass):
-    """ Return message from the deploy task. """
+    """ Return message from the classify_{image, features} tasks. """
 
     def __init__(self,
                  model_was_cached: bool,
@@ -288,6 +328,16 @@ class ClassifyReturnMsg(DataClass):
             classes=[100, 12, 44]
         )
 
+    @classmethod
+    def deserialize(cls, data: Dict) -> 'ClassifyReturnMsg':
+        return ClassifyReturnMsg(
+            model_was_cached=data['model_was_cached'],
+            runtime=data['runtime'],
+            scores=[(row, col, scores) for
+                    row, col, scores in data['scores']],
+            classes=data['classes']
+        )
+
 
 class TaskMsg(DataClass):
     """ Highest level message which hold task messages. """
@@ -296,6 +346,7 @@ class TaskMsg(DataClass):
                  task: str,
                  payload: Union[ExtractFeaturesMsg,
                                 TrainClassifierMsg,
+                                ClassifyFeaturesMsg,
                                 ClassifyImageMsg]):
 
         assert task in config.TASKS
@@ -312,7 +363,9 @@ class TaskMsg(DataClass):
             return TaskMsg(task, ExtractFeaturesMsg.deserialize(payload))
         if task == 'train_classifier':
             return TaskMsg(task, TrainClassifierMsg.deserialize(payload))
-        if task == 'deploy':
+        if task == 'classify_features':
+            return TaskMsg(task, ClassifyFeaturesMsg.deserialize(payload))
+        if task == 'classify_image':
             return TaskMsg(task, ClassifyImageMsg.deserialize(payload))
 
     def serialize(self):
@@ -323,7 +376,7 @@ class TaskMsg(DataClass):
 
     @classmethod
     def example(cls):
-        return TaskMsg(task='deploy',
+        return TaskMsg(task='classify_image',
                        payload=ClassifyImageMsg.example())
 
 
@@ -358,11 +411,13 @@ class TaskReturnMsg(DataClass):
         original_job = TaskMsg.deserialize(data['original_job'])
 
         if data['ok']:
-            if original_job.task == 'extract_features':
+            task_name = original_job.task
+            assert task_name in config.TASKS
+            if task_name == 'extract_features':
                 results = ExtractFeaturesReturnMsg.deserialize(data['results'])
-            elif original_job.task == 'train_classifier':
+            elif task_name == 'train_classifier':
                 results = TrainClassifierReturnMsg.deserialize(data['results'])
-            else:
+            else:  # task_name in ['classify_image', 'classify_features']
                 results = ClassifyReturnMsg.deserialize(data['results'])
         else:
             results = data['results']

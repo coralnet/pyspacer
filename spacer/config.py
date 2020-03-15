@@ -89,7 +89,8 @@ assert os.path.exists(LOCAL_MODEL_PATH), "LOCAL_MODEL_PATH is set, " \
 TASKS = [
     'extract_features',
     'train_classifier',
-    'deploy'
+    'classify_features',
+    'classify_image'
 ]
 
 FEATURE_EXTRACTOR_NAMES = [
