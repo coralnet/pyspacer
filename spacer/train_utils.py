@@ -2,7 +2,6 @@
 Utility methods for training classifiers.
 """
 
-import json
 import random
 import string
 from typing import Tuple, List
@@ -188,11 +187,11 @@ def calc_acc(gt: List[int], est: List[int]) -> float:
     return float(sum([(g == e) for (g, e) in zip(gt, est)])) / len(gt)
 
 
-def make_random_data(im_count,
-                     class_list,
-                     points_per_image,
-                     feature_dim,
-                     storage: Storage) -> ImageLabels:
+def make_random_data(im_count: int,
+                     class_list: List[int],
+                     points_per_image: int,
+                     feature_dim: int,
+                     feature_loc: DataLocation) -> ImageLabels:
     """
     Utility method for testing that generates an ImageLabels instance
     complete with stored ImageFeatures.
@@ -209,7 +208,8 @@ def make_random_data(im_count,
                         for _ in range(20))
 
         # Store
-        storage.store_string(imkey, json.dumps(feats.serialize()))
+        feature_loc.key = imkey
+        feats.store(feature_loc)
         labels.data[imkey] = [
             (pf.row, pf.col, pl) for pf, pl in
             zip(feats.point_features, point_labels)

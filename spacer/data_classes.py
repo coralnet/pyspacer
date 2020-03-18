@@ -11,7 +11,7 @@ from typing import Dict, List, Tuple, Set, Optional, Union
 import numpy as np
 
 from spacer.messages import DataLocation
-from spacer.storage import load
+from spacer.storage import load, store
 
 
 class DataClass(ABC):  # pragma: no cover
@@ -209,6 +209,9 @@ class ImageFeatures(DataClass):
     @classmethod
     def load(cls, data_loc: DataLocation):
         return cls.deserialize(json.loads(load(data_loc, 'str')))
+
+    def store(self, data_loc: DataLocation):
+        store(data_loc, json.dumps(self.serialize()), 'str')
 
     def serialize(self):
         return {
