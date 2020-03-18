@@ -308,13 +308,11 @@ class ClassifyReturnMsg(DataClass):
     """ Return message from the classify_{image, features} tasks. """
 
     def __init__(self,
-                 model_was_cached: bool,
                  runtime: float,
                  # Scores is a list of (row, col, [scores]) tuples.
                  scores: List[Tuple[int, int, List[float]]],
                  # Maps the score index to a global class id.
                  classes: List[int]):
-        self.model_was_cached = model_was_cached
         self.runtime = runtime
         self.scores = scores
         self.classes = classes
@@ -322,7 +320,6 @@ class ClassifyReturnMsg(DataClass):
     @classmethod
     def example(cls):
         return ClassifyReturnMsg(
-            model_was_cached=True,
             runtime=1.1,
             scores=[(10, 20, [0.1, 0.2, 0.7]), (20, 40, [0.9, 0.06, 0.04])],
             classes=[100, 12, 44]
@@ -331,7 +328,6 @@ class ClassifyReturnMsg(DataClass):
     @classmethod
     def deserialize(cls, data: Dict) -> 'ClassifyReturnMsg':
         return ClassifyReturnMsg(
-            model_was_cached=data['model_was_cached'],
             runtime=data['runtime'],
             scores=[(row, col, scores) for
                     row, col, scores in data['scores']],

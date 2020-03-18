@@ -12,10 +12,9 @@ import numpy as np
 from sklearn.calibration import CalibratedClassifierCV
 
 from spacer import config
+from spacer.storage import load
 from spacer.data_classes import ImageLabels, ValResults
-from spacer.messages import \
-    TrainClassifierReturnMsg
-from spacer.storage import Storage
+from spacer.messages import TrainClassifierReturnMsg, DataLocation
 from spacer.train_utils import train, evaluate_classifier, calc_acc, \
     make_random_data
 
@@ -24,11 +23,11 @@ class ClassifierTrainer(abc.ABC):  # pragma: no cover
 
     @abc.abstractmethod
     def __call__(self,
-                 traindata_key: str,
-                 valdata_key: str,
+                 train_labels: ImageLabels,
+                 val_labels: ImageLabels,
                  nbr_epochs: int,
                  pc_models_key: List[str],
-                 storage: Storage) \
+                 feature_loc: DataLocation) \
             -> Tuple[CalibratedClassifierCV,
                      ValResults,
                      TrainClassifierReturnMsg]:
@@ -37,6 +36,7 @@ class ClassifierTrainer(abc.ABC):  # pragma: no cover
 
 class DummyTrainer(ClassifierTrainer):
     """ Returns a classifier trained on made-up dummy-data """
+    # TODO: fix the make_random_data thing. It doesn't quite work anymore.
 
     def __init__(self,
                  feature_dim: int = 12,
@@ -54,22 +54,22 @@ class DummyTrainer(ClassifierTrainer):
         self.n_traindata = n_traindata
 
     def __call__(self,
-                 traindata_key,
-                 valdata_key,
+                 train_labels,
+                 val_labels,
                  nbr_epochs,
                  pc_models_key,
-                 storage):
+                 feature_loc):
 
         t0 = time.time()
         np.random.seed(0)
 
         labels = make_random_data(self.n_traindata, self.class_list,
                                   self.points_per_image, self.feature_dim,
-                                  storage)
+                                  feature_loc)
 
         # Call the train routine on dummy data to make sure the classifier
         # is trained and calibrated (so that it won't return NaNs when called).
-        clf, ref_accs = train(labels, storage, nbr_epochs)
+        clf, ref_accs = train(labels, feature_loc, nbr_epochs)
 
         nbr_val_pts = self.n_valdata*self.points_per_image
         val_gts = np.random.choice(len(self.class_list), nbr_val_pts).tolist()
@@ -98,31 +98,27 @@ class MiniBatchTrainer(ClassifierTrainer):
     """
 
     def __call__(self,
-                 traindata_key,
-                 valdata_key,
+                 train_labels,
+                 val_labels,
                  nbr_epochs,
-                 pc_models_key,
-                 storage):
+                 pc_models_loc,
+                 feature_loc):
 
         # Train.
         t0 = time.time()
-        train_labels = ImageLabels.deserialize(
-            json.loads(storage.load_string(traindata_key)))
-        clf, ref_accs = train(train_labels, storage, nbr_epochs)
+        clf, ref_accs = train(train_labels, feature_loc, nbr_epochs)
         classes = list(clf.classes_)
 
         # Evaluate new classifier on validation set.
-        val_labels = ImageLabels.deserialize(
-            json.loads(storage.load_string(valdata_key)))
         val_gts, val_ests, val_scores = evaluate_classifier(
-            clf, val_labels, classes, storage)
+            clf, val_labels, classes, feature_loc)
 
         # Evaluate previous classifiers on validation set.
         pc_accs = []
-        for pc_model_key in pc_models_key:
-            this_clf = storage.load_classifier(pc_model_key)
+        for pc_model_loc in pc_models_loc:
+            this_clf = load(pc_model_loc, 'clf')
             pc_gts, pc_ests, _ = evaluate_classifier(this_clf, val_labels,
-                                                     classes, storage)
+                                                     classes, feature_loc)
             pc_accs.append(calc_acc(pc_gts, pc_ests))
 
         return \

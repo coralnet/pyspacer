@@ -51,7 +51,7 @@ def process_task(task_msg: TaskMsg) -> TaskReturnMsg:
     task_defs = {
         'extract_features': extract_features,
         'train_classifier': train_classifier,
-        'deploy': deploy
+        'classify_features': classify_featues,
     }
 
     assert isinstance(task_msg, TaskMsg)

@@ -3,12 +3,15 @@ Defines data-classes for input and output types.
 Each data-class can serialize itself to a structure of JSON-friendly
 python-native data-structures such that it can be stored.
 """
-
+import json
 from abc import ABC, abstractmethod
 from pprint import pformat
 from typing import Dict, List, Tuple, Set, Optional, Union
 
 import numpy as np
+
+from spacer.messages import DataLocation
+from spacer.storage import load
 
 
 class DataClass(ABC):  # pragma: no cover
@@ -75,6 +78,11 @@ class ImageLabels(DataClass):
         return ImageLabels(
             data={key: [tuple(entry) for entry in value] for
                   key, value in data['data'].items()})
+
+    @classmethod
+    def load(cls, data_loc: DataLocation) -> 'ImageLabels':
+        """ Load and initialize instance from DataLocation """
+        return cls.deserialize(json.loads(load(data_loc, 'str')))
 
     @property
     def image_keys(self):
@@ -174,15 +182,6 @@ class ImageFeatures(DataClass):
             npoints=2
         )
 
-    def serialize(self):
-        return {
-            'point_features': [feats.serialize() for
-                               feats in self.point_features],
-            'valid_rowcol': self.valid_rowcol,
-            'feature_dim': self.feature_dim,
-            'npoints': self.npoints
-        }
-
     @classmethod
     def deserialize(cls, data: Union[Dict, List]):
 
@@ -206,6 +205,21 @@ class ImageFeatures(DataClass):
             feature_dim=data['feature_dim'],
             npoints=data['npoints']
         )
+
+    @classmethod
+    def load(cls, data_loc: DataLocation):
+        return cls.deserialize(json.loads(load(data_loc, 'str')))
+
+    def serialize(self):
+        return {
+            'point_features': [feats.serialize() for
+                               feats in self.point_features],
+            'valid_rowcol': self.valid_rowcol,
+            'feature_dim': self.feature_dim,
+            'npoints': self.npoints
+        }
+
+
 
     def __eq__(self, other):
         return all([a == b for a, b in zip(self.point_features,

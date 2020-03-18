@@ -10,14 +10,14 @@ from spacer.messages import \
     ExtractFeaturesMsg, \
     ExtractFeaturesReturnMsg, \
     DataLocation
-from spacer.storage import storage_factory
+from spacer.storage import load
 
 
 class TestDummyExtractor(unittest.TestCase):
 
     def test_simple(self):
         msg = ExtractFeaturesMsg(
-            job_token='1',
+            job_token='job_nbr_1',
             feature_extractor_name='dummy',
             rowcols=[(100, 100)],
             image_loc=DataLocation(storage_type='memory',
@@ -57,20 +57,19 @@ class TestCaffeExtractor(unittest.TestCase):
     def test_simple(self):
 
         msg = ExtractFeaturesMsg(
-            pk=1,
+            job_token='simple_job',
             feature_extractor_name='vgg16_coralnet_ver1',
-            bucketname='spacer-test',
-            storage_type='s3',
-            imkey='edinburgh3.jpg',
             rowcols=[(100, 100)],
-            outputkey='dummy',
+            image_loc=DataLocation(storage_type='s3',
+                                   key='edinburgh3.jpg',
+                                   bucket_name='spacer-test'),
+            feature_loc=DataLocation(storage_type='memory',
+                                     key='dummy')
         )
 
-        storage = storage_factory(msg.storage_type, msg.bucketname)
         ext = feature_extractor_factory(msg.feature_extractor_name)
-
-        features, return_msg = ext(storage.load_image(msg.imkey),
-                                   msg.rowcols)
+        img = load(msg.image_loc, 'image')
+        features, return_msg = ext(img, msg.rowcols)
 
         self.assertTrue(isinstance(return_msg, ExtractFeaturesReturnMsg))
         self.assertTrue(isinstance(features, ImageFeatures))
@@ -95,20 +94,19 @@ class TestCaffeExtractor(unittest.TestCase):
         """
 
         msg = ExtractFeaturesMsg(
-            pk=1,
+            job_token='cornercase_1',
             feature_extractor_name='vgg16_coralnet_ver1',
-            bucketname='spacer-test',
-            storage_type='s3',
-            imkey='kh6dydiix0.jpeg',
             rowcols=[(148, 50), (60, 425)],
-            outputkey='dummy',
+            image_loc=DataLocation(storage_type='s3',
+                                   key='kh6dydiix0.jpeg',
+                                   bucket_name='spacer-test'),
+            feature_loc=DataLocation(storage_type='memory',
+                                     key='dummy')
         )
 
-        storage = storage_factory(msg.storage_type, msg.bucketname)
         ext = feature_extractor_factory(msg.feature_extractor_name)
-
-        features, return_msg = ext(storage.load_image(msg.imkey),
-                                   msg.rowcols)
+        img = load(msg.image_loc, 'image')
+        features, return_msg = ext(img, msg.rowcols)
 
         self.assertTrue(isinstance(return_msg, ExtractFeaturesReturnMsg))
         self.assertTrue(isinstance(features, ImageFeatures))
@@ -127,19 +125,19 @@ class TestCaffeExtractor(unittest.TestCase):
         quite like it.
         """
         msg = ExtractFeaturesMsg(
-            pk=1,
+            job_token='cornercase_2',
             feature_extractor_name='vgg16_coralnet_ver1',
-            bucketname='spacer-test',
-            storage_type='s3',
-            imkey='sfq2mr5qbs.jpeg',
             rowcols=[(190, 226), (25, 359)],
-            outputkey='dummy'
+            image_loc=DataLocation(storage_type='s3',
+                                   key='sfq2mr5qbs.jpeg',
+                                   bucket_name='spacer-test'),
+            feature_loc=DataLocation(storage_type='memory',
+                                     key='dummy')
         )
-        storage = storage_factory(msg.storage_type, msg.bucketname)
-        ext = feature_extractor_factory(msg.feature_extractor_name)
 
-        features, return_msg = ext(storage.load_image(msg.imkey),
-                                   msg.rowcols)
+        ext = feature_extractor_factory(msg.feature_extractor_name)
+        img = load(msg.image_loc, 'image')
+        features, return_msg = ext(img, msg.rowcols)
 
         self.assertTrue(isinstance(return_msg, ExtractFeaturesReturnMsg))
         self.assertTrue(isinstance(features, ImageFeatures))
@@ -164,21 +162,27 @@ class TestCaffeExtractor(unittest.TestCase):
                    (265, 234)]
 
         msg = ExtractFeaturesMsg(
-            pk=1,
+            job_token='regression_job',
             feature_extractor_name='vgg16_coralnet_ver1',
-            bucketname='spacer-test',
-            storage_type='s3',
-            imkey='08bfc10v7t.png',
             rowcols=rowcols,
-            outputkey='na'
+            image_loc=DataLocation(storage_type='s3',
+                                   key='08bfc10v7t.png',
+                                   bucket_name='spacer-test'),
+            feature_loc=DataLocation(storage_type='memory',
+                                     key='dummy')
         )
-        storage = storage_factory(msg.storage_type, msg.bucketname)
+
+        legacy_feat_loc = DataLocation(storage_type='s3',
+                                       key='08bfc10v7t.png.featurevector',
+                                       bucket_name='spacer-test')
+
         ext = feature_extractor_factory(msg.feature_extractor_name)
 
-        features_new, _ = ext(storage.load_image(msg.imkey), msg.rowcols)
+        img = load(msg.image_loc, 'image')
+        features_new, _ = ext(img, msg.rowcols)
 
-        features_legacy = ImageFeatures.deserialize(json.loads(
-            storage.load_string('08bfc10v7t.png.featurevector')))
+        features_legacy = ImageFeatures.deserialize(
+            load(legacy_feat_loc, 'str'))
 
         for pf_new, pf_legacy in zip(features_new.point_features,
                                      features_legacy.point_features):

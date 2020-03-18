@@ -12,7 +12,10 @@ from spacer.messages import \
     ExtractFeaturesMsg, \
     TrainClassifierMsg, \
     TrainClassifierReturnMsg, \
-    DeployMsg
+    ClassifyFeaturesMsg, \
+    ClassifyImageMsg, \
+    ClassifyReturnMsg, \
+    DataLocation
 
 
 class TestProcessTask(unittest.TestCase):
@@ -36,18 +39,18 @@ class TestProcessTask(unittest.TestCase):
     def test_failed_feature_extract(self):
         msg = TaskMsg(task='extract_features',
                       payload=ExtractFeaturesMsg(
-                          pk=0,
+                          job_token='test_job',
                           feature_extractor_name='dummy',
-                          bucketname='',
-                          imkey='image_that_is_missing',
                           rowcols=[(1, 1)],
-                          outputkey='does not matter',
-                          storage_type='memory'
+                          image_loc=DataLocation(storage_type='memory',
+                                                 key='missing_image'),
+                          feature_loc=DataLocation(storage_type='memory',
+                                                   key='doesnt_matter')
                       ))
         return_msg = process_task(msg)
         self.assertFalse(return_msg.ok)
         self.assertIn("KeyError", return_msg.error_message)
-        self.assertIn("image_that_is_missing", return_msg.error_message)
+        self.assertIn("missing_image", return_msg.error_message)
         self.assertTrue(type(return_msg), TaskReturnMsg)
 
     def test_failed_deploy_url(self):

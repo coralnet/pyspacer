@@ -3,65 +3,73 @@ Defines the highest level methods for completing tasks.
 """
 
 import json
-import os
 import time
-from PIL import Image
 
-import wget
+import numpy as np
 
+from spacer.data_classes import ImageLabels, ImageFeatures
 from spacer.extract_features import feature_extractor_factory
 from spacer.messages import \
     ExtractFeaturesMsg, \
     ExtractFeaturesReturnMsg, \
     TrainClassifierMsg, \
     TrainClassifierReturnMsg, \
+    ClassifyFeaturesMsg, \
     ClassifyImageMsg, \
     ClassifyReturnMsg
-    #ClassifyFeatMsg, \
-    #ClassifyReturnMsg, \
-
-from spacer.storage import store, load, storage_factory
+from spacer.storage import store, load
 from spacer.train_classifier import trainer_factory
 
 
 def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
 
     print("-> Extracting features for job:{}.".format(msg.job_token))
-    storage = storage_factory(msg.storage_type, msg.bucketname)
     extractor = feature_extractor_factory(msg.feature_extractor_name)
-    features, return_msg = extractor(storage.load_image(msg.imkey),
-                                     msg.rowcols)
-    storage.store_string(msg.outputkey, json.dumps(features.serialize()))
+    img = load(msg.image_loc, 'image')
+    features, return_msg = extractor(img, msg.rowcols)
+    store(msg.feature_loc, json.dumps(features.serialize()), 'str')
     return return_msg
 
 
 def train_classifier(msg: TrainClassifierMsg) -> TrainClassifierReturnMsg:
 
-    print("Training classifier pk:{}.".format(msg.pk))
-    storage = storage_factory(msg.storage_type, msg.bucketname)
+    print("Training classifier pk:{}.".format(msg.job_token))
     trainer = trainer_factory(msg.trainer_name)
 
     # Do the actual training
     clf, val_results, return_message = trainer(
-        msg.traindata_key,
-        msg.valdata_key,
+        ImageLabels.load(msg.traindata_loc),
+        ImageLabels.load(msg.traindata_loc),
         msg.nbr_epochs,
-        msg.pc_models_key,
-        storage
+        msg.previous_model_locs,
+        msg.features_loc
     )
 
     # Store
-    storage.store_classifier(msg.model_key, clf)
-    storage.store_string(msg.valresult_key,
-                         json.dumps(val_results.serialize()))
+    store(msg.model_loc, clf, 'clf')
+    store(msg.valresult_loc, json.dumps(val_results.serialize()), 'str')
+
     return return_message
 
-#def classify_features(msg: ClassifyFeatMsg) -> ClassifyReturnMsg:
-#    pass
+
+def classify_features(msg: ClassifyFeaturesMsg) -> ClassifyReturnMsg:
+
+    t0 = time.time()
+    features = ImageFeatures.load(msg.feature_loc)
+
+    clf = load(msg.classifier_loc, 'clf')
+
+    scores = [(pf.row, pf.col, clf.predict_proba(np.array(pf.data))) for
+              pf in features.point_features]
+
+    # Return
+    return ClassifyReturnMsg(
+        runtime=time.time() - t0,
+        scores=scores,
+        classes=list(clf.classes_))
 
 
-def deploy(msg: ClassifyImageMsg) -> ClassifyReturnMsg:
-    """ Deploy is a combination of feature extractor and classification. """
+def classify_image(msg: ClassifyImageMsg) -> ClassifyReturnMsg:
 
     t0 = time.time()
 
@@ -70,7 +78,7 @@ def deploy(msg: ClassifyImageMsg) -> ClassifyReturnMsg:
 
     # Extract features
     extractor = feature_extractor_factory(msg.feature_extractor_name)
-    features, feats_return_message = extractor(img, msg.rowcols)
+    features, _ = extractor(img, msg.rowcols)
 
     # Classify
     clf = load(msg.classifier_loc, 'clf')
@@ -79,7 +87,6 @@ def deploy(msg: ClassifyImageMsg) -> ClassifyReturnMsg:
 
     # Return
     return ClassifyReturnMsg(
-        model_was_cached=feats_return_message.model_was_cashed,
         runtime=time.time() - t0,
         scores=scores,
         classes=list(clf.classes_))

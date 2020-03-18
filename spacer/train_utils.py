@@ -12,12 +12,12 @@ from sklearn.calibration import CalibratedClassifierCV
 from sklearn.linear_model import SGDClassifier
 
 from spacer import config
-from spacer.data_classes import ImageLabels, ImageFeatures
+from spacer.data_classes import ImageLabels, ImageFeatures, DataLocation
 from spacer.storage import Storage
 
 
 def train(labels: ImageLabels,
-          storage: Storage,
+          feature_loc: DataLocation,
           nbr_epochs: int) -> Tuple[CalibratedClassifierCV, List[float]]:
 
     if len(labels) < config.MIN_TRAINIMAGES:
@@ -57,7 +57,7 @@ def train(labels: ImageLabels,
 
     # Load reference data (must hold in memory for the calibration)
     print("-> Loading reference data.")
-    refx, refy = load_batch_data(labels, ref_set, classes, storage)
+    refx, refy = load_batch_data(labels, ref_set, classes, feature_loc)
 
     # Initialize classifier and ref set accuracy list
     print("-> Online training...")
@@ -114,14 +114,15 @@ def calc_batch_size(max_imgs_in_memory, train_set_size):
 def load_image_data(labels: ImageLabels,
                     imkey: str,
                     classes: List[int],
-                    storage: Storage) -> Tuple[List[List[float]], List[int]]:
+                    feature_loc: DataLocation) \
+        -> Tuple[List[List[float]], List[int]]:
     """
     Loads features and labels for image and matches feature with labels.
     """
 
     # Load features for this image.
-    image_features = ImageFeatures.deserialize(
-        json.loads(storage.load_string(imkey)))
+    feature_loc.key = imkey  # Set the relevant key here.
+    image_features = ImageFeatures.load(feature_loc)
 
     # Load row, col, labels for this image.
     image_labels = labels.data[imkey]
@@ -155,11 +156,12 @@ def load_image_data(labels: ImageLabels,
 def load_batch_data(labels: ImageLabels,
                     imkeylist: List[str],
                     classes: List[int],
-                    storage: Storage) -> Tuple[List[List[float]], List[int]]:
+                    feature_loc: DataLocation) \
+        -> Tuple[List[List[float]], List[int]]:
     """ Loads features and labels and match them together. """
     x, y = [], []
     for imkey in imkeylist:
-        x_, y_ = load_image_data(labels, imkey, classes, storage)
+        x_, y_ = load_image_data(labels, imkey, classes, feature_loc)
         x.extend(x_)
         y.extend(y_)
     return x, y
@@ -190,7 +192,7 @@ def make_random_data(im_count,
                      class_list,
                      points_per_image,
                      feature_dim,
-                     storage) -> ImageLabels:
+                     storage: Storage) -> ImageLabels:
     """
     Utility method for testing that generates an ImageLabels instance
     complete with stored ImageFeatures.
