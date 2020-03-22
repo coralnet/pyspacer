@@ -7,7 +7,7 @@ import time
 
 import numpy as np
 
-from spacer.data_classes import ImageLabels, ImageFeatures, SpacerImage
+from spacer.data_classes import ImageLabels, ImageFeatures
 from spacer.extract_features import feature_extractor_factory
 from spacer.messages import \
     ExtractFeaturesMsg, \
