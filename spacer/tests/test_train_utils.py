@@ -5,7 +5,7 @@ import warnings
 from typing import Tuple
 
 from spacer import config
-from spacer.data_classes import ImageLabels, PointFeatures, ImageFeatures
+from spacer.data_classes import ImageLabels, PointFeatures, ImageFeatures, DataLocation
 from spacer.storage import storage_factory
 from spacer.train_classifier import trainer_factory
 from spacer.train_utils import train, calc_batch_size, chunkify, calc_acc, \
@@ -24,15 +24,15 @@ class TestTrain(unittest.TestCase):
         feature_dim = 5
         class_list = [1, 2]
         num_epochs = 4
-        storage = storage_factory('memory')
+        feature_loc = DataLocation(storage_type='memory', key='')
 
         labels = make_random_data(n_traindata,
                                   class_list,
                                   points_per_image,
                                   feature_dim,
-                                  storage)
+                                  feature_loc)
 
-        clf_calibrated, ref_acc = train(labels, storage, num_epochs)
+        clf_calibrated, ref_acc = train(labels, feature_loc, num_epochs)
 
         self.assertEqual(len(ref_acc), num_epochs)
 
@@ -42,15 +42,15 @@ class TestTrain(unittest.TestCase):
         feature_dim = 5
         class_list = [1, 2]
         num_epochs = 4
-        storage = storage_factory('memory')
+        feature_loc = DataLocation(storage_type='memory', key='')
 
         labels = make_random_data(n_traindata,
                                   class_list,
                                   points_per_image,
                                   feature_dim,
-                                  storage)
+                                  feature_loc)
 
-        self.assertRaises(ValueError, train, labels, storage, num_epochs)
+        self.assertRaises(ValueError, train, labels, feature_loc, num_epochs)
 
     def test_too_few_classes(self):
         """ Can't train with only 1 class! """
@@ -59,15 +59,15 @@ class TestTrain(unittest.TestCase):
         feature_dim = 5
         class_list = [1]
         num_epochs = 4
-        storage = storage_factory('memory')
+        feature_loc = DataLocation(storage_type='memory', key='')
 
         labels = make_random_data(n_traindata,
                                   class_list,
                                   points_per_image,
                                   feature_dim,
-                                  storage)
+                                  feature_loc)
 
-        self.assertRaises(ValueError, train, labels, storage, num_epochs)
+        self.assertRaises(ValueError, train, labels, feature_loc, num_epochs)
 
 
 class TestEvaluateClassifier(unittest.TestCase):
@@ -81,10 +81,12 @@ class TestEvaluateClassifier(unittest.TestCase):
         trainer = trainer_factory('dummy',
                                   dummy_kwargs={'feature_dim': 5,
                                                 'class_list': [1, 2]})
-        clf, _, _ = trainer('n/a', 'n/a', 2, [], storage_factory('memory'))
-        storage = storage_factory('memory')
-        val_data = make_random_data(3, [1, 2], 4, 5, storage)
-        gts, ests, scores = evaluate_classifier(clf, val_data, [1, 2], storage)
+
+        feature_loc = DataLocation(storage_type='memory', key='')
+        clf, _, _ = trainer(None, None, 2, [], feature_loc)
+        val_data = make_random_data(3, [1, 2], 4, 5, feature_loc)
+        gts, ests, scores = evaluate_classifier(clf, val_data, [1, 2],
+                                                feature_loc)
         self.assertTrue(1 in gts)
         self.assertTrue(2 in gts)
 
@@ -93,15 +95,15 @@ class TestEvaluateClassifier(unittest.TestCase):
         trainer = trainer_factory('dummy',
                                   dummy_kwargs={'feature_dim': 5,
                                                 'class_list': [1, 2]})
-        clf, _, _ = trainer('n/a', 'n/a', 2, [], storage_factory('memory'))
-        storage = storage_factory('memory')
+        feature_loc = DataLocation(storage_type='memory', key='')
+        clf, _, _ = trainer('n/a', 'n/a', 2, [], feature_loc)
 
         # Note here that class_list for the val_data doesn't include
         # any samples from classes [1, 2] so the gt will be empty,
         # which will raise an exception.
-        val_data = make_random_data(3, [3], 4, 5, storage)
+        val_data = make_random_data(3, [3], 4, 5, feature_loc)
         self.assertRaises(ValueError, evaluate_classifier,
-                          clf, val_data, [1, 2], storage)
+                          clf, val_data, [1, 2], feature_loc)
 
 
 class TestCalcBatchSize(unittest.TestCase):
@@ -165,7 +167,8 @@ class TestLoadImageData(unittest.TestCase):
     def setUp(self):
 
         self.feat_key = 'tmp_features'
-        self.storage = storage_factory('memory', '')
+        self.feature_loc = DataLocation(storage_type='memory',
+                                        key=self.feat_key)
         warnings.simplefilter("ignore", ResourceWarning)
 
     def fixtures(self, in_order=True, valid_rowcol=True) \
@@ -199,9 +202,7 @@ class TestLoadImageData(unittest.TestCase):
             feature_dim=3,
             npoints=3
         )
-
-        self.storage.store_string(self.feat_key,
-                                  json.dumps(features.serialize()))
+        features.store(self.feature_loc)
 
         return labels, features
 
@@ -209,7 +210,7 @@ class TestLoadImageData(unittest.TestCase):
 
         labels, features = self.fixtures(in_order=True)
 
-        x, y = load_image_data(labels, self.feat_key, [1, 2], self.storage)
+        x, y = load_image_data(labels, self.feat_key, [1, 2], self.feature_loc)
 
         self.assertEqual(y, [1, 2, 1])
         self.assertEqual(x[0], features.point_features[0].data)
@@ -220,7 +221,7 @@ class TestLoadImageData(unittest.TestCase):
 
         labels, features = self.fixtures(in_order=False)
 
-        x, y = load_image_data(labels, self.feat_key, [1, 2], self.storage)
+        x, y = load_image_data(labels, self.feat_key, [1, 2], self.feature_loc)
 
         self.assertEqual(y, [1, 2, 1])
         # Since the order is reversed, the first feature should be the second
@@ -234,7 +235,7 @@ class TestLoadImageData(unittest.TestCase):
         """
         labels, features = self.fixtures(in_order=False, valid_rowcol=False)
 
-        x, y = load_image_data(labels, self.feat_key, [1, 2], self.storage)
+        x, y = load_image_data(labels, self.feat_key, [1, 2], self.feature_loc)
 
         self.assertEqual(y, [1, 2, 1])
         # Since the order is reversed, the first feature should be the second
@@ -247,7 +248,7 @@ class TestLoadImageData(unittest.TestCase):
 
         labels, features = self.fixtures(in_order=True, valid_rowcol=True)
 
-        x, y = load_image_data(labels, self.feat_key, [1], self.storage)
+        x, y = load_image_data(labels, self.feat_key, [1], self.feature_loc)
 
         self.assertEqual(y, [1, 1])
         self.assertEqual(x[0], features.point_features[0].data)
@@ -259,7 +260,7 @@ class TestLoadImageData(unittest.TestCase):
 
         labels, features = self.fixtures(in_order=True, valid_rowcol=True)
 
-        x, y = load_image_data(labels, self.feat_key, [2], self.storage)
+        x, y = load_image_data(labels, self.feat_key, [2], self.feature_loc)
 
         self.assertEqual(y, [2])
         self.assertEqual(x[0], features.point_features[1].data)
@@ -271,7 +272,7 @@ class TestLoadImageData(unittest.TestCase):
         """
         labels, features = self.fixtures(in_order=True, valid_rowcol=False)
 
-        x, y = load_image_data(labels, self.feat_key, [1], self.storage)
+        x, y = load_image_data(labels, self.feat_key, [1], self.feature_loc)
 
         self.assertEqual(y, [1, 1])
         # Since the order is reversed, the first feature should be the second
@@ -286,7 +287,11 @@ class TestLoadBatchData(unittest.TestCase):
 
         self.feat_key1 = 'tmp_features1'
         self.feat_key2 = 'tmp_features2'
-        self.storage = storage_factory('memory', '')
+        self.feat1_loc = DataLocation(storage_type='memory',
+                                      key='tmp_features1')
+        self.feat2_loc = DataLocation(storage_type='memory',
+                                      key='tmp_features2')
+        self.feat_loc_template = DataLocation(storage_type='memory', key='')
         warnings.simplefilter("ignore", ResourceWarning)
 
     def fixtures(self, valid_rowcol=True) \
@@ -310,9 +315,7 @@ class TestLoadBatchData(unittest.TestCase):
             feature_dim=3,
             npoints=3
         )
-
-        self.storage.store_string(self.feat_key1,
-                                  json.dumps(features1.serialize()))
+        features1.store(self.feat1_loc)
 
         features2 = ImageFeatures(
             point_features=[
@@ -324,9 +327,7 @@ class TestLoadBatchData(unittest.TestCase):
             feature_dim=3,
             npoints=3
         )
-
-        self.storage.store_string(self.feat_key2,
-                                  json.dumps(features2.serialize()))
+        features2.store(self.feat2_loc)
 
         return labels, features1, features2
 
@@ -334,7 +335,7 @@ class TestLoadBatchData(unittest.TestCase):
 
         labels, features1, features2 = self.fixtures(valid_rowcol=True)
         x, y = load_batch_data(labels, [self.feat_key1, self.feat_key2],
-                               [1, 2], self.storage)
+                               [1, 2], self.feat_loc_template)
 
         self.assertEqual(x[0], features1.point_features[0].data)
         self.assertEqual(x[3], features2.point_features[0].data)
@@ -342,7 +343,7 @@ class TestLoadBatchData(unittest.TestCase):
     def test_reverse_imkey_order(self):
         labels, features1, features2 = self.fixtures(valid_rowcol=True)
         x, y = load_batch_data(labels, [self.feat_key2, self.feat_key1],
-                               [1, 2], self.storage)
+                               [1, 2], self.feat_loc_template)
 
         self.assertEqual(x[0], features2.point_features[0].data)
         self.assertEqual(x[3], features1.point_features[0].data)
@@ -351,7 +352,7 @@ class TestLoadBatchData(unittest.TestCase):
 
         labels, features1, features2 = self.fixtures(valid_rowcol=True)
         x, y = load_batch_data(labels, [self.feat_key2, self.feat_key1],
-                               [1], self.storage)
+                               [1], self.feat_loc_template)
 
         # Both images have two points with label=1
         self.assertEqual(len(x), 4)

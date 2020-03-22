@@ -68,7 +68,7 @@ class TestCaffeExtractor(unittest.TestCase):
         )
 
         ext = feature_extractor_factory(msg.feature_extractor_name)
-        img = load(msg.image_loc, 'image')
+        img = load(msg.image_loc, 'img')
         features, return_msg = ext(img, msg.rowcols)
 
         self.assertTrue(isinstance(return_msg, ExtractFeaturesReturnMsg))
@@ -105,7 +105,7 @@ class TestCaffeExtractor(unittest.TestCase):
         )
 
         ext = feature_extractor_factory(msg.feature_extractor_name)
-        img = load(msg.image_loc, 'image')
+        img = load(msg.image_loc, 'img')
         features, return_msg = ext(img, msg.rowcols)
 
         self.assertTrue(isinstance(return_msg, ExtractFeaturesReturnMsg))
@@ -136,7 +136,7 @@ class TestCaffeExtractor(unittest.TestCase):
         )
 
         ext = feature_extractor_factory(msg.feature_extractor_name)
-        img = load(msg.image_loc, 'image')
+        img = load(msg.image_loc, 'img')
         features, return_msg = ext(img, msg.rowcols)
 
         self.assertTrue(isinstance(return_msg, ExtractFeaturesReturnMsg))
@@ -178,11 +178,9 @@ class TestCaffeExtractor(unittest.TestCase):
 
         ext = feature_extractor_factory(msg.feature_extractor_name)
 
-        img = load(msg.image_loc, 'image')
+        img = load(msg.image_loc, 'img')
         features_new, _ = ext(img, msg.rowcols)
-
-        features_legacy = ImageFeatures.deserialize(
-            load(legacy_feat_loc, 'str'))
+        features_legacy = ImageFeatures.load(legacy_feat_loc)
 
         for pf_new, pf_legacy in zip(features_new.point_features,
                                      features_legacy.point_features):

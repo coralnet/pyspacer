@@ -6,7 +6,7 @@ import json
 
 from spacer import config
 from spacer.messages import TaskMsg, TaskReturnMsg
-from spacer.tasks import extract_features, train_classifier, deploy
+from spacer.tasks import extract_features, train_classifier, classify_features
 
 
 def sqs_mailman(queue_group='spacer') -> bool:
@@ -22,10 +22,11 @@ def sqs_mailman(queue_group='spacer') -> bool:
     if m is None:
         print("-> No messages in inqueue.")
         return False
-    task_msg_dict = json.loads(m.get_body())
+    body = m.get_body()
 
     # Try to deserialize message
     try:
+        task_msg_dict = json.loads(body)
         task_msg = TaskMsg.deserialize(task_msg_dict)
         task_return_msg = process_task(task_msg)
         return_msg_dict = task_return_msg.serialize()
@@ -33,7 +34,7 @@ def sqs_mailman(queue_group='spacer') -> bool:
         # Handle deserialization errors directly in mailman.
         # All other errors are handled in "handle_message" function.
         return_msg_dict = {
-            'original_job': task_msg_dict,
+            'original_job': body,
             'ok': False,
             'results': None,
             'error_message': 'Error deserializing message: ' + repr(e)
@@ -51,7 +52,7 @@ def process_task(task_msg: TaskMsg) -> TaskReturnMsg:
     task_defs = {
         'extract_features': extract_features,
         'train_classifier': train_classifier,
-        'classify_features': classify_featues,
+        'classify_features': classify_features,
     }
 
     assert isinstance(task_msg, TaskMsg)

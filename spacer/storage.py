@@ -16,8 +16,6 @@ from sklearn.calibration import CalibratedClassifierCV, LabelEncoder
 
 from spacer import config
 
-from spacer.messages import DataLocation
-
 
 def patch_legacy(clf: CalibratedClassifierCV) -> CalibratedClassifierCV:
     """
@@ -36,11 +34,11 @@ class Storage(abc.ABC):  # pragma: no cover
 
     @abc.abstractmethod
     def store_classifier(self, path: str, clf: CalibratedClassifierCV) -> None:
-        """ Stores a classifier instance """
+        """ Stores a CalibratedClassifierCV instance """
 
     @abc.abstractmethod
     def load_classifier(self, path: str) -> CalibratedClassifierCV:
-        """ Loads a classifier instance """
+        """ Loads a CalibratedClassifierCV instance """
 
     @abc.abstractmethod
     def store_image(self, path: str, content: Image) -> None:
@@ -232,21 +230,24 @@ class MemoryStorage(Storage):
         return path in self.blobs
 
 
+# This holds the global memory storage.
+_memorystorage = None
+
+
 def storage_factory(storage_type: str, bucketname: Union[str, None] = None):
 
     assert storage_type in config.STORAGE_TYPES
 
     if storage_type == 's3':
-        print("-> Initializing s3 storage")
         return S3Storage(bucketname=bucketname)
     if storage_type == 'filesystem':
-        print("-> Initializing filesystem storage")
         return FileSystemStorage()
     if storage_type == 'memory':
-        print("-> Initializing memory storage")
-        return MemoryStorage()
+        global _memorystorage
+        if _memorystorage is None:
+            _memorystorage = MemoryStorage()
+        return _memorystorage
     if storage_type == 'url':
-        print("-> Initializing URL storage")
         return URLStorage()
 
 
@@ -273,31 +274,31 @@ def download_model(keyname: str) -> Tuple[str, bool]:
     return destination, was_cashed
 
 
-def load(loc: DataLocation, data_type: str):
+def load(loc: 'DataLocation', data_type: str):
     """ Helper method to load any data type from a DataLocation """
 
     storage = storage_factory(loc.storage_type, loc.bucket_name)
-    if data_type == 'image':
+    if data_type == 'img':
         return storage.load_image(loc.key)
     if data_type == 'clf':
         return storage.load_classifier(loc.key)
-    if data_type == 'string':
+    if data_type == 'str':
         return storage.load_string(loc.key)
     else:
         raise ValueError('data_type {} not recognized'.format(data_type))
 
 
-def store(loc: DataLocation,
+def store(loc: 'DataLocation',
           content: Union[Image.Image, CalibratedClassifierCV, str],
           data_type: str):
     """ Helper method to store any data type to a DataLocation """
 
     storage = storage_factory(loc.storage_type, loc.bucket_name)
-    if data_type == 'image':
+    if data_type == 'img':
         return storage.store_image(loc.key, content)
     if data_type == 'clf':
         return storage.store_classifier(loc.key, content)
-    if data_type == 'string':
+    if data_type == 'str':
         return storage.store_string(loc.key, content)
     else:
         raise ValueError('data_type {} not recognized'.format(data_type))

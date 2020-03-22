@@ -12,9 +12,8 @@ import numpy as np
 from sklearn.calibration import CalibratedClassifierCV
 
 from spacer import config
-from spacer.storage import load
-from spacer.data_classes import ImageLabels, ValResults
-from spacer.messages import TrainClassifierReturnMsg, DataLocation
+from spacer.data_classes import ImageLabels, ValResults, DataLocation
+from spacer.messages import TrainClassifierReturnMsg
 from spacer.train_utils import train, evaluate_classifier, calc_acc, \
     make_random_data
 
@@ -26,7 +25,7 @@ class ClassifierTrainer(abc.ABC):  # pragma: no cover
                  train_labels: ImageLabels,
                  val_labels: ImageLabels,
                  nbr_epochs: int,
-                 pc_models_key: List[str],
+                 pc_models: List[CalibratedClassifierCV],
                  feature_loc: DataLocation) \
             -> Tuple[CalibratedClassifierCV,
                      ValResults,
@@ -57,7 +56,7 @@ class DummyTrainer(ClassifierTrainer):
                  train_labels,
                  val_labels,
                  nbr_epochs,
-                 pc_models_key,
+                 pc_models,
                  feature_loc):
 
         t0 = time.time()
@@ -85,7 +84,7 @@ class DummyTrainer(ClassifierTrainer):
             ), \
             TrainClassifierReturnMsg(
                 acc=calc_acc(val_gts, val_ests),
-                pc_accs=np.random.random(len(pc_models_key)).tolist(),
+                pc_accs=np.random.random(len(pc_models)).tolist(),
                 ref_accs=ref_accs,
                 runtime=time.time() - t0
             )
@@ -101,7 +100,7 @@ class MiniBatchTrainer(ClassifierTrainer):
                  train_labels,
                  val_labels,
                  nbr_epochs,
-                 pc_models_loc,
+                 pc_models,
                  feature_loc):
 
         # Train.
@@ -115,9 +114,8 @@ class MiniBatchTrainer(ClassifierTrainer):
 
         # Evaluate previous classifiers on validation set.
         pc_accs = []
-        for pc_model_loc in pc_models_loc:
-            this_clf = load(pc_model_loc, 'clf')
-            pc_gts, pc_ests, _ = evaluate_classifier(this_clf, val_labels,
+        for pc_model in pc_models:
+            pc_gts, pc_ests, _ = evaluate_classifier(pc_model, val_labels,
                                                      classes, feature_loc)
             pc_accs.append(calc_acc(pc_gts, pc_ests))
 

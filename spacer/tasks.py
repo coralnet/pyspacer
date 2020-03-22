@@ -7,7 +7,7 @@ import time
 
 import numpy as np
 
-from spacer.data_classes import ImageLabels, ImageFeatures
+from spacer.data_classes import ImageLabels, ImageFeatures, SpacerImage
 from spacer.extract_features import feature_extractor_factory
 from spacer.messages import \
     ExtractFeaturesMsg, \
@@ -41,7 +41,7 @@ def train_classifier(msg: TrainClassifierMsg) -> TrainClassifierReturnMsg:
         ImageLabels.load(msg.traindata_loc),
         ImageLabels.load(msg.traindata_loc),
         msg.nbr_epochs,
-        msg.previous_model_locs,
+        [load(loc, 'clf') for loc in msg.previous_model_locs],
         msg.features_loc
     )
 

@@ -66,7 +66,7 @@ def train(labels: ImageLabels,
         np.random.shuffle(train_set)
         mini_batches = chunkify(train_set, batches_per_epoch)
         for mb in mini_batches:
-            x, y = load_batch_data(labels, mb, classes, storage)
+            x, y = load_batch_data(labels, mb, classes, feature_loc)
             clf.partial_fit(x, y, classes=classes)
         ref_acc.append(calc_acc(refy, clf.predict(refx)))
         print("-> Epoch {}, acc: {}".format(epoch, ref_acc[-1]))
@@ -81,14 +81,14 @@ def train(labels: ImageLabels,
 def evaluate_classifier(clf: CalibratedClassifierCV,
                         labels: ImageLabels,
                         classes: List[int],
-                        storage: Storage):
+                        feature_loc: DataLocation):
     """
     Return the accuracy of classifier "clf" evaluated on "imkeys"
     with ground truth given in "gtdict". Features are fetched from S3 "bucket".
     """
     scores, gts, ests = [], [], []
     for imkey in labels.image_keys:
-        x, y = load_image_data(labels, imkey, classes, storage)
+        x, y = load_image_data(labels, imkey, classes, feature_loc)
         if len(x) > 0:
             scores.extend(clf.predict_proba(x).max(axis=1))
             ests.extend(clf.predict(x))

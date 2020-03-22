@@ -7,7 +7,8 @@ from spacer.data_classes import \
     PointFeatures, \
     ImageFeatures, \
     ImageLabels, \
-    ValResults
+    ValResults, \
+    DataLocation
 
 
 class TestDataClass(unittest.TestCase):
@@ -46,18 +47,28 @@ class TestImageFeatures(unittest.TestCase):
         """
         with open(os.path.join(config.LOCAL_FIXTURE_DIR,
                                'legacy.jpg.feats')) as fp:
-            msg = ImageFeatures.deserialize(json.load(fp))
-        self.assertEqual(msg.valid_rowcol, False)
+            feats = ImageFeatures.deserialize(json.load(fp))
+        self.assertEqual(feats.valid_rowcol, False)
         self.assertEqual(ImageFeatures.deserialize(
-            msg.serialize()).valid_rowcol, False)
+            feats.serialize()).valid_rowcol, False)
 
-        self.assertTrue(isinstance(msg.point_features[0], PointFeatures))
-        self.assertEqual(msg.npoints, len(msg.point_features))
-        self.assertEqual(msg.feature_dim, len(msg.point_features[0].data))
+        self.assertTrue(isinstance(feats.point_features[0], PointFeatures))
+        self.assertEqual(feats.npoints, len(feats.point_features))
+        self.assertEqual(feats.feature_dim, len(feats.point_features[0].data))
 
-        self.assertEqual(msg, ImageFeatures.deserialize(msg.serialize()))
-        self.assertEqual(msg, ImageFeatures.deserialize(json.loads(
-            json.dumps(msg.serialize()))))
+        self.assertEqual(feats, ImageFeatures.deserialize(feats.serialize()))
+        self.assertEqual(feats, ImageFeatures.deserialize(json.loads(
+            json.dumps(feats.serialize()))))
+
+    def test_legacy_from_s3(self):
+        legacy_feat_loc = DataLocation(storage_type='s3',
+                                       key='08bfc10v7t.png.featurevector',
+                                       bucket_name='spacer-test')
+
+        feats = ImageFeatures.load(legacy_feat_loc)
+        self.assertEqual(feats.valid_rowcol, False)
+        self.assertEqual(feats, ImageFeatures.deserialize(json.loads(
+            json.dumps(feats.serialize()))))
 
     def test_getitem(self):
         msg = ImageFeatures.example()

@@ -10,7 +10,7 @@ from typing import Dict, List, Tuple, Set, Optional, Union
 
 import numpy as np
 
-from spacer.messages import DataLocation
+from spacer import config
 from spacer.storage import load, store
 
 
@@ -54,6 +54,33 @@ class DataClass(ABC):  # pragma: no cover
                                                for key in sd])
 
 
+class DataLocation(DataClass):
+    """
+    Points to the location of a piece of data. Can either be a url, a key
+    in a s3 bucket, a file path on a local file system or a key to a
+    in-memory store.
+    """
+    def __init__(self,
+                 storage_type: str,
+                 key: str,
+                 bucket_name: Optional[str] = None):
+
+        assert storage_type in config.STORAGE_TYPES, "Storage type not valid."
+        if storage_type == 's3':
+            assert bucket_name is not None, "Need bucket_name to use s3."
+        self.storage_type = storage_type
+        self.key = key
+        self.bucket_name = bucket_name
+
+    @classmethod
+    def example(cls) -> 'DataLocation':
+        return DataLocation('memory', 'my_blob')
+
+    @classmethod
+    def deserialize(cls, data: Dict) -> 'DataLocation':
+        return DataLocation(**data)
+
+
 class ImageLabels(DataClass):
     """ Contains row, col, label information for an image. """
 
@@ -83,6 +110,9 @@ class ImageLabels(DataClass):
     def load(cls, data_loc: DataLocation) -> 'ImageLabels':
         """ Load and initialize instance from DataLocation """
         return cls.deserialize(json.loads(load(data_loc, 'str')))
+
+    def store(self, data_loc: DataLocation) -> None:
+        store(data_loc, json.dumps(self.serialize()), 'str')
 
     @property
     def image_keys(self):
@@ -197,14 +227,14 @@ class ImageFeatures(DataClass):
                 feature_dim=len(data[0]),
                 npoints=len(data)
             )
-
-        return ImageFeatures(
-            point_features=[PointFeatures.deserialize(feat)
-                            for feat in data['point_features']],
-            valid_rowcol=data['valid_rowcol'],
-            feature_dim=data['feature_dim'],
-            npoints=data['npoints']
-        )
+        else:
+            return ImageFeatures(
+                point_features=[PointFeatures.deserialize(feat)
+                                for feat in data['point_features']],
+                valid_rowcol=data['valid_rowcol'],
+                feature_dim=data['feature_dim'],
+                npoints=data['npoints']
+            )
 
     @classmethod
     def load(cls, data_loc: DataLocation):
@@ -221,8 +251,6 @@ class ImageFeatures(DataClass):
             'feature_dim': self.feature_dim,
             'npoints': self.npoints
         }
-
-
 
     def __eq__(self, other):
         return all([a == b for a, b in zip(self.point_features,
