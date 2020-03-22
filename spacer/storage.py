@@ -17,52 +17,23 @@ from sklearn.calibration import CalibratedClassifierCV, LabelEncoder
 from spacer import config
 
 
-def patch_legacy(clf: CalibratedClassifierCV) -> CalibratedClassifierCV:
-    """
-    Upgrades models trained on scikit-learn 0.17.1 to 0.22.2
-    Note: this in only tested for inference.
-    """
-    print("-> Patching legacy classifier.")
-    assert len(clf.calibrated_classifiers_) == 1
-    assert all(clf.classes_ == clf.calibrated_classifiers_[0].classes_)
-    clf.calibrated_classifiers_[0].label_encoder_ = LabelEncoder()
-    clf.calibrated_classifiers_[0].label_encoder_.fit(clf.classes_)
-    return clf
-
-
 class Storage(abc.ABC):  # pragma: no cover
 
     @abc.abstractmethod
-    def store_classifier(self, path: str, clf: CalibratedClassifierCV) -> None:
-        """ Stores a CalibratedClassifierCV instance """
+    def store(self, key: str, stream: BytesIO) -> None:
+        """ Stores a BytesIO stream """
 
     @abc.abstractmethod
-    def load_classifier(self, path: str) -> CalibratedClassifierCV:
-        """ Loads a CalibratedClassifierCV instance """
+    def load(self, key: str) -> BytesIO:
+        """ Loads key to BytesIO stream """
 
     @abc.abstractmethod
-    def store_image(self, path: str, content: Image) -> None:
-        """ Stores a PIL image instance """
+    def delete(self, key: str) -> None:
+        """ Deletes key if it exists """
 
     @abc.abstractmethod
-    def load_image(self, path: str) -> Image:
-        """ Loads a PIL image instance """
-
-    @abc.abstractmethod
-    def store_string(self, path: str, content: str) -> None:
-        """ Stores a string """
-
-    @abc.abstractmethod
-    def load_string(self, path: str) -> str:
-        """ Loads a string """
-
-    @abc.abstractmethod
-    def delete(self, path: str) -> None:
-        """ Deletes the file if it exists """
-
-    @abc.abstractmethod
-    def exists(self, path: str) -> bool:
-        """ Checks if file exists """
+    def exists(self, key: str) -> bool:
+        """ Checks if key exists """
 
 
 class URLStorage(Storage):
@@ -77,23 +48,14 @@ class URLStorage(Storage):
         self.fs_storage.delete(tmp_path)
         return item
 
-    def load_image(self, url: str):
-        return self._load(url, self.fs_storage.load_image)
-
-    def load_classifier(self, url: str):
-        return self._load(url, self.fs_storage.load_classifier)
-
-    def load_string(self, url: str):
-        return self._load(url, self.fs_storage.load_string)
-
-    def store_image(self, path: str, content: Image):
+    def store(self, url: str, stream: BytesIO):
         raise TypeError('Store operation not supported for URL storage.')
 
-    def store_classifier(self, path: str, clf: CalibratedClassifierCV):
-        raise TypeError('Store operation not supported for URL storage.')
-
-    def store_string(self, path: str, content: str):
-        raise TypeError('Store operation not supported for URL storage.')
+    def load(self, url: str):
+        tmp_path = wget.download(url)
+        stream = self.fs_storage.load(tmp_path)
+        self.fs_storage.delete(tmp_path)
+        return stream
 
     def delete(self, url: str) -> None:
         raise TypeError('Store operation not supported for URL storage.')
@@ -116,47 +78,19 @@ class S3Storage(Storage):
         conn = config.get_s3_conn()
         self.bucket = conn.get_bucket(bucketname)
 
-    def load_classifier(self, path: str):
-        key = self.bucket.get_key(path)
+    def store(self, key: str, stream: BytesIO):
+        key = self.bucket.new_key(key)
+        key.set_contents_from_file(stream)
 
-        # Make sure pickle.loads is compatible with legacy classifiers which
-        # were stored using pickle.dumps in python 2.7.
-        clf = pickle.loads(key.get_contents_as_string(), fix_imports=True,
-                           encoding='latin1')
-        if hasattr(clf, 'calibrated_classifiers_') and not \
-                hasattr(clf.calibrated_classifiers_[0], 'label_encoder'):
-            clf = patch_legacy(clf)
-        return clf
+    def load(self, key: str):
+        key = self.bucket.get_key(key)
+        return BytesIO(key.get_contents_as_string())
 
-    def store_classifier(self, path: str, clf: CalibratedClassifierCV):
-        key = self.bucket.new_key(path)
-        key.set_contents_from_string(pickle.dumps(clf, protocol=2))
+    def delete(self, key: str) -> None:
+        self.bucket.delete_key(key)
 
-    def store_image(self, path: str, content: Image):
-
-        with BytesIO() as stream:
-            content.save(stream, 'JPEG')
-            stream.seek(0)
-            key = self.bucket.new_key(path)
-            key.set_contents_from_file(stream)
-
-    def load_image(self, path) -> Image:
-        key = self.bucket.get_key(path)
-        return Image.open(BytesIO(key.get_contents_as_string()))
-
-    def store_string(self, path: str, content: str):
-        key = self.bucket.new_key(path)
-        key.set_contents_from_string(content)
-
-    def load_string(self, path: str) -> str:
-        key = self.bucket.get_key(path)
-        return key.get_contents_as_string().decode('UTF-8')
-
-    def delete(self, path: str):
-        self.bucket.delete_key(path)
-
-    def exists(self, path: str):
-        return self.bucket.get_key(path) is not None
+    def exists(self, key: str):
+        return self.bucket.get_key(key) is not None
 
 
 class FileSystemStorage(Storage):
@@ -165,32 +99,13 @@ class FileSystemStorage(Storage):
     def __init__(self):
         pass
 
-    def load_classifier(self, path: str) -> CalibratedClassifierCV:
-        with open(path, 'rb') as f:
-            clf = pickle.load(f, encoding='latin1')
+    def store(self, key: str, stream: BytesIO):
+        with open(key, 'wb') as f:
+            f.write(stream.getbuffer())
 
-        if hasattr(clf, 'calibrated_classifiers_') and not \
-                hasattr(clf.calibrated_classifiers_[0], 'label_encoder'):
-            clf = patch_legacy(clf)
-        return clf
-
-    def store_classifier(self, path: str, clf: CalibratedClassifierCV):
-        with open(path, 'wb') as f:
-            pickle.dump(clf, f, protocol=2)
-
-    def store_image(self, path: str, content: Image):
-        content.save(path)
-
-    def load_image(self, path) -> Image:
-        return Image.open(path)
-
-    def store_string(self, path: str, content: str):
-        with open(path, 'w') as f:
-            f.write(content)
-
-    def load_string(self, path: str):
-        with open(path, 'r') as f:
-            return f.read()
+    def load(self, key: str):
+        with open(key, 'rb') as f:
+            return BytesIO(f.read())
 
     def delete(self, path: str):
         os.remove(path)
@@ -205,23 +120,12 @@ class MemoryStorage(Storage):
     def __init__(self):
         self.blobs = {}
 
-    def load_classifier(self, path: str):
-        return self.blobs[path]
+    def store(self, key: str, stream: BytesIO):
+        self.blobs[key] = stream.getvalue()
 
-    def store_classifier(self, path: str, clf: CalibratedClassifierCV):
-        self.blobs[path] = clf
-
-    def store_image(self, path: str, content: Image):
-        self.blobs[path] = content
-
-    def load_image(self, path: str):
-        return self.blobs[path]
-
-    def store_string(self, path: str, content: str):
-        self.blobs[path] = content
-
-    def load_string(self, path: str):
-        return self.blobs[path]
+    def load(self, key: str):
+        stream = BytesIO(self.blobs[key])
+        return stream
 
     def delete(self, path: str):
         del self.blobs[path]
@@ -274,31 +178,45 @@ def download_model(keyname: str) -> Tuple[str, bool]:
     return destination, was_cashed
 
 
-def load(loc: 'DataLocation', data_type: str):
-    """ Helper method to load any data type from a DataLocation """
+def store_image(loc: 'DataLocation', img: Image):
+    storage = storage_factory(loc.storage_type, loc.bucket_name)
+    with BytesIO() as stream:
+        img.save(stream, 'JPEG')
+        stream.seek(0)
+        storage.store(loc.key, stream)
+
+
+def load_image(loc: 'DataLocation'):
+    storage = storage_factory(loc.storage_type, loc.bucket_name)
+    return Image.open(storage.load(loc.key))
+
+
+def store_classifier(loc: 'DataLocation', clf: CalibratedClassifierCV):
+    storage = storage_factory(loc.storage_type, loc.bucket_name)
+    storage.store(loc.key, BytesIO(pickle.dumps(clf, protocol=2)))
+
+
+def load_classifier(loc: 'DataLocation'):
+
+    def patch_legacy():
+        """
+        Upgrades models trained on scikit-learn 0.17.1 to 0.22.2
+        Note: this in only tested for inference.
+        """
+        print("-> Patching legacy classifier.")
+        assert len(clf.calibrated_classifiers_) == 1
+        assert all(clf.classes_ == clf.calibrated_classifiers_[0].classes_)
+        clf.calibrated_classifiers_[0].label_encoder_ = LabelEncoder()
+        clf.calibrated_classifiers_[0].label_encoder_.fit(clf.classes_)
 
     storage = storage_factory(loc.storage_type, loc.bucket_name)
-    if data_type == 'img':
-        return storage.load_image(loc.key)
-    if data_type == 'clf':
-        return storage.load_classifier(loc.key)
-    if data_type == 'str':
-        return storage.load_string(loc.key)
-    else:
-        raise ValueError('data_type {} not recognized'.format(data_type))
+    clf = pickle.loads(storage.load(loc.key).getbuffer(), fix_imports=True,
+                       encoding='latin1')
+
+    if hasattr(clf, 'calibrated_classifiers_') and not \
+            hasattr(clf.calibrated_classifiers_[0], 'label_encoder'):
+        patch_legacy()
+
+    return clf
 
 
-def store(loc: 'DataLocation',
-          content: Union[Image.Image, CalibratedClassifierCV, str],
-          data_type: str):
-    """ Helper method to store any data type to a DataLocation """
-
-    storage = storage_factory(loc.storage_type, loc.bucket_name)
-    if data_type == 'img':
-        return storage.store_image(loc.key, content)
-    if data_type == 'clf':
-        return storage.store_classifier(loc.key, content)
-    if data_type == 'str':
-        return storage.store_string(loc.key, content)
-    else:
-        raise ValueError('data_type {} not recognized'.format(data_type))

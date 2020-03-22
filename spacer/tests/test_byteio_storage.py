@@ -18,7 +18,7 @@ from sklearn.linear_model import SGDClassifier
 
 from spacer.data_classes import ImageFeatures, DataLocation
 
-
+@unittest.skip
 @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
 class TestS3Storage(unittest.TestCase):
 
@@ -82,7 +82,7 @@ class TestS3Storage(unittest.TestCase):
         pickle.loads(storage.load(loc).getbuffer(), fix_imports=True,
                      encoding='latin1')
 
-
+@unittest.skip
 class TestFileSystemStorage(unittest.TestCase):
 
     def setUp(self):

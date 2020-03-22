@@ -3,7 +3,6 @@ Defines train-classifier ABC; implementations; and factory.
 """
 
 import abc
-import json
 import time
 from collections import defaultdict
 from typing import Tuple, List

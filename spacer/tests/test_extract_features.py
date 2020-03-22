@@ -10,8 +10,8 @@ from spacer.messages import \
     ExtractFeaturesMsg, \
     ExtractFeaturesReturnMsg, \
     DataLocation
-from spacer.storage import load
 
+from spacer.storage import load_image
 
 class TestDummyExtractor(unittest.TestCase):
 
@@ -68,7 +68,7 @@ class TestCaffeExtractor(unittest.TestCase):
         )
 
         ext = feature_extractor_factory(msg.feature_extractor_name)
-        img = load(msg.image_loc, 'img')
+        img = load_image(msg.image_loc)
         features, return_msg = ext(img, msg.rowcols)
 
         self.assertTrue(isinstance(return_msg, ExtractFeaturesReturnMsg))
@@ -105,7 +105,7 @@ class TestCaffeExtractor(unittest.TestCase):
         )
 
         ext = feature_extractor_factory(msg.feature_extractor_name)
-        img = load(msg.image_loc, 'img')
+        img = load_image(msg.image_loc)
         features, return_msg = ext(img, msg.rowcols)
 
         self.assertTrue(isinstance(return_msg, ExtractFeaturesReturnMsg))
@@ -136,7 +136,7 @@ class TestCaffeExtractor(unittest.TestCase):
         )
 
         ext = feature_extractor_factory(msg.feature_extractor_name)
-        img = load(msg.image_loc, 'img')
+        img = load_image(msg.image_loc)
         features, return_msg = ext(img, msg.rowcols)
 
         self.assertTrue(isinstance(return_msg, ExtractFeaturesReturnMsg))
@@ -178,7 +178,7 @@ class TestCaffeExtractor(unittest.TestCase):
 
         ext = feature_extractor_factory(msg.feature_extractor_name)
 
-        img = load(msg.image_loc, 'img')
+        img = load_image(msg.image_loc)
         features_new, _ = ext(img, msg.rowcols)
         features_legacy = ImageFeatures.load(legacy_feat_loc)
 
