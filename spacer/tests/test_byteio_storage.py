@@ -1,5 +1,8 @@
 import unittest
 import warnings
+import json
+
+from io import BytesIO
 from spacer import config
 
 from spacer.byteio_storage import S3Storage
@@ -28,7 +31,7 @@ class TestS3Storage(unittest.TestCase):
 
         feats = ImageFeatures.example()
         loc = DataLocation(storage_type='s3',
-                                     bucket_name='spacer-test',
-                                     key=self.tmp_json_key)
-        S3Storage.store(
-                        )
+                           bucket_name='spacer-test',
+                           key=self.tmp_json_key)
+        storage = S3Storage()
+        storage.store(loc, BytesIO(json.dumps(feats.serialize())))
