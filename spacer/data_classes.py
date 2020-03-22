@@ -8,10 +8,14 @@ from abc import ABC, abstractmethod
 from pprint import pformat
 from typing import Dict, List, Tuple, Set, Optional, Union
 
+from PIL import Image
+
 import numpy as np
 
 from spacer import config
 from spacer.storage import load, store
+from spacer.byteio_storage import S3Storage
+from io import BytesIO
 
 
 class DataClass(ABC):  # pragma: no cover
