@@ -60,6 +60,7 @@ class TestImageFeatures(unittest.TestCase):
         self.assertEqual(feats, ImageFeatures.deserialize(json.loads(
             json.dumps(feats.serialize()))))
 
+    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
     def test_legacy_from_s3(self):
         legacy_feat_loc = DataLocation(storage_type='s3',
                                        key='08bfc10v7t.png.featurevector',
