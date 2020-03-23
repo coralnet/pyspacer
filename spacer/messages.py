@@ -259,9 +259,9 @@ class ClassifyImageMsg(DataClass):
     def __init__(self,
                  job_token: str,  # Primary key of job, not used in spacer.
                  image_loc: DataLocation,  # Location of image to classify.
-                 feature_extractor_name: str,  # name of feature extractor
+                 feature_extractor_name: str,  # Feature extractor name.
                  rowcols: List[Tuple[int, int]],
-                 classifier_loc: DataLocation,  # Location of classifier to use.
+                 classifier_loc: DataLocation,  # Location of classifier.
                  ):
         self.job_token = job_token
         self.image_loc = image_loc
@@ -312,17 +312,27 @@ class ClassifyReturnMsg(DataClass):
                  # Scores is a list of (row, col, [scores]) tuples.
                  scores: List[Tuple[int, int, List[float]]],
                  # Maps the score index to a global class id.
-                 classes: List[int]):
+                 classes: List[int],
+                 valid_rowcol: bool):
         self.runtime = runtime
         self.scores = scores
         self.classes = classes
+        self.valid_rowcol = valid_rowcol
+
+    def __getitem__(self, rowcol: Tuple[int, int]) -> List[float]:
+        """ Returns features at (row, col) location. """
+        if not self.valid_rowcol:
+            raise ValueError('Method requires valid rows and columns')
+        rc_set = {(row, col): scores for row, col, scores in self.scores}
+        return rc_set[rowcol]
 
     @classmethod
     def example(cls):
         return ClassifyReturnMsg(
             runtime=1.1,
             scores=[(10, 20, [0.1, 0.2, 0.7]), (20, 40, [0.9, 0.06, 0.04])],
-            classes=[100, 12, 44]
+            classes=[100, 12, 44],
+            valid_rowcol=True
         )
 
     @classmethod
@@ -331,7 +341,8 @@ class ClassifyReturnMsg(DataClass):
             runtime=data['runtime'],
             scores=[(row, col, scores) for
                     row, col, scores in data['scores']],
-            classes=data['classes']
+            classes=data['classes'],
+            valid_rowcol=data['valid_rowcol']
         )
 
 

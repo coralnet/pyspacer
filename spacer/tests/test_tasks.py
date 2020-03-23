@@ -11,10 +11,19 @@ from spacer.messages import \
     ExtractFeaturesReturnMsg, \
     TrainClassifierMsg, \
     TrainClassifierReturnMsg, \
+    ClassifyFeaturesMsg, \
+    ClassifyImageMsg, \
     ClassifyReturnMsg, \
     DataLocation
 
-from spacer.tasks import extract_features, train_classifier
+from spacer.tasks import \
+    extract_features, \
+    train_classifier, \
+    classify_features, \
+    classify_image
+
+from spacer.data_classes import ImageFeatures
+
 from spacer.train_utils import train
 from spacer.storage import store_classifier
 
@@ -104,29 +113,80 @@ class TestTrainClassifier(unittest.TestCase):
         self.assertTrue(type(return_msg) == TrainClassifierReturnMsg)
 
 
-@unittest.skip
-class TestDeploy(unittest.TestCase):
+class TestClassifyFeatures(unittest.TestCase):
 
     def setUp(self):
         warnings.simplefilter("ignore", ResourceWarning)
 
-    def tearDown(self):
-        if os.path.exists('baboon.png'):
-            os.remove('baboon.png')
+    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to tests')
+    def test_legacy(self):
+        msg = ClassifyFeaturesMsg(
+            job_token='my_job',
+            feature_loc=DataLocation(storage_type='s3',
+                                     bucket_name='spacer-test',
+                                     key='legacy.jpg.feats'),
+            classifier_loc=DataLocation(storage_type='s3',
+                                        key='legacy.model',
+                                        bucket_name='spacer-test')
+        )
+
+        return_msg = classify_features(msg)
+
+        # Legacy feature didn't store rowcol information.
+        self.assertFalse(return_msg.valid_rowcol)
+
+        self.assertRaises(ValueError, return_msg.__getitem__, (10, 20))
+        self.assertTrue(type(return_msg.scores), ClassifyReturnMsg)
+
+    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to tests')
+    def test_new(self):
+
+        feats = ImageFeatures.make_random([1, 2, 3, 2], feature_dim=4096)
+        feature_loc = DataLocation(storage_type='memory',
+                                   key='new.jpg.feats')
+        feats.store(feature_loc)
+
+        msg = ClassifyFeaturesMsg(
+            job_token='my_job',
+            feature_loc=feature_loc,
+            classifier_loc=DataLocation(storage_type='s3',
+                                        key='legacy.model',
+                                        bucket_name='spacer-test')
+        )
+
+        return_msg = classify_features(msg)
+
+        # Legacy feature didn't store rowcol information.
+        self.assertTrue(return_msg.valid_rowcol)
+        for pf in feats.point_features:
+            self.assertTrue(isinstance(return_msg[(pf.row, pf.col)], list))
+
+        self.assertTrue(type(return_msg.scores), ClassifyReturnMsg)
+
+
+class TestClassifyImage(unittest.TestCase):
+
+    def setUp(self):
+        warnings.simplefilter("ignore", ResourceWarning)
 
     @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to tests')
     def test_deploy_simple(self):
-        msg = DeployMsg(
-            pk=0,
-            im_url='https://homepages.cae.wisc.edu/~ece533/images/baboon.png',
+        msg = ClassifyImageMsg(
+            job_token='my_job',
+            image_loc=DataLocation(storage_type='url',
+                                   key='https://homepages.cae.wisc.edu/~ece533'
+                                       '/images/baboon.png'),
             feature_extractor_name='dummy',
             rowcols=[(100, 100), (200, 200)],
-            classifier_key='legacy.model',
-            bucketname='spacer-test',
+            classifier_loc=DataLocation(storage_type='s3',
+                                        key='legacy.model',
+                                        bucket_name='spacer-test')
         )
 
-        return_msg = deploy(msg)
+        return_msg = classify_image(msg)
         self.assertEqual(len(return_msg.scores), len(msg.rowcols))
+        for rowcol in msg.rowcols:
+            self.assertTrue(isinstance(return_msg[rowcol], list))
         self.assertTrue(type(return_msg.scores), ClassifyReturnMsg)
 
 

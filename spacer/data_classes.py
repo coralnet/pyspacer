@@ -134,6 +134,10 @@ class PointFeatures(DataClass):
         """ Redefined here to help the Typing module. """
         return cls(**data)
 
+    @property
+    def data_np(self):
+        return np.array(self.data).reshape(1, -1)
+
 
 class ImageFeatures(DataClass):
     """ Contains row, col, feature-vectors for an image. """
@@ -234,9 +238,7 @@ class ImageFeatures(DataClass):
                     feature_dim: int):
         pfs = [PointFeatures(row=itt,
                              col=itt,
-                             data=list(np.random.multivariate_normal(
-                                 np.ones(feature_dim) * label,
-                                 np.eye(feature_dim))))
+                             data=list(label + np.random.randn(feature_dim)))
                for itt, label in enumerate(point_labels)]
 
         return ImageFeatures(point_features=pfs,
