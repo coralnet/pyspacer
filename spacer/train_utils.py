@@ -12,7 +12,6 @@ from sklearn.linear_model import SGDClassifier
 
 from spacer import config
 from spacer.data_classes import ImageLabels, ImageFeatures, DataLocation
-from spacer.storage import Storage
 
 
 def train(labels: ImageLabels,

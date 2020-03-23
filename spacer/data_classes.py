@@ -11,10 +11,22 @@ from typing import Dict, List, Tuple, Set, Optional, Union
 import numpy as np
 
 from spacer import config
-from spacer.storage import load, store
+from spacer.storage import storage_factory
+from io import BytesIO
 
 
 class DataClass(ABC):  # pragma: no cover
+
+    @classmethod
+    def load(cls, loc: 'DataLocation'):
+        storage = storage_factory(loc.storage_type, loc.bucket_name)
+        return cls.deserialize(json.loads(
+            storage.load(loc.key).getvalue().decode('utf-8')))
+
+    def store(self, loc: 'DataLocation'):
+        storage = storage_factory(loc.storage_type, loc.bucket_name)
+        storage.store(loc.key, BytesIO(
+            json.dumps(self.serialize()).encode('utf-8')))
 
     @classmethod
     @abstractmethod
@@ -105,14 +117,6 @@ class ImageLabels(DataClass):
         return ImageLabels(
             data={key: [tuple(entry) for entry in value] for
                   key, value in data['data'].items()})
-
-    @classmethod
-    def load(cls, data_loc: DataLocation) -> 'ImageLabels':
-        """ Load and initialize instance from DataLocation """
-        return cls.deserialize(json.loads(load(data_loc, 'str')))
-
-    def store(self, data_loc: DataLocation) -> None:
-        store(data_loc, json.dumps(self.serialize()), 'str')
 
     @property
     def image_keys(self):
@@ -235,13 +239,6 @@ class ImageFeatures(DataClass):
                 feature_dim=data['feature_dim'],
                 npoints=data['npoints']
             )
-
-    @classmethod
-    def load(cls, data_loc: DataLocation):
-        return cls.deserialize(json.loads(load(data_loc, 'str')))
-
-    def store(self, data_loc: DataLocation):
-        store(data_loc, json.dumps(self.serialize()), 'str')
 
     def serialize(self):
         return {

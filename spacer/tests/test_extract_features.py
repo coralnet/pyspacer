@@ -10,7 +10,8 @@ from spacer.messages import \
     ExtractFeaturesMsg, \
     ExtractFeaturesReturnMsg, \
     DataLocation
-from spacer.storage import load
+
+from spacer.storage import load_image
 
 
 class TestDummyExtractor(unittest.TestCase):
@@ -46,14 +47,14 @@ class TestDummyExtractor(unittest.TestCase):
         self.assertEqual(ext.feature_dim, feature_dim)
 
 
+@unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
+@unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
+@unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
 class TestCaffeExtractor(unittest.TestCase):
 
     def setUp(self):
         warnings.simplefilter("ignore", ResourceWarning)
 
-    @unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
-    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to tests')
-    @unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
     def test_simple(self):
 
         msg = ExtractFeaturesMsg(
@@ -68,7 +69,7 @@ class TestCaffeExtractor(unittest.TestCase):
         )
 
         ext = feature_extractor_factory(msg.feature_extractor_name)
-        img = load(msg.image_loc, 'img')
+        img = load_image(msg.image_loc)
         features, return_msg = ext(img, msg.rowcols)
 
         self.assertTrue(isinstance(return_msg, ExtractFeaturesReturnMsg))
@@ -78,15 +79,10 @@ class TestCaffeExtractor(unittest.TestCase):
         self.assertEqual(features.point_features[0].row, 100)
         self.assertEqual(features.point_features[0].col, 100)
 
-    @unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
-    @unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
     def test_dims(self):
         ext = feature_extractor_factory('vgg16_coralnet_ver1')
         self.assertEqual(ext.feature_dim, 4096)
 
-    @unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
-    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
-    @unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
     def test_corner_case1(self):
         """
         This particular image caused trouble on the production server.
@@ -105,7 +101,7 @@ class TestCaffeExtractor(unittest.TestCase):
         )
 
         ext = feature_extractor_factory(msg.feature_extractor_name)
-        img = load(msg.image_loc, 'img')
+        img = load_image(msg.image_loc)
         features, return_msg = ext(img, msg.rowcols)
 
         self.assertTrue(isinstance(return_msg, ExtractFeaturesReturnMsg))
@@ -115,9 +111,6 @@ class TestCaffeExtractor(unittest.TestCase):
         self.assertEqual(features.point_features[0].row, 148)
         self.assertEqual(features.point_features[0].col, 50)
 
-    @unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
-    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
-    @unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
     def test_cornercase2(self):
         """
         This particular image caused trouble on the production server.
@@ -136,7 +129,7 @@ class TestCaffeExtractor(unittest.TestCase):
         )
 
         ext = feature_extractor_factory(msg.feature_extractor_name)
-        img = load(msg.image_loc, 'img')
+        img = load_image(msg.image_loc)
         features, return_msg = ext(img, msg.rowcols)
 
         self.assertTrue(isinstance(return_msg, ExtractFeaturesReturnMsg))
@@ -146,9 +139,6 @@ class TestCaffeExtractor(unittest.TestCase):
         self.assertEqual(features.point_features[0].row, 190)
         self.assertEqual(features.point_features[0].col, 226)
 
-    @unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
-    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
-    @unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
     def test_regression(self):
         """
         This tests run the extractor on a known image and compares the
@@ -178,7 +168,7 @@ class TestCaffeExtractor(unittest.TestCase):
 
         ext = feature_extractor_factory(msg.feature_extractor_name)
 
-        img = load(msg.image_loc, 'img')
+        img = load_image(msg.image_loc)
         features_new, _ = ext(img, msg.rowcols)
         features_legacy = ImageFeatures.load(legacy_feat_loc)
 
