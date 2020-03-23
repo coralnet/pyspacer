@@ -14,8 +14,7 @@ from spacer.messages import \
     TrainClassifierReturnMsg, \
     ClassifyFeaturesMsg, \
     ClassifyImageMsg, \
-    ClassifyReturnMsg
-from spacer.data_classes import DataLocation
+    ClassifyReturnMsg, DataLocation
 
 
 @unittest.skip

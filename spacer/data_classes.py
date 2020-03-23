@@ -5,14 +5,13 @@ python-native data-structures such that it can be stored.
 """
 import json
 from abc import ABC, abstractmethod
+from io import BytesIO
 from pprint import pformat
 from typing import Dict, List, Tuple, Set, Optional, Union
 
 import numpy as np
 
-from spacer import config
 from spacer.storage import storage_factory
-from io import BytesIO
 
 
 class DataClass(ABC):  # pragma: no cover
@@ -64,33 +63,6 @@ class DataClass(ABC):  # pragma: no cover
         od = other.__dict__
         return sd.keys() == od.keys() and all([sd[key] == od[key]
                                                for key in sd])
-
-
-class DataLocation(DataClass):
-    """
-    Points to the location of a piece of data. Can either be a url, a key
-    in a s3 bucket, a file path on a local file system or a key to a
-    in-memory store.
-    """
-    def __init__(self,
-                 storage_type: str,
-                 key: str,
-                 bucket_name: Optional[str] = None):
-
-        assert storage_type in config.STORAGE_TYPES, "Storage type not valid."
-        if storage_type == 's3':
-            assert bucket_name is not None, "Need bucket_name to use s3."
-        self.storage_type = storage_type
-        self.key = key
-        self.bucket_name = bucket_name
-
-    @classmethod
-    def example(cls) -> 'DataLocation':
-        return DataLocation('memory', 'my_blob')
-
-    @classmethod
-    def deserialize(cls, data: Dict) -> 'DataLocation':
-        return DataLocation(**data)
 
 
 class ImageLabels(DataClass):

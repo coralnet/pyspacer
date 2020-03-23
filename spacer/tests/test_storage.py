@@ -10,7 +10,8 @@ from sklearn.calibration import CalibratedClassifierCV
 from sklearn.linear_model import SGDClassifier
 
 from spacer import config
-from spacer.data_classes import ImageFeatures, DataLocation
+from spacer.data_classes import ImageFeatures
+from spacer.messages import DataLocation
 from spacer.storage import storage_factory, download_model, load_image, load_classifier, store_image, store_classifier
 
 

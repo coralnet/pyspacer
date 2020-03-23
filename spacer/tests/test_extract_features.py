@@ -1,4 +1,3 @@
-import json
 import unittest
 import warnings
 from PIL import Image

@@ -1,4 +1,3 @@
-import json
 import random
 import unittest
 import warnings
@@ -6,10 +5,9 @@ import warnings
 import numpy as np
 
 from spacer import config
-from spacer.storage import storage_factory
 from spacer.train_classifier import trainer_factory
-from spacer.train_utils import make_random_data
-from spacer.data_classes import DataLocation
+from spacer.train_utils import make_random_data, train
+from spacer.messages import DataLocation
 
 
 @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
@@ -29,32 +27,28 @@ class TestDefaultTrainerDummyData(unittest.TestCase):
         num_epochs = 4
 
         # First create data to train on.
-        features_loc_template = DataLocation(storage_type='memory', key='')
-        traindata = make_random_data(n_valdata,
-                                     class_list,
-                                     points_per_image,
-                                     feature_dim,
-                                     features_loc_template)
+        feature_loc = DataLocation(storage_type='memory', key='')
+        train_data = make_random_data(n_valdata,
+                                      class_list,
+                                      points_per_image,
+                                      feature_dim,
+                                      feature_loc)
 
-        valdata = make_random_data(n_traindata,
-                                   class_list,
-                                   points_per_image,
-                                   feature_dim,
-                                   features_loc_template)
-
-        # Then use the dummy-trainer to train two "previous" classifier
-        trainer = trainer_factory('dummy',
-                                  dummy_kwargs={'feature_dim': feature_dim})
-
-        clf1, _, _ = trainer(None, None, 2, [], features_loc_template)
-        clf2, _, _ = trainer(None, None, 2, [], features_loc_template)
+        val_data = make_random_data(n_traindata,
+                                    class_list,
+                                    points_per_image,
+                                    feature_dim,
+                                    feature_loc)
 
         trainer = trainer_factory('minibatch')
-        clf, val_results, return_message = trainer(traindata,
-                                                   valdata,
+        pc_clf1, _ = train(train_data, feature_loc, 1)
+        pc_clf2, _ = train(train_data, feature_loc, 1)
+
+        clf, val_results, return_message = trainer(train_data,
+                                                   val_data,
                                                    num_epochs,
-                                                   [clf1, clf2],
-                                                   features_loc_template)
+                                                   [pc_clf1, pc_clf2],
+                                                   feature_loc)
 
         # The way we rendered the data, accuracy is usually around 90%.
         # Adding some margin to account for randomness.
@@ -68,22 +62,6 @@ class TestDefaultTrainerDummyData(unittest.TestCase):
                            "re-run tests.")
         self.assertEqual(len(return_message.pc_accs), 2)
         self.assertEqual(len(return_message.ref_accs), num_epochs)
-
-
-class TestDummyTrainer(unittest.TestCase):
-
-    def setUp(self):
-        warnings.simplefilter("ignore", ResourceWarning)
-
-    def test_simple(self):
-        trainer = trainer_factory('dummy')
-        features_loc_template = DataLocation(storage_type='memory', key='')
-        clf, val_results, return_msg = trainer(None, None, 2, [],
-                                               features_loc_template)
-
-        self.assertGreater(return_msg.acc, 0.01,
-                           "Failure may be due to random generated numbers,"
-                           "re-run tests.")
 
 
 if __name__ == '__main__':

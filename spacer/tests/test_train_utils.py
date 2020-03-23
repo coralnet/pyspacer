@@ -5,7 +5,8 @@ import warnings
 from typing import Tuple
 
 from spacer import config
-from spacer.data_classes import ImageLabels, PointFeatures, ImageFeatures, DataLocation
+from spacer.data_classes import ImageLabels, PointFeatures, ImageFeatures
+from spacer.messages import DataLocation
 from spacer.storage import storage_factory
 from spacer.train_classifier import trainer_factory
 from spacer.train_utils import train, calc_batch_size, chunkify, calc_acc, \
@@ -76,14 +77,10 @@ class TestEvaluateClassifier(unittest.TestCase):
         warnings.simplefilter("ignore", ResourceWarning)
 
     def test_nominal(self):
-
-        # Generate a classifier first using the dummy trainer
-        trainer = trainer_factory('dummy',
-                                  dummy_kwargs={'feature_dim': 5,
-                                                'class_list': [1, 2]})
-
         feature_loc = DataLocation(storage_type='memory', key='')
-        clf, _, _ = trainer(None, None, 2, [], feature_loc)
+        train_data = make_random_data(10, [1, 2], 4, 5, feature_loc)
+        clf, _ = train(train_data, feature_loc, 1)
+
         val_data = make_random_data(3, [1, 2], 4, 5, feature_loc)
         gts, ests, scores = evaluate_classifier(clf, val_data, [1, 2],
                                                 feature_loc)
@@ -91,12 +88,10 @@ class TestEvaluateClassifier(unittest.TestCase):
         self.assertTrue(2 in gts)
 
     def test_no_gt(self):
-        # Generate a classifier first using the dummy trainer
-        trainer = trainer_factory('dummy',
-                                  dummy_kwargs={'feature_dim': 5,
-                                                'class_list': [1, 2]})
+
         feature_loc = DataLocation(storage_type='memory', key='')
-        clf, _, _ = trainer('n/a', 'n/a', 2, [], feature_loc)
+        train_data = make_random_data(10, [1, 2], 4, 5, feature_loc)
+        clf, _ = train(train_data, feature_loc, 1)
 
         # Note here that class_list for the val_data doesn't include
         # any samples from classes [1, 2] so the gt will be empty,

@@ -100,7 +100,6 @@ FEATURE_EXTRACTOR_NAMES = [
 ]
 
 TRAINER_NAMES = [
-    'dummy',
     'minibatch'
 ]
 

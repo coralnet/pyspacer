@@ -11,7 +11,8 @@ from sklearn.calibration import CalibratedClassifierCV
 from sklearn.linear_model import SGDClassifier
 
 from spacer import config
-from spacer.data_classes import ImageLabels, ImageFeatures, DataLocation
+from spacer.data_classes import ImageLabels, ImageFeatures
+from spacer.messages import DataLocation
 
 
 def train(labels: ImageLabels,
@@ -89,7 +90,7 @@ def evaluate_classifier(clf: CalibratedClassifierCV,
     for imkey in labels.image_keys:
         x, y = load_image_data(labels, imkey, classes, feature_loc)
         if len(x) > 0:
-            scores.extend(clf.predict_proba(x).max(axis=1))
+            scores.extend(clf.predict_proba(x).max(axis=1).tolist())
             ests.extend(clf.predict(x))
             gts.extend(y)
 

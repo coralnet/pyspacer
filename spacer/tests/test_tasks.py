@@ -3,17 +3,22 @@ import unittest
 import warnings
 from PIL import Image
 
+
+from spacer.train_utils import make_random_data
 from spacer import config
 from spacer.messages import \
     ExtractFeaturesMsg, \
     ExtractFeaturesReturnMsg, \
     TrainClassifierMsg, \
     TrainClassifierReturnMsg, \
-    ClassifyReturnMsg
+    ClassifyReturnMsg, \
+    DataLocation
+
 from spacer.tasks import extract_features, train_classifier
+from spacer.train_utils import train
+from spacer.storage import store_classifier
 
 
-@unittest.skip
 class TestExtractFeatures(unittest.TestCase):
 
     def setUp(self):
@@ -34,36 +39,66 @@ class TestExtractFeatures(unittest.TestCase):
     def test_nominal(self):
 
         msg = ExtractFeaturesMsg(
-            pk=0,
+            job_token='test',
             feature_extractor_name='dummy',
-            bucketname='',
-            imkey=self.tmps['in'],
+            image_loc=DataLocation(storage_type='filesystem',
+                                   key=self.tmps['in']),
             rowcols=[(1, 1), (2, 2)],
-            outputkey=self.tmps['out'],
-            storage_type='filesystem'
+            feature_loc=DataLocation(storage_type='filesystem',
+                                     key=self.tmps['out'])
         )
         return_msg = extract_features(msg)
         self.assertTrue(type(return_msg) == ExtractFeaturesReturnMsg)
         self.assertTrue(os.path.exists(self.tmps['out']))
 
 
-@unittest.skip
 class TestTrainClassifier(unittest.TestCase):
 
     def test_nominal(self):
 
+        # Set some hyper parameters for data generation
+        n_valdata = 20
+        n_traindata = 200
+        points_per_image = 20
+        feature_dim = 5
+        class_list = [1, 2]
+
+        # Create train and val data.
+        features_loc_template = DataLocation(storage_type='memory', key='')
+
+        traindata_loc = DataLocation(storage_type='memory', key='traindata')
+        traindata = make_random_data(n_valdata,
+                                     class_list,
+                                     points_per_image,
+                                     feature_dim,
+                                     features_loc_template)
+        traindata.store(traindata_loc)
+
+        valdata = make_random_data(n_traindata,
+                                   class_list,
+                                   points_per_image,
+                                   feature_dim,
+                                   features_loc_template)
+        valdata_loc = DataLocation(storage_type='memory', key='traindata')
+        valdata.store(valdata_loc)
+
+        # Train once by calling directly so that we have a previous classifier.
+        clf, _ = train(traindata, features_loc_template, 1)
+
+        previous_classifier_loc = DataLocation(storage_type='memory',
+                                               key='pc')
+        store_classifier(previous_classifier_loc, clf)
+
         msg = TrainClassifierMsg(
-            pk=0,
-            model_key='my_model',
-            trainer_name='dummy',
-            traindata_key='n/a',
-            valdata_key='n/a',
-            valresult_key='my_val_res',
-            nbr_epochs=3,
-            pc_models_key=[],
-            pc_pks=[],
-            bucketname='',
-            storage_type='memory'
+            job_token='test',
+            trainer_name='minibatch',
+            nbr_epochs=1,
+            traindata_loc=traindata_loc,
+            valdata_loc=valdata_loc,
+            features_loc=features_loc_template,
+            previous_model_locs=[previous_classifier_loc],
+            model_loc=DataLocation(storage_type='memory', key='model'),
+            valresult_loc=DataLocation(storage_type='memory', key='val_res')
         )
         return_msg = train_classifier(msg)
         self.assertTrue(type(return_msg) == TrainClassifierReturnMsg)

@@ -7,8 +7,8 @@ from spacer.data_classes import \
     PointFeatures, \
     ImageFeatures, \
     ImageLabels, \
-    ValResults, \
-    DataLocation
+    ValResults
+from spacer.messages import DataLocation
 
 
 class TestDataClass(unittest.TestCase):

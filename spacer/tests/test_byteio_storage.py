@@ -16,7 +16,9 @@ from sklearn.calibration import CalibratedClassifierCV
 from sklearn.linear_model import SGDClassifier
 
 
-from spacer.data_classes import ImageFeatures, DataLocation
+from spacer.data_classes import ImageFeatures
+from spacer.messages import DataLocation
+
 
 @unittest.skip
 @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
