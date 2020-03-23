@@ -23,7 +23,7 @@ def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
 
     print("-> Extracting features for job:{}.".format(msg.job_token))
     extractor = feature_extractor_factory(msg.feature_extractor_name)
-    img = load(msg.image_loc, 'image')
+    img = load_image(msg.image_loc)
     features, return_msg = extractor(img, msg.rowcols)
     features.store(msg.feature_loc)
     return return_msg
