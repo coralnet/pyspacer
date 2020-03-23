@@ -136,6 +136,11 @@ class TestClassifyFeatures(unittest.TestCase):
         self.assertFalse(return_msg.valid_rowcol)
 
         self.assertRaises(ValueError, return_msg.__getitem__, (10, 20))
+
+        for row, col, scores in return_msg.scores:
+            self.assertEqual(row, None)
+            self.assertEqual(col, None)
+            self.assertTrue(isinstance(scores, list))
         self.assertTrue(type(return_msg.scores), ClassifyReturnMsg)
 
     @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to tests')
@@ -160,6 +165,11 @@ class TestClassifyFeatures(unittest.TestCase):
         self.assertTrue(return_msg.valid_rowcol)
         for pf in feats.point_features:
             self.assertTrue(isinstance(return_msg[(pf.row, pf.col)], list))
+
+        for row, col, scores in return_msg.scores:
+            self.assertTrue(isinstance(row, int))
+            self.assertTrue(isinstance(col, int))
+            self.assertTrue(isinstance(scores, list))
 
         self.assertTrue(type(return_msg.scores), ClassifyReturnMsg)
 
@@ -187,6 +197,15 @@ class TestClassifyImage(unittest.TestCase):
         self.assertEqual(len(return_msg.scores), len(msg.rowcols))
         for rowcol in msg.rowcols:
             self.assertTrue(isinstance(return_msg[rowcol], list))
+
+        for row, col, scores in return_msg.scores:
+            self.assertTrue(isinstance(row, int))
+            self.assertTrue(isinstance(col, int))
+            self.assertTrue(isinstance(scores, list))
+
+        for rowcol, rc_score in zip(msg.rowcols, return_msg.scores):
+            self.assertEqual(rowcol, rc_score[:2])
+
         self.assertTrue(type(return_msg.scores), ClassifyReturnMsg)
 
 
