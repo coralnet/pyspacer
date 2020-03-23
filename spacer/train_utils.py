@@ -201,6 +201,9 @@ def make_random_data(im_count: int,
 
         # Generate random features (using labels to draw from a Gaussian).
         point_labels = np.random.choice(class_list, points_per_image).tolist()
+
+        # Make sure all classes are present
+        point_labels[:len(class_list)] = class_list
         feats = ImageFeatures.make_random(point_labels, feature_dim)
 
         # Generate a random string as imkey.

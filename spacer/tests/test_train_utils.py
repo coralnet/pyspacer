@@ -90,7 +90,7 @@ class TestEvaluateClassifier(unittest.TestCase):
     def test_no_gt(self):
 
         feature_loc = DataLocation(storage_type='memory', key='')
-        train_data = make_random_data(50, [1, 2], 4, 5, feature_loc)
+        train_data = make_random_data(10, [1, 2], 4, 5, feature_loc)
         clf, _ = train(train_data, feature_loc, 1)
 
         # Note here that class_list for the val_data doesn't include
