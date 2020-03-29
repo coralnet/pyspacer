@@ -162,6 +162,34 @@ class TestProcessJobMultiple(unittest.TestCase):
         self.assertEqual(len(return_msg.results), 2)
         self.assertTrue(type(return_msg), JobReturnMsg)
 
+    def test_multiple_feature_extract_one_fail(self):
+        good_extract_msg = ExtractFeaturesMsg(
+            job_token='test_job',
+            feature_extractor_name='dummy',
+            rowcols=[(1, 1)],
+            image_loc=DataLocation(storage_type='url',
+                                   key=self.url),
+            feature_loc=DataLocation(storage_type='memory',
+                                     key='my_feats'))
+
+        fail_extract_msg = ExtractFeaturesMsg(
+            job_token='test_job',
+            feature_extractor_name='dummy',
+            rowcols=[(1, 1)],
+            image_loc=DataLocation(storage_type='url',
+                                   key='bad_url'),
+            feature_loc=DataLocation(storage_type='memory',
+                                     key='my_feats'))
+
+        job_msg = JobMsg(task_name='extract_features',
+                         tasks=[good_extract_msg,
+                                fail_extract_msg])
+
+        return_msg = process_job(job_msg)
+        self.assertFalse(return_msg.ok)
+        self.assertIn('bad_url', return_msg.error_message)
+        self.assertTrue(type(return_msg), JobReturnMsg)
+
 
 @unittest.skipUnless(config.HAS_SQS_QUEUE_ACCESS, 'No SQS access.')
 class TestSQSMailman(unittest.TestCase):
