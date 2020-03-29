@@ -299,9 +299,10 @@ class TestDownloadModel(unittest.TestCase):
 class TestLRUCache(unittest.TestCase):
 
     def test_load_classifier(self):
-        loc = DataLocation(storage_type='s3',
-                           key='legacy.model',
-                           bucket_name='spacer-test')
+        loc = DataLocation(
+            storage_type='filesystem',
+            key=os.path.join(config.LOCAL_FIXTURE_DIR, 'legacy.model')
+        )
 
         load_classifier.cache_clear()
         t0 = time.time()
