@@ -45,7 +45,7 @@ class TestExtractFeatures(unittest.TestCase):
             if os.path.exists(tmp):
                 os.remove(tmp)
 
-    def test_nominal(self):
+    def test_default(self):
 
         msg = ExtractFeaturesMsg(
             job_token='test',
@@ -63,7 +63,7 @@ class TestExtractFeatures(unittest.TestCase):
 
 class TestTrainClassifier(unittest.TestCase):
 
-    def test_nominal(self):
+    def test_default(self):
 
         # Set some hyper parameters for data generation
         n_valdata = 20

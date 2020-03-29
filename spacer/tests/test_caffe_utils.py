@@ -67,7 +67,7 @@ class TestClassifyFromPatchList(unittest.TestCase):
 @unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
 class TestGray2RGB(unittest.TestCase):
 
-    def test_nominal(self):
+    def test_default(self):
         from spacer.caffe_utils import gray2rgb
         out_arr = gray2rgb(np.array(Image.new('L', (200, 200))))
         out_im = Image.fromarray(out_arr)

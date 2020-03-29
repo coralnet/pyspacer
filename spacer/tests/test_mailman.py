@@ -269,7 +269,7 @@ class TestSQSMailman(unittest.TestCase):
         self.assertEqual(body['error_message'],
                          "Error deserializing message: KeyError('task_name',)")
 
-    def test_nominal_extract_feats(self):
+    def test_extract_feats(self):
 
         msg = JobMsg(task_name='extract_features',
                      tasks=[ExtractFeaturesMsg(

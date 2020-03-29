@@ -18,7 +18,7 @@ class TestTrain(unittest.TestCase):
     def setUp(self):
         warnings.simplefilter("ignore", ResourceWarning)
 
-    def test_nominal(self):
+    def test_ok(self):
 
         n_traindata = config.MIN_TRAINIMAGES + 1
         points_per_image = 20
@@ -76,7 +76,7 @@ class TestEvaluateClassifier(unittest.TestCase):
     def setUp(self):
         warnings.simplefilter("ignore", ResourceWarning)
 
-    def test_nominal(self):
+    def test_simple(self):
         feature_loc = DataLocation(storage_type='memory', key='')
         train_data = make_random_data(10, [1, 2], 4, 5, feature_loc)
         clf, _ = train(train_data, feature_loc, 1)

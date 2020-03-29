@@ -279,7 +279,7 @@ class TestFactory(unittest.TestCase):
 class TestDownloadModel(unittest.TestCase):
 
     @unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
-    def test_nominal(self):
+    def test_ok(self):
 
         keyname = 'vgg16_coralnet_ver1.deploy.prototxt'
         destination = os.path.join(config.LOCAL_MODEL_PATH, keyname)
