@@ -144,9 +144,6 @@ def classify_from_patchlist(im_pil: Image,
     estlist, scorelist, gtlist = [], [], []
     transformer = Transformer(pyparams['im_mean'])
 
-    # Convert to numpy (call 2 times needed otherwise get a
-    # "IndexError: tuple index out of range" error. No idea why!
-    _ = np.asarray(im_pil)
     im = np.asarray(im_pil)
 
     if len(im.shape) == 2 or im.shape[2] == 1:
