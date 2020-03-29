@@ -6,6 +6,7 @@ import abc
 import os
 import pickle
 import wget
+from functools import lru_cache
 from PIL import Image
 from io import BytesIO
 from typing import Union, Tuple
@@ -196,6 +197,7 @@ def store_classifier(loc: 'DataLocation', clf: CalibratedClassifierCV):
     storage.store(loc.key, BytesIO(pickle.dumps(clf, protocol=2)))
 
 
+@lru_cache(maxsize=3)
 def load_classifier(loc: 'DataLocation'):
 
     def patch_legacy():

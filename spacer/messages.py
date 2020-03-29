@@ -36,6 +36,9 @@ class DataLocation(DataClass):
     def deserialize(cls, data: Dict) -> 'DataLocation':
         return DataLocation(**data)
 
+    def __hash__(self):
+        return hash((self.storage_type, self.key, self.bucket_name))
+
 
 class ExtractFeaturesMsg(DataClass):
     """ Input message for extract features class. """

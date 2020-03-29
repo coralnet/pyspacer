@@ -209,5 +209,50 @@ class TestClassifyImage(unittest.TestCase):
         self.assertTrue(type(return_msg.scores), ClassifyReturnMsg)
 
 
+class TestClassifyImageCache(unittest.TestCase):
+
+    def setUp(self):
+        warnings.simplefilter("ignore", ResourceWarning)
+
+    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to tests')
+    def test_classify_image_with_caching(self):
+        """ Call classify_image three times.
+        The first 2 time with same message.
+        The last time with a new message (different classifier).
+        Due to caching, the second call should be the fastest of the three.
+        """
+
+        msg = ClassifyImageMsg(
+            job_token='my_job',
+            image_loc=DataLocation(storage_type='url',
+                                   key='https://homepages.cae.wisc.edu/~ece533'
+                                       '/images/baboon.png'),
+            feature_extractor_name='dummy',
+            rowcols=[(100, 100), (200, 200)],
+            classifier_loc=DataLocation(storage_type='s3',
+                                        key='legacy.model',
+                                        bucket_name='spacer-test')
+        )
+
+        msg2 = ClassifyImageMsg(
+            job_token='my_job',
+            image_loc=DataLocation(storage_type='url',
+                                   key='https://homepages.cae.wisc.edu/~ece533'
+                                       '/images/baboon.png'),
+            feature_extractor_name='dummy',
+            rowcols=[(100, 100), (200, 200)],
+            classifier_loc=DataLocation(storage_type='s3',
+                                        key='legacy_model2.pkl',
+                                        bucket_name='spacer-test')
+        )
+
+        return_msg1 = classify_image(msg)
+        return_msg2 = classify_image(msg)
+        return_msg3 = classify_image(msg2)
+        self.assertLess(return_msg2.runtime, return_msg1.runtime)
+        self.assertLess(return_msg2.runtime, return_msg3.runtime)
+
+
+
 if __name__ == '__main__':
     unittest.main()

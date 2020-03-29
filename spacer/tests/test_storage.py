@@ -2,6 +2,7 @@ import json
 import os
 import unittest
 import warnings
+import time
 from PIL import Image
 from io import BytesIO
 
@@ -293,3 +294,19 @@ class TestDownloadModel(unittest.TestCase):
 
         destination_, was_cached = download_model(keyname)
         self.assertTrue(was_cached)
+
+
+class TestLRUCache(unittest.TestCase):
+
+    def test_load_classifier(self):
+        loc = DataLocation(storage_type='s3',
+                           key='legacy.model',
+                           bucket_name='spacer-test')
+        t0 = time.time()
+        load_classifier(loc)
+        t1 = time.time()-t0
+
+        t0 = time.time()
+        load_classifier(loc)
+        t2 = time.time() - t0
+        self.assertLess(t2, t1)
