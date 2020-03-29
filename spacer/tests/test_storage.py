@@ -302,6 +302,8 @@ class TestLRUCache(unittest.TestCase):
         loc = DataLocation(storage_type='s3',
                            key='legacy.model',
                            bucket_name='spacer-test')
+
+        load_classifier.cache_clear()
         t0 = time.time()
         load_classifier(loc)
         t1 = time.time()-t0

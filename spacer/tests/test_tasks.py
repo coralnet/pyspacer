@@ -25,7 +25,7 @@ from spacer.tasks import \
 from spacer.data_classes import ImageFeatures
 
 from spacer.train_utils import train
-from spacer.storage import store_classifier
+from spacer.storage import store_classifier, load_classifier
 
 
 class TestExtractFeatures(unittest.TestCase):
@@ -222,6 +222,7 @@ class TestClassifyImageCache(unittest.TestCase):
         Due to caching, the second call should be the fastest of the three.
         """
 
+        load_classifier.cache_clear()
         msg = ClassifyImageMsg(
             job_token='my_job',
             image_loc=DataLocation(storage_type='url',

@@ -7,7 +7,7 @@ these are only lightly cleaned up from their original state.
 from PIL import Image
 from copy import copy
 from typing import List, Tuple
-
+from functools import lru_cache
 import caffe
 import numpy as np
 
@@ -124,6 +124,11 @@ def crop_simple(im, center, crop_size):
     return im[upper: upper + crop_size, left: left + crop_size, :]
 
 
+@lru_cache(maxsize=1)
+def load_net(modeldef_path, modelweighs_path):
+    return caffe.Net(modeldef_path, modelweighs_path, caffe.TEST)
+
+
 def classify_from_patchlist(im_pil: Image,
                             point_anns: List[Tuple[int, int, int]],
                             pyparams: dict,
@@ -133,7 +138,7 @@ def classify_from_patchlist(im_pil: Image,
                             startlayer: str = 'conv1_1'):
     # Setup caffe
     caffe.set_mode_cpu()
-    net = caffe.Net(modeldef_path, modelweighs_path, caffe.TEST)
+    net = load_net(modeldef_path, modelweighs_path)
 
     scale = 1
     estlist, scorelist, gtlist = [], [], []
