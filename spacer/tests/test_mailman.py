@@ -12,10 +12,7 @@ from spacer.messages import \
     ExtractFeaturesMsg, \
     ExtractFeaturesReturnMsg, \
     TrainClassifierMsg, \
-    TrainClassifierReturnMsg, \
-    ClassifyFeaturesMsg, \
     ClassifyImageMsg, \
-    ClassifyReturnMsg, \
     DataLocation
 
 

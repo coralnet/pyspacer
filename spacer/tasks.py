@@ -3,8 +3,6 @@ Defines the highest level methods for completing tasks.
 """
 import time
 
-import numpy as np
-
 from spacer.data_classes import ImageLabels, ImageFeatures
 from spacer.extract_features import feature_extractor_factory
 from spacer.messages import \
@@ -17,6 +15,7 @@ from spacer.messages import \
     ClassifyReturnMsg
 from spacer.storage import load_image, load_classifier, store_classifier
 from spacer.train_classifier import trainer_factory
+from spacer.task_utils import check_rowcols
 
 
 def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
@@ -24,6 +23,7 @@ def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
     print("-> Extracting features for job:{}.".format(msg.job_token))
     extractor = feature_extractor_factory(msg.feature_extractor_name)
     img = load_image(msg.image_loc)
+    check_rowcols(msg.rowcols, img)
     features, return_msg = extractor(img, msg.rowcols)
     features.store(msg.feature_loc)
     return return_msg
@@ -74,6 +74,7 @@ def classify_image(msg: ClassifyImageMsg) -> ClassifyReturnMsg:
 
     # Download image
     img = load_image(msg.image_loc)
+    check_rowcols(msg.rowcols, img)
 
     # Extract features
     extractor = feature_extractor_factory(msg.feature_extractor_name)

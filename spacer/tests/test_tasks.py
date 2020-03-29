@@ -253,6 +253,28 @@ class TestClassifyImageCache(unittest.TestCase):
         self.assertLess(return_msg2.runtime, return_msg3.runtime)
 
 
+class TestBadRowcols(unittest.TestCase):
+
+    def test_image_classify(self):
+        msg = ClassifyImageMsg(
+            job_token='my_job',
+            image_loc=DataLocation(storage_type='url',
+                                   key='https://homepages.cae.wisc.edu/~ece533'
+                                       '/images/baboon.png'),
+            feature_extractor_name='dummy',
+            rowcols=[(-1, -1)],
+            classifier_loc=DataLocation(storage_type='s3',
+                                        key='legacy.model',
+                                        bucket_name='spacer-test')
+        )
+
+        try:
+            classify_image(msg)
+            raise ValueError("classify_image should raise an error.")
+        except AssertionError as err:
+            self.assertIn('negative', repr(err))
+            self.assertIn('-1', repr(err))
+
 
 if __name__ == '__main__':
     unittest.main()
