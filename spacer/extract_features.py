@@ -48,7 +48,7 @@ class DummyExtractor(FeatureExtractor):
                             for rc in rowcols],
             valid_rowcol=True,
             npoints=len(rowcols),
-            feature_dim=4096
+            feature_dim=self.feature_dim
         ), ExtractFeaturesReturnMsg.example()
 
     @property

@@ -19,7 +19,7 @@ from spacer.messages import \
     DataLocation
 
 
-class TestProcessJob(unittest.TestCase):
+class TestProcessJobErrorHandling(unittest.TestCase):
 
     def setUp(self):
         warnings.simplefilter("ignore", ResourceWarning)
@@ -37,7 +37,7 @@ class TestProcessJob(unittest.TestCase):
         msg.task_name = 'invalid'
         self.assertRaises(AssertionError, process_job, msg)
 
-    def test_failed_feature_extract(self):
+    def test_feature_extract(self):
         msg = JobMsg(task_name='extract_features',
                      tasks=[ExtractFeaturesMsg(
                          job_token='test_job',
@@ -53,7 +53,7 @@ class TestProcessJob(unittest.TestCase):
         self.assertIn("missing_image", return_msg.error_message)
         self.assertTrue(type(return_msg), JobReturnMsg)
 
-    def test_failed_img_classify_bad_url(self):
+    def test_img_classify_bad_url(self):
 
         msg = JobMsg(task_name='classify_image',
                      tasks=[ClassifyImageMsg(
@@ -69,7 +69,7 @@ class TestProcessJob(unittest.TestCase):
         self.assertTrue('URLError' in return_msg.error_message)
         self.assertTrue(type(return_msg), JobReturnMsg)
 
-    def test_failed_img_classify_feature_extractor_name(self):
+    def test_img_classify_feature_extractor_name(self):
 
         msg = JobMsg(task_name='classify_image',
                      tasks=[ClassifyImageMsg(
@@ -87,7 +87,7 @@ class TestProcessJob(unittest.TestCase):
                       return_msg.error_message)
         self.assertTrue(type(return_msg), JobReturnMsg)
 
-    def test_failed_img_classify_classifier_key(self):
+    def test_img_classify_classifier_key(self):
 
         msg = JobMsg(task_name='classify_image',
                      tasks=[ClassifyImageMsg(
@@ -105,7 +105,7 @@ class TestProcessJob(unittest.TestCase):
         self.assertIn("no_classifier_here", return_msg.error_message)
         self.assertTrue(type(return_msg), JobReturnMsg)
 
-    def test_failed_train_classifier(self):
+    def test_train_classifier(self):
 
         msg = JobMsg(task_name='train_classifier',
                      tasks=[TrainClassifierMsg(
@@ -131,6 +131,35 @@ class TestProcessJob(unittest.TestCase):
         self.assertFalse(return_msg.ok)
         self.assertIn("KeyError", return_msg.error_message)
         self.assertIn("my_traindata", return_msg.error_message)
+        self.assertTrue(type(return_msg), JobReturnMsg)
+
+
+class TestProcessJobMultiple(unittest.TestCase):
+
+    def setUp(self):
+        warnings.simplefilter("ignore", ResourceWarning)
+        self.url = 'https://homepages.cae.wisc.edu/~ece533/images/baboon.png'
+
+    def tearDown(self):
+        if os.path.exists('baboon.png'):
+            os.remove('baboon.png')
+
+    def test_multiple_feature_extract(self):
+        extract_msg = ExtractFeaturesMsg(
+            job_token='test_job',
+            feature_extractor_name='dummy',
+            rowcols=[(1, 1)],
+            image_loc=DataLocation(storage_type='url',
+                                   key=self.url),
+            feature_loc=DataLocation(storage_type='memory',
+                                     key='my_feats'))
+
+        job_msg = JobMsg(task_name='extract_features',
+                         tasks=[extract_msg, extract_msg])
+
+        return_msg = process_job(job_msg)
+        self.assertTrue(return_msg.ok)
+        self.assertEqual(len(return_msg.results), 2)
         self.assertTrue(type(return_msg), JobReturnMsg)
 
 
