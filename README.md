@@ -53,8 +53,8 @@ The docker build is the preferred build and the one used in deployment.
 * Install docker on your system
 * Create `secrets.json` as detailed above.
 * Create folder `/path/to/your/local/models` for caching model files.
-* Build image: `docker build -t "test:Dockerfile" .`
-* Run: `docker run -v /path/to/your/local/models:/workspace/models -it test:Dockerfile`
+* Build image: `docker build -t spacer:test .`
+* Run: `docker run -v /path/to/your/local/models:/workspace/models -it spacer:test`
 
 The `-v /path/to/your/local/models:/workspace/models` part will make sure 
 the downloaded models are cached to your local disk (outside the container), 

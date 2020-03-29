@@ -346,56 +346,61 @@ class ClassifyReturnMsg(DataClass):
         )
 
 
-class TaskMsg(DataClass):
-    """ Highest level message which hold task messages. """
+class JobMsg(DataClass):
+    """ Highest level message which hold task messages.
+    A job can contain multiple tasks.
+    """
 
     def __init__(self,
-                 task: str,
-                 payload: Union[ExtractFeaturesMsg,
-                                TrainClassifierMsg,
-                                ClassifyFeaturesMsg,
-                                ClassifyImageMsg]):
+                 task_name: str,
+                 tasks: List[Union[ExtractFeaturesMsg,
+                                   TrainClassifierMsg,
+                                   ClassifyFeaturesMsg,
+                                   ClassifyImageMsg]]):
 
-        assert task in config.TASKS
+        assert task_name in config.TASKS
 
-        self.task = task
-        self.payload = payload
+        self.task_name = task_name
+        self.tasks = tasks
 
     @classmethod
     def deserialize(cls, data: Dict):
-        task = data['task']
-        payload = data['payload']
-        assert task in config.TASKS
-        if task == 'extract_features':
-            return TaskMsg(task, ExtractFeaturesMsg.deserialize(payload))
-        if task == 'train_classifier':
-            return TaskMsg(task, TrainClassifierMsg.deserialize(payload))
-        if task == 'classify_features':
-            return TaskMsg(task, ClassifyFeaturesMsg.deserialize(payload))
-        if task == 'classify_image':
-            return TaskMsg(task, ClassifyImageMsg.deserialize(payload))
+
+        task_name = data['task_name']
+        assert task_name in config.TASKS
+        if task_name == 'extract_features':
+            deserializer = ExtractFeaturesMsg.deserialize
+        elif task_name == 'train_classifier':
+            deserializer = TrainClassifierMsg.deserialize
+        elif task_name == 'classify_features':
+            deserializer = ClassifyFeaturesMsg.deserialize
+        else:
+            deserializer = ClassifyImageMsg.deserialize
+
+        return JobMsg(task_name, [deserializer(item) for
+                                  item in data['tasks']])
 
     def serialize(self):
         return {
-            'task': self.task,
-            'payload': self.payload.serialize()
+            'task_name': self.task_name,
+            'tasks': [job.serialize() for job in self.tasks]
         }
 
     @classmethod
     def example(cls):
-        return TaskMsg(task='classify_image',
-                       payload=ClassifyImageMsg.example())
+        return JobMsg(task_name='classify_image',
+                      tasks=[ClassifyImageMsg.example()])
 
 
-class TaskReturnMsg(DataClass):
+class JobReturnMsg(DataClass):
     """ Highest level return message. """
 
     def __init__(self,
-                 original_job: TaskMsg,
+                 original_job: JobMsg,
                  ok: bool,
-                 results: Optional[Union[ExtractFeaturesReturnMsg,
-                                         TrainClassifierReturnMsg,
-                                         ClassifyReturnMsg]],
+                 results: Optional[List[Union[ExtractFeaturesReturnMsg,
+                                              TrainClassifierReturnMsg,
+                                              ClassifyReturnMsg]]],
                  error_message: Optional[str]):
 
         self.original_job = original_job
@@ -405,31 +410,32 @@ class TaskReturnMsg(DataClass):
 
     @classmethod
     def example(cls):
-        return TaskReturnMsg(
-            original_job=TaskMsg.example(),
+        return JobReturnMsg(
+            original_job=JobMsg.example(),
             ok=True,
-            results=ClassifyReturnMsg.example(),
+            results=[ClassifyReturnMsg.example()],
             error_message=None
         )
 
     @classmethod
     def deserialize(cls, data: Dict):
 
-        original_job = TaskMsg.deserialize(data['original_job'])
+        original_job = JobMsg.deserialize(data['original_job'])
 
         if data['ok']:
-            task_name = original_job.task
+            task_name = original_job.task_name
             assert task_name in config.TASKS
             if task_name == 'extract_features':
-                results = ExtractFeaturesReturnMsg.deserialize(data['results'])
+                deserializer = ExtractFeaturesReturnMsg.deserialize
             elif task_name == 'train_classifier':
-                results = TrainClassifierReturnMsg.deserialize(data['results'])
+                deserializer = TrainClassifierReturnMsg.deserialize
             else:  # task_name in ['classify_image', 'classify_features']
-                results = ClassifyReturnMsg.deserialize(data['results'])
+                deserializer = ClassifyReturnMsg.deserialize
+            results = [deserializer(task_res) for task_res in data['results']]
         else:
             results = data['results']
 
-        return TaskReturnMsg(
+        return JobReturnMsg(
             original_job=original_job,
             ok=data['ok'],
             results=results,
@@ -437,9 +443,13 @@ class TaskReturnMsg(DataClass):
         )
 
     def serialize(self):
+        if self.ok:
+            results = [task_res.serialize() for task_res in self.results]
+        else:
+            results = self.results
         return {
             'original_job': self.original_job.serialize(),
             'ok': self.ok,
-            'results': self.results.serialize() if self.ok else self.results,
+            'results': results,
             'error_message': self.error_message
         }
