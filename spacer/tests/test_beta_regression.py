@@ -30,20 +30,6 @@ reg_meta = {
 s3_key_prefix = 'beta_reg/'
 
 
-def get_rowcol(self, key):
-    """ This file was saved using
-    coralnet/project/vision_backend/management/commands/
-    vb_export_spacer_data.py
-
-    https://github.com/beijbom/coralnet/blob/
-    e08afaa0164425fc16ae4ed60841d70f2eff59a6/project/vision_backend/
-    management/commands/vb_export_spacer_data.py
-    """
-    print('Loading key: ' + key)
-    anns = json.loads(self.storage.load(key).getvalue().decode('utf-8'))
-    return [(entry['row'], entry['col']) for entry in anns]
-
-
 @unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
 @unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
 @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
@@ -52,7 +38,20 @@ class TestExtractFeatures(unittest.TestCase):
         self.storage = storage_factory('s3', 'spacer-test')
 
         # Limit the number of row, col location to make tests run faster.
-        self.max_rc_cnt = 10
+        self.max_rc_cnt = 2
+
+    def get_rowcol(self, key):
+        """ This file was saved using
+        coralnet/project/vision_backend/management/commands/
+        vb_export_spacer_data.py
+
+        https://github.com/beijbom/coralnet/blob/
+        e08afaa0164425fc16ae4ed60841d70f2eff59a6/project/vision_backend/
+        management/commands/vb_export_spacer_data.py
+        """
+        print('Loading key: ' + key)
+        anns = json.loads(self.storage.load(key).getvalue().decode('utf-8'))
+        return [(entry['row'], entry['col']) for entry in anns]
 
     def run_test(self, key):
         """ Run feature extraction on an image and compare to legacy extracted
@@ -96,7 +95,7 @@ class TestExtractFeatures(unittest.TestCase):
             print(key, np.linalg.norm(legacy_pf.data, new_pf.data))
             # self.assertTrue(np.allclose(legacy_pf.data, new_pf.data))
 
-    def test_legacy(self):
+    def test_all(self):
 
         im_prefixes = []
         for source, (model, imgs) in reg_meta.items():
@@ -108,7 +107,7 @@ class TestExtractFeatures(unittest.TestCase):
 
 
 @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to tests')
-class TestClassifyFeaturesLegacy(unittest.TestCase):
+class TestClassifyFeatures(unittest.TestCase):
     """ Test the classify_features task and compare to scores
     calculated using previous sci-kit learn versions.
     """
@@ -149,3 +148,7 @@ class TestClassifyFeaturesLegacy(unittest.TestCase):
             for img_str in reg_meta[src_str][1]:
                 self.run_one_test(src_str + '/' + reg_meta[src_str][0],
                                   src_str + '/' + img_str)
+
+
+if __name__ == '__main__':
+    unittest.main()
