@@ -317,6 +317,7 @@ class ClassifyReturnMsg(DataClass):
                  # Maps the score index to a global class id.
                  classes: List[int],
                  valid_rowcol: bool):
+
         self.runtime = runtime
         self.scores = scores
         self.classes = classes

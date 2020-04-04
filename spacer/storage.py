@@ -13,7 +13,7 @@ from typing import Union, Tuple
 
 from urllib.error import URLError
 
-from sklearn.calibration import CalibratedClassifierCV, LabelEncoder
+from sklearn.calibration import CalibratedClassifierCV
 
 from spacer import config
 
@@ -205,6 +205,8 @@ def load_classifier(loc: 'DataLocation'):
         Upgrades models trained on scikit-learn 0.17.1 to 0.22.2
         Note: this in only tested for inference.
         """
+        from sklearn.calibration import LabelEncoder
+
         print("-> Patching legacy classifier.")
         assert len(clf.calibrated_classifiers_) == 1
         assert all(clf.classes_ == clf.calibrated_classifiers_[0].classes_)
