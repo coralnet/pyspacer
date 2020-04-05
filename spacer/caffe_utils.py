@@ -91,13 +91,10 @@ def gray2rgb(im):
     return ret
 
 
-def crop_patch(im, crop_size, scale, point_anns, offsets=None):
+def crop_patch(im, crop_size, scale, point_anns):
     """ Crops patches from images. """
 
     assert scale == 1, "Only supports scale == 1"
-
-    if offsets is None:
-        offsets = np.zeros([len(point_anns), 2])
 
     patchlist = []
     labellist = []
@@ -105,12 +102,10 @@ def crop_patch(im, crop_size, scale, point_anns, offsets=None):
 
     im = np.pad(im, ((pad, pad), (pad, pad), (0, 0)), mode='reflect')
 
-    for ((row, col, label), offset) in zip(point_anns, offsets):
+    for (row, col, label) in point_anns:
         center_org = np.asarray([row, col])
-        center = np.round(pad + (center_org * scale) + offset).astype(np.int)
-
+        center = np.round(pad + center_org * scale).astype(np.int)
         patch = crop_simple(im, center, crop_size)
-
         patchlist.append(patch)
         labellist.append(label)
 
@@ -140,32 +135,24 @@ def classify_from_patchlist(im_pil: Image,
     caffe.set_mode_cpu()
     net = load_net(modeldef_path, modelweighs_path)
 
-    scale = 1
-    estlist, scorelist, gtlist = [], [], []
-    transformer = Transformer(pyparams['im_mean'])
-
     im = np.asarray(im_pil)
-
     if len(im.shape) == 2 or im.shape[2] == 1:
         im = gray2rgb(im)
     im = im[:, :, :3]  # only keep the first three color channels
 
     # Crop patches
-    patchlist, this_gtlist = crop_patch(im, pyparams['crop_size'],
-                                        scale, point_anns)
+    scale = 1.0
+    patchlist, gtlist = crop_patch(im, pyparams['crop_size'],
+                                   scale, point_anns)
 
     # Classify
-    [this_estlist, this_scorelist] = \
+    transformer = Transformer(pyparams['im_mean'])
+    [estlist, scorelist] = \
         classify_from_imlist(patchlist,
                              net,
                              transformer,
                              pyparams['batch_size'],
                              scorelayer=scorelayer,
                              startlayer=startlayer)
-
-    # Store
-    gtlist.extend(this_gtlist)
-    estlist.extend(this_estlist)
-    scorelist.extend(this_scorelist)
 
     return gtlist, estlist, scorelist
