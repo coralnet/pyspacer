@@ -58,7 +58,7 @@ class TestExtractFeatures(unittest.TestCase):
         self.storage = storage_factory('s3', 'spacer-test')
 
         # Limit the number of row, col location to make tests run faster.
-        self.max_rc_cnt = 2
+        self.max_rc_cnt = 200
 
     def run_one_test(self, im_key):
         """ Run feature extraction on an image and compare to legacy extracted
@@ -98,10 +98,13 @@ class TestExtractFeatures(unittest.TestCase):
         self.assertEqual(new_feats.npoints, len(msg.rowcols))
         self.assertEqual(new_feats.feature_dim, 4096)
 
-        for legacy_pf, new_pf in zip(legacy_feats.point_features,
-                                     new_feats.point_features):
+        for legacy_pf, new_pf, rc in zip(legacy_feats.point_features,
+                                         new_feats.point_features,
+                                         msg.rowcols):
             norm = np.linalg.norm(np.array(legacy_pf.data) -
                                   np.array(new_pf.data))
+            with open('/workspace/models/feat_norms.log', 'a') as f:
+                f.write('{}, {}, {:.5f}\n'.format(im_key, rc, norm))
             with self.subTest(im_key=im_key, norm_delta=norm):
                 self.assertTrue(np.allclose(legacy_pf.data, new_pf.data))
 
