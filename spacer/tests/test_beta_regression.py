@@ -100,9 +100,9 @@ class TestExtractFeatures(unittest.TestCase):
 
         for legacy_pf, new_pf in zip(legacy_feats.point_features,
                                      new_feats.point_features):
-            print(im_key, np.linalg.norm(np.array(legacy_pf.data) -
-                                         np.array(new_pf.data)))
-            with self.subTest(im_key=im_key):
+            norm = np.linalg.norm(np.array(legacy_pf.data) -
+                                  np.array(new_pf.data))
+            with self.subTest(im_key=im_key, norm_delta=norm):
                 self.assertTrue(np.allclose(legacy_pf.data, new_pf.data))
 
     def test_all(self):

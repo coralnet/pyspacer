@@ -69,35 +69,5 @@ def main():
             print('Wrote scores to: {}'.format(score_path))
 
 
-def tmp():
-    import numpy as np
-    new_feats_loc = DataLocation(
-        storage_type='filesystem',
-        key='/Users/beijbom/spacermodels2/i160100.features.json'
-    )
-    old_feats_loc = DataLocation(
-        storage_type='filesystem',
-        key='/Users/beijbom/pyspacer/spacer/tests/fixtures/s295/i160100.features.json'
-    )
-   # ? old_feats_loc = DataLocation(
-   #      storage_type='filesystem',
-   #      key='/Users/beijbom/spacermodels2/alqyt4nl6y.JPG.featurevector'
-   #  )
-
-
-    new_feats = ImageFeatures.load(new_feats_loc)
-    old_feats = ImageFeatures.load(old_feats_loc)
-
-    for pf_new in new_feats.point_features:
-        dn = pf_new.data
-        diffs = []
-        for pf in old_feats.point_features:
-            do = pf.data
-            diffs.append(np.max(np.abs(np.array(dn) - np.array(do))))
-        print(diffs)
-
-
-
 if __name__ == '__main__':
-    # tmp()
     main()

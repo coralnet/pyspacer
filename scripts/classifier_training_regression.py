@@ -24,8 +24,8 @@ import warnings
 
 from spacer import config
 from spacer.data_classes import ImageLabels
-from spacer.storage import storage_factory
 from spacer.train_classifier import trainer_factory
+from spacer.messages import DataLocation
 
 
 class ClassifierRegressionTest:
@@ -74,7 +74,7 @@ class ClassifierRegressionTest:
               source_id: int,
               local_path: str,
               n_epochs: int = 5,
-              export_name: str = 'beta_export_v2'):
+              export_name: str = 'beta_export'):
 
         # Sci-kit learns calibration step throws out a ton of warnings.
         # That we don't need to see here.
@@ -85,7 +85,7 @@ class ClassifierRegressionTest:
 
         # Download all data to local.
         # Train and eval will run much faster that way...
-        print('Downloading data for source id: {}.'.format(source_id))
+        print('-> Downloading data for source id: {}.'.format(source_id))
         self._cache_local(source_root, image_root, export_name, source_id)
 
         # Create the train and val ImageLabels data structures.
@@ -110,26 +110,17 @@ class ClassifierRegressionTest:
                     (ann['row'], ann['col'], ann['label']) for ann in anns
                 ]
 
-        # Store and compile the TrainClassifierMsg
-        storage = storage_factory('filesystem', '')
-        traindata_key = os.path.join(source_root, 'traindata.json')
-        valdata_key = os.path.join(source_root, 'valdata.json')
-        storage.store_string(
-            traindata_key,
-            json.dumps(train_labels.serialize()))
-        storage.store_string(
-            valdata_key,
-            json.dumps(val_labels.serialize()))
+        feature_loc = DataLocation(storage_type='filesystem', key='')
 
         # Perform training
         print("-> Training...")
         trainer = trainer_factory('minibatch')
         clf, val_results, return_message = trainer(
-            traindata_key, valdata_key, n_epochs, [], storage)
+            train_labels, val_labels, n_epochs, [], feature_loc)
         with open(os.path.join(source_root, 'meta.json')) as fp:
             source_meta = json.load(fp)
 
-        print('Re-trained {} ({}). Old acc: {:.1f}, new acc: {:.1f}'.format(
+        print('-> Re-trained {} ({}). Old acc: {:.1f}, new acc: {:.1f}'.format(
             source_meta['name'],
             source_meta['pk'],
             100 * float(source_meta['best_robot_accuracy']),
@@ -137,7 +128,7 @@ class ClassifierRegressionTest:
         )
 
     @staticmethod
-    def list(export_name: str = 'beta_export_v2'):
+    def list(export_name: str = 'beta_export'):
         """ Lists sources available in export. """
 
         conn = config.get_s3_conn()
@@ -152,6 +143,8 @@ class ClassifierRegressionTest:
         entry_format = '{:>30}, {:>4}, {:>6}, {:.1f}%'
         for meta_key in meta_keys:
             md = json.loads(meta_key.get_contents_as_string().decode('UTF-8'))
+            if not'pk' in md:
+                continue
             print(entry_format.format(
                 md['name'][:20],
                 md['pk'],
