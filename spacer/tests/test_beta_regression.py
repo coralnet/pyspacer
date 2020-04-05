@@ -119,35 +119,35 @@ class TestClassifyFeatures(unittest.TestCase):
     Test pass if scores are identical.
     """
 
-    def run_one_test(self, img_key, clf_key):
+    def run_one_test(self, im_key, clf_key):
 
         msg = ClassifyFeaturesMsg(
             job_token='regression_test',
             feature_loc=DataLocation(storage_type='s3',
                                      bucket_name='spacer-test',
-                                     key=s3_key_prefix + img_key +
+                                     key=s3_key_prefix + im_key +
                                          '.features.json'),
             classifier_loc=DataLocation(storage_type='s3',
                                         bucket_name='spacer-test',
                                         key=s3_key_prefix + clf_key)
         )
-        new_scores = classify_features(msg)
+        new_return = classify_features(msg)
 
         # The features are legacy, so the scores don't have valid row-cols.
-        self.assertFalse(new_scores.valid_rowcol)
+        self.assertFalse(new_return.valid_rowcol)
 
-        legacy_scores = ClassifyReturnMsg.load(
+        legacy_return = ClassifyReturnMsg.load(
             DataLocation(
                 storage_type='s3',
                 bucket_name='spacer-test',
-                key=s3_key_prefix + img_key + '.scores.json'
+                key=s3_key_prefix + im_key + '.scores.json'
             )
         )
+        self.assertFalse(legacy_return.valid_rowcol)
 
-        # The features are legacy, so the scores don't have valid row-cols.
-        self.assertFalse(legacy_scores.valid_rowcol)
-        for ls, ns in zip(legacy_scores.scores, new_scores.scores):
-            self.assertTrue(np.allclose(ls[2], ns[2]))
+        for ls, ns in zip(legacy_return.scores, new_return.scores):
+            with self.subTest(im_key=im_key, clf_key=clf_key):
+                self.assertTrue(np.allclose(ls[2], ns[2]))
 
     def test_all(self):
 
@@ -168,7 +168,7 @@ class TestFullLoop(unittest.TestCase):
         self.storage = storage_factory('s3', 'spacer-test')
 
         # Limit the number of row, col location to make tests run faster.
-        self.max_rc_cnt = 10
+        self.max_rc_cnt = 50
 
     def run_one_test(self, im_key, clf_key):
 
@@ -196,20 +196,24 @@ class TestFullLoop(unittest.TestCase):
                                         bucket_name='spacer-test',
                                         key=s3_key_prefix + clf_key)
         )
-        new_scores = classify_features(msg)
+        new_return = classify_features(msg)
 
-        legacy_scores = ClassifyReturnMsg.load(
+        legacy_return = ClassifyReturnMsg.load(
             DataLocation(
                 storage_type='s3',
                 bucket_name='spacer-test',
                 key=s3_key_prefix + im_key + '.scores.json'
             )
         )
-        for ls, ns in zip(legacy_scores.scores, new_scores.scores):
-            print(im_key, clf_key, np.linalg.norm(np.array(ls[2]) -
-                                                  np.array(ns[2])))
-            with self.subTest(im_key=im_key, clf_key=clf_key):
-                self.assertEqual(np.argmax(ls[2]), np.argmax(ns[2]))
+        for ls, ns in zip(legacy_return.scores, new_return.scores):
+            legacy_pred = np.argmax(ls[2])
+            legacy_score = np.max(ls[2])
+            new_pred = np.argmax(ns[2])
+            new_score = np.max(ns[2])
+            with self.subTest(im_key=im_key, clf_key=clf_key,
+                              legacy_score=legacy_score,
+                              new_score=new_score):
+                self.assertEqual(legacy_pred, new_pred)
 
     def test_all(self):
 
