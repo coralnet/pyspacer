@@ -124,6 +124,12 @@ def load_net(modeldef_path, modelweighs_path):
     return caffe.Net(modeldef_path, modelweighs_path, caffe.TEST)
 
 
+def log(msg):
+    with open('/workspace/models/new.log', 'a') as f:
+        f.write(msg + '\n')
+        print(msg)
+
+
 def classify_from_patchlist(im_pil: Image,
                             point_anns: List[Tuple[int, int, int]],
                             pyparams: dict,
@@ -131,19 +137,28 @@ def classify_from_patchlist(im_pil: Image,
                             modelweighs_path: str,
                             scorelayer: str = 'score',
                             startlayer: str = 'conv1_1'):
+    log('Im after open checksum: {}'.format(
+        sum([sum(c) for c in im_pil.getdata()])))
+
     # Setup caffe
     caffe.set_mode_cpu()
     net = load_net(modeldef_path, modelweighs_path)
 
     im = np.asarray(im_pil)
+    log('Im after load checksum: {}'.format(np.sum(im.flatten())))
     if len(im.shape) == 2 or im.shape[2] == 1:
         im = gray2rgb(im)
     im = im[:, :, :3]  # only keep the first three color channels
+
+    log('Im after to RGB checksum: {}'.format(np.sum(im.flatten())))
 
     # Crop patches
     scale = 1.0
     patchlist, gtlist = crop_patch(im, pyparams['crop_size'],
                                    scale, point_anns)
+
+    log('Length patchlist: {}'.format(len(patchlist)))
+    log('Patch1 checksum: {}'.format(np.sum(patchlist[0].flatten())))
 
     # Classify
     transformer = Transformer(pyparams['im_mean'])
