@@ -14,7 +14,7 @@ from spacer.messages import DataLocation
 class TestDefaultTrainerDummyData(unittest.TestCase):
 
     def setUp(self):
-        warnings.simplefilter("ignore", ResourceWarning)
+        config.filter_warnings()
         np.random.seed(0)
         random.seed(0)
 

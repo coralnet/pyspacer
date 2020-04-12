@@ -52,7 +52,7 @@ class TestDummyExtractor(unittest.TestCase):
 class TestCaffeExtractor(unittest.TestCase):
 
     def setUp(self):
-        warnings.simplefilter("ignore", ResourceWarning)
+        config.filter_warnings()
 
     def test_simple(self):
 

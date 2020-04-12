@@ -2,7 +2,6 @@ import json
 import os
 import time
 import unittest
-import warnings
 
 from spacer import config
 from spacer.mailman import process_job, sqs_mailman
@@ -19,7 +18,7 @@ from spacer.messages import \
 class TestProcessJobErrorHandling(unittest.TestCase):
 
     def setUp(self):
-        warnings.simplefilter("ignore", ResourceWarning)
+        config.filter_warnings()
         self.url = 'https://homepages.cae.wisc.edu/~ece533/images/baboon.png'
 
     def tearDown(self):
@@ -134,7 +133,7 @@ class TestProcessJobErrorHandling(unittest.TestCase):
 class TestProcessJobMultiple(unittest.TestCase):
 
     def setUp(self):
-        warnings.simplefilter("ignore", ResourceWarning)
+        config.filter_warnings()
         self.url = 'https://homepages.cae.wisc.edu/~ece533/images/baboon.png'
 
     def tearDown(self):
@@ -204,6 +203,7 @@ class TestSQSMailman(unittest.TestCase):
             print("Purged old message from {}.".format(name))
 
     def setUp(self):
+        config.filter_warnings()
         self.url = 'https://homepages.cae.wisc.edu/~ece533/images/baboon.png'
 
         self.conn = config.get_sqs_conn()
@@ -252,7 +252,7 @@ class TestSQSMailman(unittest.TestCase):
         # Retrieve the results from the results_queue
         m_result = self.out_queue.read()
         while m_result is None:
-            print('-> Mo message in result queue, trying again.')
+            print('-> No message in result queue, trying again.')
             time.sleep(1)
             m_result = self.out_queue.read()
         return m_result

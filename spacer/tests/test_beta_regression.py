@@ -4,6 +4,7 @@ See pyspacer/scripts/make_legacy_score_for_regression_testing.py for details.
 """
 import json
 import unittest
+import warnings
 
 import numpy as np
 
@@ -43,6 +44,41 @@ def get_rowcol(key, storage):
     return [(entry['row'], entry['col']) for entry in anns]
 
 
+def extract_and_classify(im_key, clf_key, rowcol):
+    """ Helper method for extract_and_classify regression tests. """
+    new_feats_loc = DataLocation(storage_type='memory',
+                                 key='features.json')
+
+    msg = ExtractFeaturesMsg(
+        job_token='beta_reg_test',
+        feature_extractor_name='vgg16_coralnet_ver1',
+        image_loc=DataLocation(storage_type='s3',
+                               bucket_name='spacer-test',
+                               key=s3_key_prefix + im_key + '.jpg'),
+        rowcols=rowcol,
+        feature_loc=new_feats_loc
+    )
+    _ = extract_features(msg)
+
+    msg = ClassifyFeaturesMsg(
+        job_token='regression_test',
+        feature_loc=new_feats_loc,
+        classifier_loc=DataLocation(storage_type='s3',
+                                    bucket_name='spacer-test',
+                                    key=s3_key_prefix + clf_key)
+    )
+    new_return = classify_features(msg)
+
+    legacy_return = ClassifyReturnMsg.load(
+        DataLocation(
+            storage_type='s3',
+            bucket_name='spacer-test',
+            key=s3_key_prefix + im_key + '.scores.json'
+        )
+    )
+    return new_return, legacy_return
+
+
 @unittest.skip("We skipped this due to the JPEG decode issue "
                "(https://github.com/beijbom/pyspacer/pull/10)")
 @unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
@@ -57,10 +93,12 @@ class TestExtractFeatures(unittest.TestCase):
     """
 
     def setUp(self):
+
+        config.filter_warnings()
         self.storage = storage_factory('s3', 'spacer-test')
 
         # Limit the number of row, col location to make tests run faster.
-        self.max_rc_cnt = 200
+        self.max_rc_cnt = 1
 
     def run_one_test(self, im_key):
         """ Run feature extraction on an image and compare to legacy extracted
@@ -124,6 +162,9 @@ class TestClassifyFeatures(unittest.TestCase):
     Test pass if scores are identical.
     """
 
+    def setUp(self):
+        config.filter_warnings()
+
     def run_one_test(self, im_key, clf_key):
 
         msg = ClassifyFeaturesMsg(
@@ -170,46 +211,20 @@ class TestExtractClassify(unittest.TestCase):
     row, col location, or if they differ but scores are close. """
 
     def setUp(self):
+        config.filter_warnings()
         self.storage = storage_factory('s3', 'spacer-test')
 
         # Limit the number of row, col location to make tests run faster.
-        self.max_rc_cnt = 5
+        self.max_rc_cnt = 1
 
     def run_one_test(self, im_key, clf_key):
-
-        new_feats_loc = DataLocation(storage_type='memory',
-                                     key='features.json')
 
         rowcol = get_rowcol(s3_key_prefix + im_key + '.anns.json',
                             self.storage)
 
-        msg = ExtractFeaturesMsg(
-            job_token='beta_reg_test',
-            feature_extractor_name='vgg16_coralnet_ver1',
-            image_loc=DataLocation(storage_type='s3',
-                                   bucket_name='spacer-test',
-                                   key=s3_key_prefix + im_key + '.jpg'),
-            rowcols=rowcol[:self.max_rc_cnt],
-            feature_loc=new_feats_loc
-        )
-        _ = extract_features(msg)
+        new_return, legacy_return = \
+            extract_and_classify(im_key, clf_key, rowcol[:self.max_rc_cnt])
 
-        msg = ClassifyFeaturesMsg(
-            job_token='regression_test',
-            feature_loc=new_feats_loc,
-            classifier_loc=DataLocation(storage_type='s3',
-                                        bucket_name='spacer-test',
-                                        key=s3_key_prefix + clf_key)
-        )
-        new_return = classify_features(msg)
-
-        legacy_return = ClassifyReturnMsg.load(
-            DataLocation(
-                storage_type='s3',
-                bucket_name='spacer-test',
-                key=s3_key_prefix + im_key + '.scores.json'
-            )
-        )
         for ls, ns in zip(legacy_return.scores, new_return.scores):
             legacy_pred = np.argmax(ls[2])
             new_pred = np.argmax(ns[2])
