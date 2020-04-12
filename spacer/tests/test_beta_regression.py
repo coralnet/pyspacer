@@ -76,8 +76,6 @@ def extract_and_classify(im_key, clf_key, rowcol):
     return new_return, legacy_return
 
 
-@unittest.skip("Permanently skipped this due to the JPEG decode issue "
-               "(https://github.com/beijbom/pyspacer/pull/10)")
 @unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
 @unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
 @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
@@ -90,30 +88,32 @@ class TestExtractFeatures(unittest.TestCase):
     """
 
     def setUp(self):
-
         config.filter_warnings()
-        self.storage = storage_factory('s3', 'spacer-test')
 
-        # Limit the number of row, col location to make tests run faster.
-        self.max_rc_cnt = 1
-
-    def run_one_test(self, im_key):
-        """ Run feature extraction on an image and compare to legacy extracted
-        features
+    def test_png(self):
         """
-        new_feats_loc = DataLocation(storage_type='memory',
-                                     key='features.json')
+        Run feature extraction on an image and compare to legacy extracted
+        features. Note that we use a png image here to avoid the problems
+        with libjpeg versions. Here we are interested in asserting
+        that the caffe feature extraction code is backwards compatible.
+        See discussion in https://github.com/beijbom/pyspacer/pull/10 for
+        more details on libjpeg.
+        """
 
-        rowcol = get_rowcol(s3_key_prefix + im_key + '.anns.json',
-                            self.storage)
+        im_key = 's1388/i1023213'
+
+        new_feats_loc = DataLocation(storage_type='memory',
+                                     key='new_features.json')
+
+        rowcols = [(1571, 1804)]
 
         msg = ExtractFeaturesMsg(
             job_token='beta_reg_test',
             feature_extractor_name='vgg16_coralnet_ver1',
             image_loc=DataLocation(storage_type='s3',
                                    bucket_name='spacer-test',
-                                   key=s3_key_prefix + im_key + '.jpg'),
-            rowcols=rowcol[:self.max_rc_cnt],
+                                   key=s3_key_prefix + im_key + '.png'),
+            rowcols=rowcols,
             feature_loc=new_feats_loc
         )
         _ = extract_features(msg)
@@ -122,33 +122,23 @@ class TestExtractFeatures(unittest.TestCase):
             DataLocation(
                 storage_type='s3',
                 bucket_name='spacer-test',
-                key=s3_key_prefix + im_key + '.features.json'
+                key=s3_key_prefix + im_key + '.png.features.json'
             ))
 
         self.assertFalse(legacy_feats.valid_rowcol)
-        self.assertEqual(legacy_feats.npoints, len(rowcol))
+        self.assertEqual(legacy_feats.npoints, len(rowcols))
         self.assertEqual(legacy_feats.feature_dim, 4096)
 
         new_feats = ImageFeatures.load(new_feats_loc)
 
         self.assertTrue(new_feats.valid_rowcol)
-        self.assertEqual(new_feats.npoints, len(msg.rowcols))
+        self.assertEqual(new_feats.npoints, len(rowcols))
         self.assertEqual(new_feats.feature_dim, 4096)
 
         for legacy_pf, new_pf, rc in zip(legacy_feats.point_features,
                                          new_feats.point_features,
                                          msg.rowcols):
-            norm = np.linalg.norm(np.array(legacy_pf.data) -
-                                  np.array(new_pf.data))
-            with open('/workspace/models/feat_norms.log', 'a') as f:
-                f.write('{}, {}, {:.5f}\n'.format(im_key, rc, norm))
-            with self.subTest(im_key=im_key, norm_delta=norm):
-                self.assertTrue(np.allclose(legacy_pf.data, new_pf.data))
-
-    def test_all(self):
-        for source, (clf, imgs) in reg_meta.items():
-            for img in imgs:
-                self.run_one_test(source + '/' + img)
+            self.assertTrue(np.allclose(legacy_pf.data, new_pf.data))
 
 
 @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to tests')
@@ -210,7 +200,7 @@ class TestExtractClassify(unittest.TestCase):
         config.filter_warnings()
         self.storage = storage_factory('s3', 'spacer-test')
 
-    def run_tricky_example(self):
+    def test_tricky_example(self):
         """ From regression testing, this particular row, col location
         of this particular image gave the largest difference in
         classification scores """
@@ -242,11 +232,7 @@ class TestExtractClassify(unittest.TestCase):
                 ok = score_diff_legacy_pred < 0.05 and \
                      score_diff_new_pred < 0.05
 
-            with self.subTest(im_key=im_key, clf_key=clf_key,
-                              new_pred=new_pred, legacy_pred=legacy_pred,
-                              score_diff_new_pred=score_diff_new_pred,
-                              score_diff_legacy_pred=score_diff_legacy_pred):
-                self.assertTrue(ok)
+            self.assertTrue(ok)
 
 
 if __name__ == '__main__':
