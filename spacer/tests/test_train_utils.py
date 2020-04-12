@@ -1,14 +1,10 @@
 import itertools
-import json
 import unittest
-import warnings
 from typing import Tuple
 
 from spacer import config
 from spacer.data_classes import ImageLabels, PointFeatures, ImageFeatures
 from spacer.messages import DataLocation
-from spacer.storage import storage_factory
-from spacer.train_classifier import trainer_factory
 from spacer.train_utils import train, calc_batch_size, chunkify, calc_acc, \
     load_image_data, load_batch_data, make_random_data, evaluate_classifier
 

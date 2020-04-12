@@ -109,11 +109,11 @@ class TestProcessJobErrorHandling(unittest.TestCase):
                          trainer_name='minibatch',
                          nbr_epochs=1,
                          traindata_loc=DataLocation(storage_type='memory',
-                                                  key='my_traindata'),
+                                                    key='my_traindata'),
                          valdata_loc=DataLocation(storage_type='memory',
                                                   key='my_valdata'),
                          features_loc=DataLocation(storage_type='memory',
-                                                  key='my_feats'),
+                                                   key='my_feats'),
                          previous_model_locs=[
                              DataLocation(storage_type='memory',
                                           key='my_previous_model')
@@ -187,6 +187,7 @@ class TestProcessJobMultiple(unittest.TestCase):
         self.assertTrue(type(return_msg), JobReturnMsg)
 
 
+@unittest.skip("Skipping this since uses a shared queue.")
 @unittest.skipUnless(config.HAS_SQS_QUEUE_ACCESS, 'No SQS access.')
 class TestSQSMailman(unittest.TestCase):
 
@@ -225,7 +226,6 @@ class TestSQSMailman(unittest.TestCase):
         if os.path.exists('baboon.png'):
             os.remove('baboon.png')
 
-
         self.in_queue = self.conn.get_queue(self.in_queue_name)
         if self.in_queue is None:
             self.sqs_access = False
@@ -242,7 +242,7 @@ class TestSQSMailman(unittest.TestCase):
         m_job = self.in_queue.new_message(body=body)
         self.in_queue.write(m_job)
 
-        # Make sure queue is empty first.
+        # Process job
         found_message = False
         while not found_message:
             found_message = sqs_mailman(in_queue=self.in_queue_name,

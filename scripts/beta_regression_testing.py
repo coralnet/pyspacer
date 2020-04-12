@@ -12,28 +12,25 @@ are compatible.
 There is also a "run" method, which runs the regression tests. This test
 runs both feature extraction and classification.
 Since the libjpeg version was changed the results will not be identical.
-However, the scores should be close.
+However, the scores should be close. See discussion in
+(https://github.com/beijbom/pyspacer/pull/10)
+for more details.
 
-We also run a subset of these tests as part of the standard unit-test suite.
-
+We also run a subset of these tests as part of the standard test suite.
 """
 
 import os.path as osp
 import numpy as np
 from spacer.messages import \
     ClassifyFeaturesMsg, \
-    ExtractFeaturesMsg, \
-    DataLocation, \
-    ClassifyReturnMsg
+    DataLocation
 
 from spacer import config
 
-from spacer.tasks import classify_features, extract_features
+from spacer.tasks import classify_features
 from spacer.storage import storage_factory
 from spacer.tests.test_beta_regression import \
     get_rowcol, reg_meta, s3_key_prefix, extract_and_classify
-
-import warnings
 
 import pkg_resources
 
@@ -43,9 +40,7 @@ def build():
     # Note, we uploaded these to S3, so this path is temporary
     fixtures_root = '/Users/beijbom/Desktop/beta_reg/'
 
-    # Make sure this code will not run if there are any UserWarnings
-    # This is what scikit-learn >= 0.18 will raise when trying to unpickle.
-    warnings.simplefilter("error", UserWarning)
+    config.filter_warnings()
 
     assert pkg_resources.get_distribution("scikit-learn").version == '0.17.1',\
         "Must use scikit-learn 0.17.1 to run this script."

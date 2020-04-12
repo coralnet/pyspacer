@@ -4,21 +4,18 @@ See pyspacer/scripts/make_legacy_score_for_regression_testing.py for details.
 """
 import json
 import unittest
-import warnings
 
 import numpy as np
 
 from spacer import config
-from spacer.storage import storage_factory
+from spacer.data_classes import ImageFeatures
 from spacer.messages import \
     DataLocation, \
     ExtractFeaturesMsg, \
     ClassifyFeaturesMsg, \
     ClassifyReturnMsg
-
+from spacer.storage import storage_factory
 from spacer.tasks import classify_features, extract_features
-
-from spacer.data_classes import ImageFeatures
 
 reg_meta = {
     's16': ('1355.model', ['i2921', 'i2934']),
@@ -79,7 +76,7 @@ def extract_and_classify(im_key, clf_key, rowcol):
     return new_return, legacy_return
 
 
-@unittest.skip("We skipped this due to the JPEG decode issue "
+@unittest.skip("Permanently skipped this due to the JPEG decode issue "
                "(https://github.com/beijbom/pyspacer/pull/10)")
 @unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
 @unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
@@ -149,7 +146,6 @@ class TestExtractFeatures(unittest.TestCase):
                 self.assertTrue(np.allclose(legacy_pf.data, new_pf.data))
 
     def test_all(self):
-
         for source, (clf, imgs) in reg_meta.items():
             for img in imgs:
                 self.run_one_test(source + '/' + img)
@@ -171,8 +167,8 @@ class TestClassifyFeatures(unittest.TestCase):
             job_token='regression_test',
             feature_loc=DataLocation(storage_type='s3',
                                      bucket_name='spacer-test',
-                                     key=s3_key_prefix + im_key +
-                                         '.features.json'),
+                                     key=s3_key_prefix + im_key + '.features.'
+                                                                  'json'),
             classifier_loc=DataLocation(storage_type='s3',
                                         bucket_name='spacer-test',
                                         key=s3_key_prefix + clf_key)
@@ -214,16 +210,18 @@ class TestExtractClassify(unittest.TestCase):
         config.filter_warnings()
         self.storage = storage_factory('s3', 'spacer-test')
 
-        # Limit the number of row, col location to make tests run faster.
-        self.max_rc_cnt = 1
+    def run_tricky_path(self):
+        """ From regression testing, this particular row, col location
+        of this particular image gave the largest difference in
+        classification scores """
 
-    def run_one_test(self, im_key, clf_key):
+        im_key = 's1388/i1023213'
+        clf_key = 's1388/8942.model'
 
-        rowcol = get_rowcol(s3_key_prefix + im_key + '.anns.json',
-                            self.storage)
+        rowcol = [(1571, 1804)]
 
         new_return, legacy_return = \
-            extract_and_classify(im_key, clf_key, rowcol[:self.max_rc_cnt])
+            extract_and_classify(im_key, clf_key, rowcol)
 
         for ls, ns in zip(legacy_return.scores, new_return.scores):
             legacy_pred = np.argmax(ls[2])
@@ -249,12 +247,6 @@ class TestExtractClassify(unittest.TestCase):
                               score_diff_new_pred=score_diff_new_pred,
                               score_diff_legacy_pred=score_diff_legacy_pred):
                 self.assertTrue(ok)
-
-    def test_all(self):
-
-        for source, (clf, imgs) in reg_meta.items():
-            for img in imgs:
-                self.run_one_test(source + '/' + img, source + '/' + clf)
 
 
 if __name__ == '__main__':

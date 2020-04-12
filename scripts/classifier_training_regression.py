@@ -79,6 +79,7 @@ class ClassifierRegressionTest:
         # Sci-kit learns calibration step throws out a ton of warnings.
         # That we don't need to see here.
         warnings.simplefilter('ignore', RuntimeWarning)
+        config.filter_warnings()
 
         source_root = os.path.join(local_path, 's{}'.format(source_id))
         image_root = os.path.join(source_root, 'images')

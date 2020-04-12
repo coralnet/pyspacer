@@ -1,5 +1,5 @@
 import unittest
-import warnings
+
 from PIL import Image
 
 from spacer import config
@@ -9,7 +9,6 @@ from spacer.messages import \
     ExtractFeaturesMsg, \
     ExtractFeaturesReturnMsg, \
     DataLocation
-
 from spacer.storage import load_image
 
 

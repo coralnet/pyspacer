@@ -23,7 +23,7 @@ setuptools.setup(
         'boto==2.49.0',
         'wget==3.2',
         'tqdm==4.43.0',
-        'Pillow==6.2.0',
+        'Pillow>=4.2.0',
         'numpy>=1.17.5',
         'scikit-learn==0.22.1',
         'scikit-image==0.15.0',

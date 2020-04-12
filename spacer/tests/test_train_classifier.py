@@ -1,6 +1,5 @@
 import random
 import unittest
-import warnings
 
 import numpy as np
 

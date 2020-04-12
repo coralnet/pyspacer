@@ -1,6 +1,5 @@
 import os
 import unittest
-import warnings
 
 from PIL import Image
 
@@ -214,7 +213,7 @@ class TestClassifyImage(unittest.TestCase):
 class TestClassifyImageCache(unittest.TestCase):
 
     def setUp(self):
-        warnings.simplefilter("ignore", ResourceWarning)
+        config.filter_warnings()
 
     @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to tests')
     def test_classify_image_with_caching(self):
