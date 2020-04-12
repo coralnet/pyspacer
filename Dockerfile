@@ -1,25 +1,23 @@
 # This Dockerfile is modified from mapler/caffe-py3:cpu.
-# Normally, one would inherit from that definition.
-# But even mapler/caffe-py3:cpu was compiled with CUDA,
-# so it doesn't build on systems without GPUs.
-# So instead this build the image from ubuntu.
-# Note that mapler/caffe-py3 built from nvidia/cuda:8.0-cudnn6-devel-ubuntu16.04
-# Here I instaed start from the Ubuntu 18:04 base image.
-
-
-# FROM nvidia/cuda:8.0-cudnn6-devel-ubuntu16.04
-# LABEL maintainer maplerme@gmail.com
+# https://hub.docker.com/r/mapler/caffe-py3/
+# Normally, one would inherit from that definition,
+# but it seems mapler/caffe-py3:cpu was compiled with CUDA,
+# so it didn't build on systems without GPUs.
+# So instead I had to copy-paste his dockerfile.
+# Ultimately I switched to building form the Ubuntu 18:04 base image,
+# to get the latest ubuntu and also to have a cleaner trace.
 
 FROM ubuntu:18.04
 LABEL maintainer oscar.beijbom@gmail.com
 
+# This section has to do with setting the time-zone and installing the OS.
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install tzdata
-
 ENV TZ=America/Los_Angeles
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-
 RUN dpkg-reconfigure --frontend noninteractive tzdata
 
+
+# Install packages that we need.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         cmake \
@@ -44,6 +42,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python-scipy && \
     rm -rf /var/lib/apt/lists/*
 
+
+# Install caffe.
 ENV CAFFE_ROOT=/opt/caffe
 ENV CLONE_TAG=1.0
 
@@ -80,8 +80,8 @@ RUN pip3 install Pillow==6.2.0
 RUN pip3 install numpy==1.18.1
 RUN pip3 install scikit-learn==0.22.1
 RUN pip3 install scikit-image==0.15.0
-# RUN pip3 install torch==1.4.0
-# RUN pip3 install torchvision==0.5.0
+RUN pip3 install torch==1.4.0
+RUN pip3 install torchvision==0.5.0
 
 ENV SPACER_LOCAL_MODEL_PATH=/workspace/models
 ENV PYTHONPATH="/workspace/spacer:${PYTHONPATH}"

@@ -13,7 +13,8 @@ from spacer.tasks import \
     classify_image
 
 
-def sqs_mailman(in_queue='spacer_jobs', out_queue='spacer_results') -> bool:
+def sqs_mailman(in_queue='spacer_jobs',
+                out_queue='spacer_results') -> bool:  # pragma: no cover
     """
     Looks for jobs in AWS SQS in_queue, process the job and writes
     results back to out_queue

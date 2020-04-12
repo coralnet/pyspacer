@@ -210,7 +210,7 @@ class TestExtractClassify(unittest.TestCase):
         config.filter_warnings()
         self.storage = storage_factory('s3', 'spacer-test')
 
-    def run_tricky_path(self):
+    def run_tricky_example(self):
         """ From regression testing, this particular row, col location
         of this particular image gave the largest difference in
         classification scores """

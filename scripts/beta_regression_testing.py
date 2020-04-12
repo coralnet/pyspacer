@@ -1,15 +1,15 @@
 """
 This file has scripts to run regression testing against coralnet beta.
 
-The build does not need to be run again, it was used to create the tests as
-follows:
+The build method does not need to be run again,
+it was used to create the tests as follows:
 Legacy models on CoralNet were loaded up using scikit-learn 0.17.
 The models were then used to classify features and the scores were stored.
 This allows unit-tests to be created to make sure that when classifiers
 are loaded using newer versions of sci-kit learn the predicted scores
 are compatible.
 
-There is also a "run" method, which runs the regression tests. This test
+The run method runs the regression tests. This test
 runs both feature extraction and classification.
 Since the libjpeg version was changed the results will not be identical.
 However, the scores should be close. See discussion in
@@ -80,10 +80,6 @@ def log(msg):
 
 def run():
 
-    assert config.HAS_CAFFE, "Must have caffe installed to run the reg tests."
-
-    storage = storage_factory('s3', 'spacer-test')
-
     def run_one_test(im_key, clf_key):
 
         rowcol = get_rowcol(s3_key_prefix + im_key + '.anns.json', storage)
@@ -102,6 +98,8 @@ def run():
                                          ls[2][new_pred])
 
             # We pass the test of the predictions are identical.
+            all_score_diffs.append(score_diff_legacy_pred)
+            all_score_diffs.append(score_diff_new_pred)
             ok = legacy_pred == new_pred
             if not ok:
                 # If prediction are not identical we still pass if the scores
@@ -121,9 +119,17 @@ def run():
                     format(im_key, rc, new_pred, legacy_pred,
                            score_diff_legacy_pred, score_diff_new_pred))
 
+    assert config.HAS_CAFFE, "Must have caffe installed to run the reg tests."
+
+    storage = storage_factory('s3', 'spacer-test')
+
+    all_score_diffs = []
+
     for source, (clf, imgs) in reg_meta.items():
         for img in imgs:
             run_one_test(source + '/' + img, source + '/' + clf)
+
+    log("Max score diff: {}".format(np.max(all_score_diffs)))
 
 
 if __name__ == '__main__':
