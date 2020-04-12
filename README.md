@@ -58,7 +58,7 @@ The docker build is the preferred build and the one used in deployment.
 * Run: `docker run -v /path/to/your/local/models:/workspace/models -it spacer:test`
 
 The `-v /path/to/your/local/models:/workspace/models` part will make sure 
-the downloaded models are cached to your local disk (outside the container), 
+the downloaded models are cached to your host storage. 
 which makes rerunning stuff much faster.
 
 The last step will run the default CMD command specified in the dockerfile 
@@ -70,14 +70,12 @@ docker run -v /path/to/your/local/models:/workspace/models -it test:Dockerfile b
 ```
 
 #### Pip install
-* Install virtualenv.
-* Set environmental variables.
 * `pip install spacer`
+* Set environmental variables.
 
 #### Local clone
 * Clone this repo
-* Create a virtualenv
-* pip install -r requirements.txt
+* `pip install -r requirements.txt`
 
 ### Code coverage
 If you are using the docker build or local install, 
