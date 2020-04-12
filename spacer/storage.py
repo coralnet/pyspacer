@@ -150,6 +150,12 @@ def storage_factory(storage_type: str, bucketname: Union[str, None] = None):
         return URLStorage()
 
 
+def clear_memory_storage():
+
+    global _memorystorage
+    _memorystorage = None
+
+
 def download_model(keyname: str) -> Tuple[str, bool]:
     """
     Utility method to download model to local cache.

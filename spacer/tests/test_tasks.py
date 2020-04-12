@@ -14,7 +14,12 @@ from spacer.messages import \
     ClassifyImageMsg, \
     ClassifyReturnMsg, \
     DataLocation
-from spacer.storage import store_classifier, load_classifier
+from spacer.storage import \
+    store_classifier, \
+    load_classifier, \
+    clear_memory_storage, \
+    store_image, \
+    storage_factory
 from spacer.tasks import \
     extract_features, \
     train_classifier, \
@@ -26,35 +31,24 @@ from spacer.train_utils import train
 
 class TestExtractFeatures(unittest.TestCase):
 
-    def setUp(self):
-
-        self.tmps = {
-            'in': 'my_img.jpg',
-            'out': 'my_output.json'
-        }
-        im = Image.new('RGB', (100, 100))
-        im.save(self.tmps['in'])
-
-    def tearDown(self):
-
-        for tmp in self.tmps.values():
-            if os.path.exists(tmp):
-                os.remove(tmp)
-
     def test_default(self):
 
+        clear_memory_storage()
+        img_loc = DataLocation(storage_type='memory', key='img')
+
+        store_image(img_loc, Image.new('RGB', (100, 100)))
         msg = ExtractFeaturesMsg(
             job_token='test',
             feature_extractor_name='dummy',
-            image_loc=DataLocation(storage_type='filesystem',
-                                   key=self.tmps['in']),
+            image_loc=img_loc,
             rowcols=[(1, 1), (2, 2)],
-            feature_loc=DataLocation(storage_type='filesystem',
-                                     key=self.tmps['out'])
+            feature_loc=DataLocation(storage_type='memory',
+                                     key='feats')
         )
         return_msg = extract_features(msg)
         self.assertTrue(type(return_msg) == ExtractFeaturesReturnMsg)
-        self.assertTrue(os.path.exists(self.tmps['out']))
+        storage = storage_factory('memory')
+        self.assertTrue(storage.exists('feats'))
 
 
 class TestTrainClassifier(unittest.TestCase):
