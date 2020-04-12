@@ -69,27 +69,17 @@ class TestClassifyFromPatchList(unittest.TestCase):
         """ Call classify_from_patchlist twice to check if the LRU caching on
         load_net method works
         """
-        from spacer.caffe_utils import classify_from_patchlist
         from spacer.caffe_utils import load_net
 
         # Clear cache to make sure it's not set from previous test.
         load_net.cache_clear()
-        caffe_params = {'im_mean': [128, 128, 128],
-                        'scaling_method': 'scale',
-                        'crop_size': 224,
-                        'batch_size': 10}
         t0 = time.time()
-        _, _, feats = classify_from_patchlist(
-            Image.new('L', (600, 600)), [(300, 300, 1)], caffe_params,
-            self.modeldef_path, self.modelweighs_path, scorelayer='fc7')
+        _ = load_net(self.modeldef_path, self.modelweighs_path)
         t1 = time.time() - t0
 
         t0 = time.time()
-        _, _, feats = classify_from_patchlist(
-            Image.new('L', (600, 600)), [(300, 300, 1)], caffe_params,
-            self.modeldef_path, self.modelweighs_path, scorelayer='fc7')
+        _ = load_net(self.modeldef_path, self.modelweighs_path)
         t2 = time.time() - t0
-
         self.assertLess(t2, t1)
 
 
