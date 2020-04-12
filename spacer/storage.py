@@ -43,12 +43,6 @@ class URLStorage(Storage):
     def __init__(self):
         self.fs_storage = FileSystemStorage()
 
-    def _load(self, url, local_load_method):
-        tmp_path = wget.download(url)
-        item = local_load_method(tmp_path)
-        self.fs_storage.delete(tmp_path)
-        return item
-
     def store(self, url: str, stream: BytesIO):
         raise TypeError('Store operation not supported for URL storage.')
 

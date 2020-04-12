@@ -2,6 +2,7 @@ import json
 import unittest
 
 from spacer.messages import \
+    DataLocation, \
     ExtractFeaturesMsg, \
     ExtractFeaturesReturnMsg, \
     TrainClassifierMsg, \
@@ -11,6 +12,17 @@ from spacer.messages import \
     ClassifyReturnMsg, \
     JobMsg, \
     JobReturnMsg
+
+
+class TestDataLocation(unittest.TestCase):
+
+    def test_serialize(self):
+
+        msg = DataLocation.example()
+        self.assertEqual(msg, DataLocation.deserialize(
+            msg.serialize()))
+        self.assertEqual(msg, DataLocation.deserialize(
+            json.loads(json.dumps(msg.serialize()))))
 
 
 class TestExtractFeaturesMsg(unittest.TestCase):

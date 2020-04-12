@@ -81,7 +81,7 @@ def get_sqs_conn():
 def get_local_model_path():
     local_model_path = os.getenv('SPACER_LOCAL_MODEL_PATH')
     if local_model_path is None:
-        return get_secret('SPACER_LOCAL_MODEL_PATH')
+        return get_secret('SPACER_LOCAL_MODEL_PATH')  # pragma: no cover
     return local_model_path
 
 
