@@ -18,7 +18,33 @@ from spacer.storage import \
     load_image, \
     load_classifier, \
     store_image, \
-    store_classifier
+    store_classifier, \
+    clear_memory_storage
+
+
+class TestGlobalMemoryStorage(unittest.TestCase):
+
+    def test_simple(self):
+
+        clear_memory_storage()
+
+        # Check that memory storage is global.
+        storage = storage_factory('memory')
+        self.assertFalse(storage.exists('feats'))
+
+        ImageFeatures.example().store(DataLocation(storage_type='memory',
+                                                   key='feats'))
+        self.assertTrue(storage.exists('feats'))
+
+        # Deleting the local pointer doesn't erase the memory.
+        del storage
+        storage = storage_factory('memory')
+        self.assertTrue(storage.exists('feats'))
+
+        # Calling the cleanup will, however
+        clear_memory_storage()
+        storage = storage_factory('memory')
+        self.assertFalse(storage.exists('feats'))
 
 
 class TestURLStorage(unittest.TestCase):

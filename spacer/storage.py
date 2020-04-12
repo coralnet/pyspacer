@@ -133,6 +133,12 @@ class MemoryStorage(Storage):
 _memorystorage = None
 
 
+def clear_memory_storage():
+    """ Clears global memory storage"""
+    global _memorystorage
+    _memorystorage = None
+
+
 def storage_factory(storage_type: str, bucketname: Union[str, None] = None):
 
     assert storage_type in config.STORAGE_TYPES
@@ -148,12 +154,6 @@ def storage_factory(storage_type: str, bucketname: Union[str, None] = None):
         return _memorystorage
     if storage_type == 'url':
         return URLStorage()
-
-
-def clear_memory_storage():
-
-    global _memorystorage
-    _memorystorage = None
 
 
 def download_model(keyname: str) -> Tuple[str, bool]:
