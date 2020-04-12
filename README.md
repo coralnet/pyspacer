@@ -22,8 +22,9 @@ Tasks can be executed directly by calling the methods in tasks.py.
 However, spacer also supports an interface with SQS 
 handled by `sqs_mailman()` in `mailman.py`. 
 
-Spacer supports there types of storage, s3, filesystem and memory. 
-Refer to `storage.py` for details. The Memory storage is mostly for testing.
+Spacer supports four storage types: `s3`, `filesystem`, `memory` and `url`.
+ Refer to `storage.py` for details. The Memory storage is mostly used for 
+ testing, and the `url` storage is read only.
 
 Also take a look at `config.py` for settings and configuration. 
 
@@ -81,17 +82,8 @@ docker run -v /path/to/your/local/models:/workspace/models -it test:Dockerfile b
 ### Code coverage
 If you are using the docker build or local install, 
 you can check code coverage like so:
- 
-1) Generate data
 ```
-    coverage run --source=spacer --omit=spacer/tests/* -m unittest
-``` 
-2) Render simple report
-```    
+    coverage run --source=spacer --omit=spacer/tests/* -m unittest    
     coverage report -m
-```    
-3) Render to html
-```
     coverage html
 ```
-which renders html files to `.htmlcov`.
