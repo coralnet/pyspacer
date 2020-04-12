@@ -150,5 +150,3 @@ if inqueue is None:  # pragma: no cover
     print('-> No access to SQS found.')
 else:
     HAS_SQS_QUEUE_ACCESS = True
-
-

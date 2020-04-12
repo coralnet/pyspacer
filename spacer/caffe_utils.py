@@ -4,12 +4,13 @@ simplicity. Since support for Caffe will be deprecate,
 these are only lightly cleaned up from their original state.
 """
 
-from PIL import Image
 from copy import copy
-from typing import List, Tuple
 from functools import lru_cache
+from typing import List, Tuple
+
 import caffe
 import numpy as np
+from PIL import Image
 
 
 class Transformer:

@@ -1,4 +1,5 @@
 from typing import List, Tuple
+
 from PIL import Image
 
 

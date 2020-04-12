@@ -14,8 +14,8 @@ from spacer.messages import \
     ClassifyImageMsg, \
     ClassifyReturnMsg
 from spacer.storage import load_image, load_classifier, store_classifier
-from spacer.train_classifier import trainer_factory
 from spacer.task_utils import check_rowcols
+from spacer.train_classifier import trainer_factory
 
 
 def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:

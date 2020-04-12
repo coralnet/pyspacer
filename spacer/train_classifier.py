@@ -4,7 +4,6 @@ Defines train-classifier ABC; implementations; and factory.
 
 import abc
 import time
-from collections import defaultdict
 from typing import Tuple, List
 
 from sklearn.calibration import CalibratedClassifierCV

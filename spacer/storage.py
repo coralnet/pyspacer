@@ -5,15 +5,14 @@ Defines storage ABC; implementations; and factory.
 import abc
 import os
 import pickle
-import wget
 import warnings
 from functools import lru_cache
-from PIL import Image
 from io import BytesIO
 from typing import Union, Tuple
-
 from urllib.error import URLError
 
+import wget
+from PIL import Image
 from sklearn.calibration import CalibratedClassifierCV
 
 from spacer import config
