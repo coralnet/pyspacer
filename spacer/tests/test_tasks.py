@@ -113,7 +113,7 @@ class TestTrainClassifier(unittest.TestCase):
 class TestClassifyFeatures(unittest.TestCase):
 
     def setUp(self):
-        warnings.simplefilter("ignore", ResourceWarning)
+        config.filter_warnings()
 
     @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to tests')
     def test_legacy(self):
@@ -179,7 +179,7 @@ class TestClassifyFeatures(unittest.TestCase):
 class TestClassifyImage(unittest.TestCase):
 
     def setUp(self):
-        warnings.simplefilter("ignore", ResourceWarning)
+        config.filter_warnings()
 
     @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to tests')
     def test_deploy_simple(self):

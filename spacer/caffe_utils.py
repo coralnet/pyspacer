@@ -91,10 +91,8 @@ def gray2rgb(im):
     return ret
 
 
-def crop_patch(im, crop_size, scale, point_anns):
+def crop_patch(im, crop_size, point_anns):
     """ Crops patches from images. """
-
-    assert scale == 1, "Only supports scale == 1"
 
     patchlist = []
     labellist = []
@@ -104,7 +102,7 @@ def crop_patch(im, crop_size, scale, point_anns):
 
     for (row, col, label) in point_anns:
         center_org = np.asarray([row, col])
-        center = np.round(pad + center_org * scale).astype(np.int)
+        center = np.round(pad + center_org).astype(np.int)
         patch = crop_simple(im, center, crop_size)
         patchlist.append(patch)
         labellist.append(label)
@@ -135,15 +133,15 @@ def classify_from_patchlist(im_pil: Image,
     caffe.set_mode_cpu()
     net = load_net(modeldef_path, modelweighs_path)
 
-    im = np.asarray(im_pil)
+    _ = np.array(im_pil)  # For some images np.array returns an empty array.
+    im = np.array(im_pil)  # Running it twice fixes this. Don't ask me why.
+
     if len(im.shape) == 2 or im.shape[2] == 1:
         im = gray2rgb(im)
     im = im[:, :, :3]  # only keep the first three color channels
 
     # Crop patches
-    scale = 1.0
-    patchlist, gtlist = crop_patch(im, pyparams['crop_size'],
-                                   scale, point_anns)
+    patchlist, gtlist = crop_patch(im, pyparams['crop_size'], point_anns)
 
     # Classify
     transformer = Transformer(pyparams['im_mean'])

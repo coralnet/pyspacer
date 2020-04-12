@@ -6,6 +6,7 @@ import abc
 import os
 import pickle
 import wget
+import warnings
 from functools import lru_cache
 from PIL import Image
 from io import BytesIO
@@ -199,6 +200,15 @@ def store_classifier(loc: 'DataLocation', clf: CalibratedClassifierCV):
 
 @lru_cache(maxsize=3)
 def load_classifier(loc: 'DataLocation'):
+
+    # This warning is due to the sklearn 0.17.1, 0.22.2 migration.
+    warnings.filterwarnings('ignore', category=UserWarning,
+                            message="Trying to unpickle.*")
+
+    # This future warning also has to do with the unpickling of the
+    # legacy model. It uses a to-be-deprecated import statement.
+    warnings.filterwarnings('ignore', category=FutureWarning,
+                            message="The sklearn.linear_model.*")
 
     def patch_legacy():
         """

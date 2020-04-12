@@ -15,9 +15,6 @@ from spacer.train_utils import train, calc_batch_size, chunkify, calc_acc, \
 
 class TestTrain(unittest.TestCase):
 
-    def setUp(self):
-        warnings.simplefilter("ignore", ResourceWarning)
-
     def test_ok(self):
 
         n_traindata = config.MIN_TRAINIMAGES + 1
@@ -73,9 +70,6 @@ class TestTrain(unittest.TestCase):
 
 class TestEvaluateClassifier(unittest.TestCase):
 
-    def setUp(self):
-        warnings.simplefilter("ignore", ResourceWarning)
-
     def test_simple(self):
         feature_loc = DataLocation(storage_type='memory', key='')
         train_data = make_random_data(10, [1, 2], 4, 5, feature_loc)
@@ -104,7 +98,7 @@ class TestEvaluateClassifier(unittest.TestCase):
 class TestCalcBatchSize(unittest.TestCase):
 
     def setUp(self):
-        warnings.simplefilter("ignore", ResourceWarning)
+        config.filter_warnings()
 
     def test1(self):
 
@@ -124,9 +118,6 @@ class TestCalcBatchSize(unittest.TestCase):
 
 
 class TestChunkify(unittest.TestCase):
-
-    def setUp(self):
-        warnings.simplefilter("ignore", ResourceWarning)
 
     def test1(self):
         out = chunkify(list(range(10)), 3)
@@ -161,10 +152,10 @@ class TestLoadImageData(unittest.TestCase):
 
     def setUp(self):
 
+        config.filter_warnings()
         self.feat_key = 'tmp_features'
         self.feature_loc = DataLocation(storage_type='memory',
                                         key=self.feat_key)
-        warnings.simplefilter("ignore", ResourceWarning)
 
     def fixtures(self, in_order=True, valid_rowcol=True) \
             -> Tuple[ImageLabels, ImageFeatures]:
@@ -279,7 +270,8 @@ class TestLoadImageData(unittest.TestCase):
 class TestLoadBatchData(unittest.TestCase):
 
     def setUp(self):
-
+        
+        config.filter_warnings()
         self.feat_key1 = 'tmp_features1'
         self.feat_key2 = 'tmp_features2'
         self.feat1_loc = DataLocation(storage_type='memory',
@@ -287,7 +279,6 @@ class TestLoadBatchData(unittest.TestCase):
         self.feat2_loc = DataLocation(storage_type='memory',
                                       key='tmp_features2')
         self.feat_loc_template = DataLocation(storage_type='memory', key='')
-        warnings.simplefilter("ignore", ResourceWarning)
 
     def fixtures(self, valid_rowcol=True) \
             -> Tuple[ImageLabels, ImageFeatures, ImageFeatures]:

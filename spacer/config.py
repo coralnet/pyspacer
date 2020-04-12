@@ -11,9 +11,16 @@ from typing import Tuple, Optional
 import boto
 from boto import sqs
 
-# Per discussion in https://github.com/boto/boto3/issues/454,
-# the boto package is raising a lot of warnings that it shouldn't.
-warnings.simplefilter("ignore", ResourceWarning)
+
+def filter_warnings():
+    """ Filters out some verified warnings. """
+
+    # Per discussion in https://github.com/boto/boto3/issues/454,
+    # the boto package is raising a lot of warnings that it shouldn't.
+    warnings.filterwarnings("ignore", category=ResourceWarning,
+                            message="unclosed.*<ssl.SSLSocket.*>")
+    warnings.filterwarnings("ignore", category=ResourceWarning,
+                            message="unclosed.*<_io.TextIOWrapper.*>")
 
 
 def get_secret(key):

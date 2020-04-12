@@ -71,7 +71,8 @@ class TestURLStorage(unittest.TestCase):
 class TestS3Storage(unittest.TestCase):
 
     def setUp(self):
-        warnings.simplefilter("ignore", ResourceWarning)
+        config.filter_warnings()
+
         self.tmp_image_loc = DataLocation(
             storage_type='s3',
             key='tmp_image.jpg',
@@ -88,7 +89,6 @@ class TestS3Storage(unittest.TestCase):
             bucket_name='spacer-test'
         )
         self.storage = storage_factory('s3', 'spacer-test')
-
         conn = config.get_s3_conn()
         self.bucket = conn.get_bucket('spacer-test')
 
