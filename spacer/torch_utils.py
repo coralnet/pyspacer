@@ -4,13 +4,17 @@ This file contains a set of pytorch utility functions
 
 import PIL
 import torch
+import models
 import numpy as np
+from PIL import Image
+from typing import List, Tuple
 from torchvision import transforms
+from collections import OrderedDict
 
 
 def transformation():
     """
-    Transform an image and return as a tensor
+    Transform an image or numpy array and normalize to [0, 1]
     :return: a transformer which takes in a image and return a normalized tensor
     """
 
@@ -61,5 +65,9 @@ def crop_simple(im, center, crop_size):
     return im[upper: upper + crop_size, left: left + crop_size, :]
 
 
-def classify_from_patchlist():
-    pass
+def classify_from_patchlist(im_pil: Image,
+                            point_anns: List[Tuple[int, int, int]],
+                            model_name: str,
+                            modelweighs_path: str):
+    # Model setup and load pretrained weight
+    net = models.get_model('efficientnet', 'efficientnet-b0')
