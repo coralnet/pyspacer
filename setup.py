@@ -20,7 +20,7 @@ setuptools.setup(
     ],
     python_requires='>=3.5',
     install_requires=[
-        'boto==2.49.0',
+        'boto>=2.40.0',
         'wget==3.2',
         'tqdm==4.43.0',
         'Pillow>=4.2.0',
