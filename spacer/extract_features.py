@@ -124,9 +124,10 @@ class EfficientNetExtractor(FeatureExtractor):
         start_time = time.time()
 
         # Set torch parameters
-        torch_params = {'model_type': 'efficient',
-                        'model_name': 'efficientnet_b0',
+        torch_params = {'model_type': 'efficientnet',
+                        'model_name': 'efficientnet-b0',
                         'weights_path': self.modelweighs_path,
+                        'num_class': 1279,
                         'crop_size': 224,
                         'batch_size': 10}
 

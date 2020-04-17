@@ -3,8 +3,8 @@ This file contains a set of pytorch utility functions
 """
 
 import torch
-import models
 import numpy as np
+from spacer import models
 from torchvision import transforms
 from collections import OrderedDict
 
@@ -99,7 +99,7 @@ def classify_from_patchlist(im_pil, point_anns, pyparams):
     :return:
     """
     # Model setup and load pretrained weight
-    net = models.get_model(pyparams['model_type'], pyparams['model_name'])
+    net = models.get_model(pyparams['model_type'], pyparams['model_name'], pyparams['num_class'])
     net = load_weights(net, pyparams['weights_path'])
 
     scale = 1

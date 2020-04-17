@@ -44,9 +44,10 @@ class TestClassifyFromPatchList(unittest.TestCase):
     def test_rgb(self):
         from spacer.torch_utils import classify_from_patchlist
 
-        torch_params = {'model_type': 'efficient',
-                        'model_name': 'efficientnet_b0',
+        torch_params = {'model_type': 'efficientnet',
+                        'model_name': 'efficientnet-b0',
                         'weights_path': self.modelweighs_path,
+                        'num_class': 1279,
                         'crop_size': 224,
                         'batch_size': 10}
         _, feats = classify_from_patchlist(Image.new('RGB', (600, 600)),
@@ -57,9 +58,10 @@ class TestClassifyFromPatchList(unittest.TestCase):
     def test_gray(self):
         from spacer.torch_utils import classify_from_patchlist
 
-        torch_params = {'model_type': 'efficient',
-                        'model_name': 'efficientnet_b0',
+        torch_params = {'model_type': 'efficientnet',
+                        'model_name': 'efficientnet-b0',
                         'weights_path': self.modelweighs_path,
+                        'num_class': 1279,
                         'crop_size': 224,
                         'batch_size': 10}
         _, feats = classify_from_patchlist(Image.new('L', (600, 600)),
