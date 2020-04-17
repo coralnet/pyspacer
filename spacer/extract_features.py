@@ -110,12 +110,43 @@ class VGG16CaffeExtractor(FeatureExtractor):
 
 class EfficientNetExtractor(FeatureExtractor):
 
+    def __init__(self):
+
+        # Cache models locally.
+        self.modelweighs_path, self.model_was_cashed = download_model(
+            'efficientnetb0_5eps_best.pt')
+
     def __call__(self, im, rowcols):
-        raise NotImplementedError
+
+        # We should only reach this line if it is confirmed torch is available
+        from spacer.torch_utils import classify_from_patchlist
+
+        start_time = time.time()
+
+        # Set torch parameters
+        torch_params = {'model_type': 'efficient',
+                        'model_name': 'efficientnet_b0',
+                        'weights_path': self.modelweighs_path,
+                        'crop_size': 224,
+                        'batch_size': 10}
+
+        # The imdict data structure needs a label, set to 1, it's not used.
+        rowcollabels = [(row, col, 1) for row, col in rowcols]
+
+        _, feats = classify_from_patchlist(im, rowcollabels, torch_params)
+
+        return ImageFeatures(
+            point_features=[PointFeatures(row=rc[0], col=rc[1], data=ft)
+                            for rc, ft in zip(rowcols, feats)],
+            valid_rowcol=True, feature_dim=len(feats[0]), npoints=len(feats)
+        ), ExtractFeaturesReturnMsg(
+            model_was_cashed=self.model_was_cashed,
+            runtime=time.time() - start_time
+        )
 
     @property
     def feature_dim(self):
-        raise NotImplementedError
+        return 1280
 
 
 def feature_extractor_factory(modelname,
