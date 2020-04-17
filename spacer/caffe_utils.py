@@ -4,12 +4,13 @@ simplicity. Since support for Caffe will be deprecate,
 these are only lightly cleaned up from their original state.
 """
 
-from PIL import Image
 from copy import copy
+from functools import lru_cache
 from typing import List, Tuple
 
 import caffe
 import numpy as np
+from PIL import Image
 
 
 class Transformer:
@@ -91,13 +92,8 @@ def gray2rgb(im):
     return ret
 
 
-def crop_patch(im, crop_size, scale, point_anns, offsets=None):
+def crop_patch(im, crop_size, point_anns):
     """ Crops patches from images. """
-
-    assert scale == 1, "Only supports scale == 1"
-
-    if offsets is None:
-        offsets = np.zeros([len(point_anns), 2])
 
     patchlist = []
     labellist = []
@@ -105,12 +101,10 @@ def crop_patch(im, crop_size, scale, point_anns, offsets=None):
 
     im = np.pad(im, ((pad, pad), (pad, pad), (0, 0)), mode='reflect')
 
-    for ((row, col, label), offset) in zip(point_anns, offsets):
+    for (row, col, label) in point_anns:
         center_org = np.asarray([row, col])
-        center = np.round(pad + (center_org * scale) + offset).astype(np.int)
-
+        center = np.round(pad + center_org).astype(np.int)
         patch = crop_simple(im, center, crop_size)
-
         patchlist.append(patch)
         labellist.append(label)
 
@@ -124,6 +118,11 @@ def crop_simple(im, center, crop_size):
     return im[upper: upper + crop_size, left: left + crop_size, :]
 
 
+@lru_cache(maxsize=1)
+def load_net(modeldef_path, modelweighs_path):
+    return caffe.Net(modeldef_path, modelweighs_path, caffe.TEST)
+
+
 def classify_from_patchlist(im_pil: Image,
                             point_anns: List[Tuple[int, int, int]],
                             pyparams: dict,
@@ -133,37 +132,26 @@ def classify_from_patchlist(im_pil: Image,
                             startlayer: str = 'conv1_1'):
     # Setup caffe
     caffe.set_mode_cpu()
-    net = caffe.Net(modeldef_path, modelweighs_path, caffe.TEST)
+    net = load_net(modeldef_path, modelweighs_path)
 
-    scale = 1
-    estlist, scorelist, gtlist = [], [], []
-    transformer = Transformer(pyparams['im_mean'])
-
-    # Convert to numpy (call 2 times needed otherwise get a
-    # "IndexError: tuple index out of range" error. No idea why!
-    _ = np.asarray(im_pil)
-    im = np.asarray(im_pil)
+    _ = np.array(im_pil)  # For some images np.array returns an empty array.
+    im = np.array(im_pil)  # Running it twice fixes this. Don't ask me why.
 
     if len(im.shape) == 2 or im.shape[2] == 1:
         im = gray2rgb(im)
     im = im[:, :, :3]  # only keep the first three color channels
 
     # Crop patches
-    patchlist, this_gtlist = crop_patch(im, pyparams['crop_size'],
-                                        scale, point_anns)
+    patchlist, gtlist = crop_patch(im, pyparams['crop_size'], point_anns)
 
     # Classify
-    [this_estlist, this_scorelist] = \
+    transformer = Transformer(pyparams['im_mean'])
+    [estlist, scorelist] = \
         classify_from_imlist(patchlist,
                              net,
                              transformer,
                              pyparams['batch_size'],
                              scorelayer=scorelayer,
                              startlayer=startlayer)
-
-    # Store
-    gtlist.extend(this_gtlist)
-    estlist.extend(this_estlist)
-    scorelist.extend(this_scorelist)
 
     return gtlist, estlist, scorelist

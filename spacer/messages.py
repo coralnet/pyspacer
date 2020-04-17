@@ -10,50 +10,88 @@ from spacer import config
 from spacer.data_classes import DataClass
 
 
+class DataLocation(DataClass):
+    """
+    Points to the location of a piece of data. Can either be a url, a key
+    in a s3 bucket, a file path on a local file system or a key to a
+    in-memory store.
+    """
+    def __init__(self,
+                 storage_type: str,
+                 key: str,
+                 bucket_name: Optional[str] = None):
+
+        assert storage_type in config.STORAGE_TYPES, "Storage type not valid."
+        if storage_type == 's3':
+            assert bucket_name is not None, "Need bucket_name to use s3."
+        self.storage_type = storage_type
+        self.key = key
+        self.bucket_name = bucket_name
+
+    @classmethod
+    def example(cls) -> 'DataLocation':
+        return DataLocation('memory', 'my_blob')
+
+    @classmethod
+    def deserialize(cls, data: Dict) -> 'DataLocation':
+        return DataLocation(**data)
+
+    def __hash__(self):
+        return hash((self.storage_type, self.key, self.bucket_name))
+
+
 class ExtractFeaturesMsg(DataClass):
     """ Input message for extract features class. """
 
     def __init__(self,
-                 pk: int,  # Primary key, for caller DB reference.
+                 job_token: str,  # Token for caller DB reference.
                  feature_extractor_name: str,  # Which extractor to use.
-                 bucketname: str,  # If storage_type=s3, which bucket to use?
-                 imkey: str,  # key or path to image to process.
                  rowcols: List[Tuple[int, int]],  # List of [row, col] entries.
-                 outputkey: str,  # key or path to where to store output.
-                 storage_type: str = 's3',  # type of storage.
+                 image_loc: DataLocation,  # Where to fetch image.
+                 feature_loc: DataLocation,  # Where to store output.
                  ):
 
-        assert storage_type in config.STORAGE_TYPES
         assert feature_extractor_name in config.FEATURE_EXTRACTOR_NAMES
         assert isinstance(rowcols, List)
         assert len(rowcols) > 0, "Invalid message, rowcols entry is empty."
         assert len(rowcols[0]) == 2
+        assert feature_loc.storage_type is not 'url', \
+            "Write not supported for url storage type."
 
-        self.pk = pk
+        self.job_token = job_token
         self.feature_extractor_name = feature_extractor_name
-        self.bucketname = bucketname
-        self.imkey = imkey
-        self.storage_type = storage_type
         self.rowcols = rowcols
-        self.outputkey = outputkey
+        self.image_loc = image_loc
+        self.feature_loc = feature_loc
+
+    def serialize(self) -> Dict:
+        return {
+            'job_token': self.job_token,
+            'feature_extractor_name': self.feature_extractor_name,
+            'rowcols': list(self.rowcols),
+            'image_loc': self.image_loc.serialize(),
+            'feature_loc': self.feature_loc.serialize()
+        }
 
     @classmethod
     def deserialize(cls, data: Dict) -> 'ExtractFeaturesMsg':
         """ Custom deserializer required to convert back to tuples. """
-        msg = cls(**data)
-        msg.rowcols = [tuple(rc) for rc in data['rowcols']]
-        return msg
+        return ExtractFeaturesMsg(
+            job_token=data['job_token'],
+            feature_extractor_name=data['feature_extractor_name'],
+            rowcols=[tuple(rc) for rc in data['rowcols']],
+            image_loc=DataLocation.deserialize(data['image_loc']),
+            feature_loc=DataLocation.deserialize(data['feature_loc'])
+        )
 
     @classmethod
     def example(cls) -> 'ExtractFeaturesMsg':
         return ExtractFeaturesMsg(
-            pk=1,
+            job_token='123abc',
             feature_extractor_name='vgg16_coralnet_ver1',
-            bucketname='spacer-test',
-            imkey='edinburgh3.jpg',
             rowcols=[(100, 100)],
-            outputkey='edinburgh3.jpg.feats',
-            storage_type='s3',
+            image_loc=DataLocation('memory', 'my_image.jpg'),
+            feature_loc=DataLocation('memory', 'my_feats.json'),
         )
 
 
@@ -79,66 +117,75 @@ class TrainClassifierMsg(DataClass):
     """ Specifies the train classifier task. """
 
     def __init__(self,
-                 # Primary key of the model to train. Not used in spacer.
-                 pk: int,
-                 # Key for where to store the trained model.
-                 model_key: str,
-                 # Name of trainer to use.
-                 trainer_name: str,
-                 # Key to ImageLabels structure with training data.
-                 traindata_key: str,
-                 # Key to ImageLabels structure with validation data.
-                 valdata_key: str,
-                 # Key to where the validation results is stored.
-                 valresult_key: str,
-                 # Number of epochs to do training.
-                 nbr_epochs: int,
-                 # List of keys to to previous models
-                 pc_models_key: List[str],
-                 # List of primary-keys to previous models. This is for
-                 # bookkeeping purposes.
-                 pc_pks: List[int],
-                 # Bucket name where features are stored.
-                 bucketname: str,
-                 # storage type
-                 storage_type: str = 's3',
+                 job_token: str,  # Job token, for caller reference.
+                 trainer_name: str,  # Name of trainer to use.
+                 nbr_epochs: int,  # Number of epochs to do training.
+                 traindata_loc: DataLocation,  # Traindata
+                 valdata_loc: DataLocation,  # Valdata
+                 features_loc: DataLocation,  # Location of features. Key is set from traindata and valdata during training.
+                 previous_model_locs: List[DataLocation],  # Previous models to be evaluated on the valdata.
+                 model_loc: DataLocation,  # Where to store model.
+                 valresult_loc: DataLocation,  # Model result on val.
                  ):
 
         assert trainer_name in config.TRAINER_NAMES
 
-        self.pk = pk
-        self.model_key = model_key
+        self.job_token = job_token
         self.trainer_name = trainer_name
-        self.traindata_key = traindata_key
-        self.valdata_key = valdata_key
-        self.valresult_key = valresult_key
         self.nbr_epochs = nbr_epochs
-        self.pc_models_key = pc_models_key
-        self.pc_pks = pc_pks
-        self.bucketname = bucketname
-        self.storage_type = storage_type
+        self.traindata_loc = traindata_loc
+        self.valdata_loc = valdata_loc
+        self.features_loc = features_loc
+        self.previous_model_locs = previous_model_locs
+        self.model_loc = model_loc
+        self.valresult_loc = valresult_loc
 
     @classmethod
     def example(cls):
         return TrainClassifierMsg(
-            pk=1,
-            model_key='my_trained_model',
+            job_token='123_abc',
             trainer_name='minibatch',
-            traindata_key='my_traindata',
-            valdata_key='my_valdata',
-            valresult_key='my_valresults',
-            nbr_epochs=5,
-            pc_models_key=['my_previous_model1',
-                           'my_previous_model2',
-                           'my_previous_model3'],
-            pc_pks=[1, 2, 3],
-            bucketname='spacer-test',
+            nbr_epochs=2,
+            traindata_loc=DataLocation('memory', 'my_traindata.json'),
+            valdata_loc=DataLocation('memory', 'my_valdata.json'),
+            features_loc=DataLocation('memory', ''),
+            previous_model_locs=[
+                DataLocation('memory', 'previous_model1.pkl'),
+                DataLocation('memory', 'previous_model2.pkl'),
+            ],
+            model_loc=DataLocation('memory', 'my_new_model.pkl'),
+            valresult_loc=DataLocation('memory', 'my_valresult.json')
         )
+
+    def serialize(self) -> Dict:
+        return {
+            'job_token': self.job_token,
+            'trainer_name': self.trainer_name,
+            'nbr_epochs': self.nbr_epochs,
+            'traindata_loc': self.traindata_loc.serialize(),
+            'valdata_loc': self.valdata_loc.serialize(),
+            'features_loc': self.features_loc.serialize(),
+            'previous_model_locs': [entry.serialize()
+                                    for entry in self.previous_model_locs],
+            'model_loc': self.model_loc.serialize(),
+            'valresult_loc': self.valresult_loc.serialize(),
+        }
 
     @classmethod
     def deserialize(cls, data: Dict) -> 'TrainClassifierMsg':
         """ Redefining to help pycharm typing module """
-        return cls(**data)
+        return TrainClassifierMsg(
+            job_token=data['job_token'],
+            trainer_name=data['trainer_name'],
+            nbr_epochs=data['nbr_epochs'],
+            traindata_loc=DataLocation.deserialize(data['traindata_loc']),
+            valdata_loc=DataLocation.deserialize(data['valdata_loc']),
+            features_loc=DataLocation.deserialize(data['features_loc']),
+            previous_model_locs=[DataLocation.deserialize(entry)
+                                 for entry in data['previous_model_locs']],
+            model_loc=DataLocation.deserialize(data['model_loc']),
+            valresult_loc=DataLocation.deserialize(data['valresult_loc'])
+        )
 
 
 class TrainClassifierReturnMsg(DataClass):
@@ -169,117 +216,195 @@ class TrainClassifierReturnMsg(DataClass):
         )
 
 
-class DeployMsg(DataClass):
-    """ Specifies the deploy task. """
+class ClassifyFeaturesMsg(DataClass):
+    """ Specifies the classify_features task. """
 
     def __init__(self,
-                 pk: int,  # Primary key of job, not used in spacer.
-                 im_url: str,  # URL of image to deploy on.
-                 feature_extractor_name: str,  # name of feature extractor
-                 rowcols: List[Tuple[int, int]],
-                 classifier_key: str,  # Key to classifier to use.
-                 bucketname: str,  # Bucket where classifier is stored.
-                 storage_type: str = 's3',
-                 ):
-        self.pk = pk
-        self.im_url = im_url
-        self.feature_extractor_name = feature_extractor_name
-        self.rowcols = rowcols
-        self.classifier_key = classifier_key
-        self.bucketname = bucketname
-        self.storage_type = storage_type
+                 job_token: str,
+                 feature_loc: DataLocation,
+                 classifier_loc: DataLocation):
+        self.job_token = job_token
+        self.feature_loc = feature_loc
+        self.classifier_loc = classifier_loc
 
     @classmethod
     def example(cls):
-        return DeployMsg(
-            pk=0,
-            im_url='www.my.image.jpg',
-            feature_extractor_name='vgg16_coralnet_ver1',
-            rowcols=[(1, 1), (2, 2)],
-            classifier_key='my/classifier/key',
-            bucketname='spacer-test'
+        return ClassifyFeaturesMsg(
+            job_token='my_job',
+            feature_loc=DataLocation(storage_type='url',
+                                     key='https://spacer-test.s3-us-west-2.'
+                                         'amazonaws.com/08bfc10v7t.png.'
+                                         'featurevector'),
+            classifier_loc=DataLocation(storage_type='url',
+                                        key='https://spacer-test.s3-us-west-2.'
+                                        'amazonaws.com/legacy.model')
         )
-
-    @classmethod
-    def deserialize(cls, data: Dict) -> 'DeployMsg':
-        """ Custom deserializer to convert back to tuples. """
-        msg = cls(**data)
-        msg.rowcols = [tuple(rc) for rc in data['rowcols']]
-        return msg
-
-
-class DeployReturnMsg(DataClass):
-    """ Return message from the deploy task. """
-
-    def __init__(self,
-                 model_was_cached: bool,
-                 runtime: float,
-                 # Scores is a list of scores for every row, col location.
-                 scores: List[List[float]],
-                 # Maps the score index to a global class id.
-                 classes: List[int]):
-        self.model_was_cached = model_was_cached
-        self.runtime = runtime
-        self.scores = scores
-        self.classes = classes
-
-    @classmethod
-    def example(cls):
-        return DeployReturnMsg(
-            model_was_cached=True,
-            runtime=1.1,
-            scores=[[0.1, 0.2, 0.7], [0.9, 0.06, 0.04]],
-            classes=[100, 12, 44]
-        )
-
-
-class TaskMsg(DataClass):
-    """ Highest level message which hold task messages. """
-
-    def __init__(self,
-                 task: str,
-                 payload: Union[ExtractFeaturesMsg,
-                                TrainClassifierMsg,
-                                DeployMsg]):
-
-        assert task in config.TASKS
-
-        self.task = task
-        self.payload = payload
-
-    @classmethod
-    def deserialize(cls, data: Dict):
-        task = data['task']
-        payload = data['payload']
-        assert task in config.TASKS
-        if task == 'extract_features':
-            return TaskMsg(task, ExtractFeaturesMsg.deserialize(payload))
-        if task == 'train_classifier':
-            return TaskMsg(task, TrainClassifierMsg.deserialize(payload))
-        if task == 'deploy':
-            return TaskMsg(task, DeployMsg.deserialize(payload))
 
     def serialize(self):
         return {
-            'task': self.task,
-            'payload': self.payload.serialize()
+            'job_token': self.job_token,
+            'feature_loc': self.feature_loc.serialize(),
+            'classifier_loc': self.classifier_loc.serialize(),
+        }
+
+    @classmethod
+    def deserialize(cls, data: Dict):
+        return ClassifyFeaturesMsg(
+            job_token=data['job_token'],
+            feature_loc=DataLocation.deserialize(data['feature_loc']),
+            classifier_loc=DataLocation.deserialize(data['classifier_loc'])
+        )
+
+
+class ClassifyImageMsg(DataClass):
+    """ Specifies the classify_image task. """
+
+    def __init__(self,
+                 job_token: str,  # Primary key of job, not used in spacer.
+                 image_loc: DataLocation,  # Location of image to classify.
+                 feature_extractor_name: str,  # Feature extractor name.
+                 rowcols: List[Tuple[int, int]],
+                 classifier_loc: DataLocation,  # Location of classifier.
+                 ):
+        self.job_token = job_token
+        self.image_loc = image_loc
+        self.feature_extractor_name = feature_extractor_name
+        self.rowcols = rowcols
+        self.classifier_loc = classifier_loc
+
+    @classmethod
+    def example(cls):
+        return ClassifyImageMsg(
+            job_token='my_job',
+            image_loc=DataLocation(storage_type='url',
+                                   key='https://spacer-test.s3-us-west-2.'
+                                   'amazonaws.com/08bfc10v7t.png'),
+            feature_extractor_name='vgg16_coralnet_ver1',
+            rowcols=[(1, 1), (2, 2)],
+            classifier_loc=DataLocation(storage_type='url',
+                                        key='https://spacer-test.s3-us-west-2.'
+                                        'amazonaws.com/legacy.model')
+        )
+
+    def serialize(self):
+        return {
+            'job_token': self.job_token,
+            'image_loc': self.image_loc.serialize(),
+            'feature_extractor_name': self.feature_extractor_name,
+            'rowcols': self.rowcols,
+            'classifier_loc': self.classifier_loc.serialize()
+        }
+
+    @classmethod
+    def deserialize(cls, data: Dict) -> 'ClassifyImageMsg':
+        """ Custom deserializer to convert back to tuples. """
+        return ClassifyImageMsg(
+            job_token=data['job_token'],
+            image_loc=DataLocation.deserialize(data['image_loc']),
+            feature_extractor_name=data['feature_extractor_name'],
+            rowcols=[(row, col) for row, col in data['rowcols']],
+            classifier_loc=DataLocation.deserialize(data['classifier_loc'])
+        )
+
+
+class ClassifyReturnMsg(DataClass):
+    """ Return message from the classify_{image, features} tasks. """
+
+    def __init__(self,
+                 runtime: float,
+                 # Scores is a list of (row, col, [scores]) tuples.
+                 scores: List[Tuple[int, int, List[float]]],
+                 # Maps the score index to a global class id.
+                 classes: List[int],
+                 valid_rowcol: bool):
+
+        self.runtime = runtime
+        self.scores = scores
+        self.classes = classes
+        self.valid_rowcol = valid_rowcol
+
+    def __getitem__(self, rowcol: Tuple[int, int]) -> List[float]:
+        """ Returns features at (row, col) location. """
+        if not self.valid_rowcol:
+            raise ValueError('Method requires valid rows and columns')
+        rc_set = {(row, col): scores for row, col, scores in self.scores}
+        return rc_set[rowcol]
+
+    @classmethod
+    def example(cls):
+        return ClassifyReturnMsg(
+            runtime=1.1,
+            scores=[(10, 20, [0.1, 0.2, 0.7]), (20, 40, [0.9, 0.06, 0.04])],
+            classes=[100, 12, 44],
+            valid_rowcol=True
+        )
+
+    @classmethod
+    def deserialize(cls, data: Dict) -> 'ClassifyReturnMsg':
+        return ClassifyReturnMsg(
+            runtime=data['runtime'],
+            scores=[(row, col, scores) for
+                    row, col, scores in data['scores']],
+            classes=data['classes'],
+            valid_rowcol=data['valid_rowcol']
+        )
+
+
+class JobMsg(DataClass):
+    """ Highest level message which hold task messages.
+    A job can contain multiple tasks.
+    """
+
+    def __init__(self,
+                 task_name: str,
+                 tasks: List[Union[ExtractFeaturesMsg,
+                                   TrainClassifierMsg,
+                                   ClassifyFeaturesMsg,
+                                   ClassifyImageMsg]]):
+
+        assert task_name in config.TASKS
+
+        self.task_name = task_name
+        self.tasks = tasks
+
+    @classmethod
+    def deserialize(cls, data: Dict):
+
+        task_name = data['task_name']
+        assert task_name in config.TASKS
+        if task_name == 'extract_features':
+            deserializer = ExtractFeaturesMsg.deserialize
+        elif task_name == 'train_classifier':
+            deserializer = TrainClassifierMsg.deserialize
+        elif task_name == 'classify_features':
+            deserializer = ClassifyFeaturesMsg.deserialize
+        else:
+            deserializer = ClassifyImageMsg.deserialize
+
+        return JobMsg(task_name, [deserializer(item) for
+                                  item in data['tasks']])
+
+    def serialize(self):
+        return {
+            'task_name': self.task_name,
+            'tasks': [job.serialize() for job in self.tasks]
         }
 
     @classmethod
     def example(cls):
-        return TaskMsg(task='deploy',
-                       payload=DeployMsg.example())
+        return JobMsg(task_name='classify_image',
+                      tasks=[ClassifyImageMsg.example()])
 
 
-class TaskReturnMsg(DataClass):
+class JobReturnMsg(DataClass):
     """ Highest level return message. """
 
     def __init__(self,
-                 original_job: TaskMsg,
+                 original_job: JobMsg,
                  ok: bool,
-                 results: Optional[Union[ExtractFeaturesReturnMsg,
-                                         TrainClassifierReturnMsg,
-                                         DeployReturnMsg]],
+                 results: Optional[List[Union[ExtractFeaturesReturnMsg,
+                                              TrainClassifierReturnMsg,
+                                              ClassifyReturnMsg]]],
                  error_message: Optional[str]):
 
         self.original_job = original_job
@@ -289,29 +414,32 @@ class TaskReturnMsg(DataClass):
 
     @classmethod
     def example(cls):
-        return TaskReturnMsg(
-            original_job=TaskMsg.example(),
+        return JobReturnMsg(
+            original_job=JobMsg.example(),
             ok=True,
-            results=DeployReturnMsg.example(),
+            results=[ClassifyReturnMsg.example()],
             error_message=None
         )
 
     @classmethod
     def deserialize(cls, data: Dict):
 
-        original_job = TaskMsg.deserialize(data['original_job'])
+        original_job = JobMsg.deserialize(data['original_job'])
 
         if data['ok']:
-            if original_job.task == 'extract_features':
-                results = ExtractFeaturesReturnMsg.deserialize(data['results'])
-            elif original_job.task == 'train_classifier':
-                results = TrainClassifierReturnMsg.deserialize(data['results'])
-            else:
-                results = DeployReturnMsg.deserialize(data['results'])
+            task_name = original_job.task_name
+            assert task_name in config.TASKS
+            if task_name == 'extract_features':
+                deserializer = ExtractFeaturesReturnMsg.deserialize
+            elif task_name == 'train_classifier':
+                deserializer = TrainClassifierReturnMsg.deserialize
+            else:  # task_name in ['classify_image', 'classify_features']
+                deserializer = ClassifyReturnMsg.deserialize
+            results = [deserializer(task_res) for task_res in data['results']]
         else:
             results = data['results']
 
-        return TaskReturnMsg(
+        return JobReturnMsg(
             original_job=original_job,
             ok=data['ok'],
             results=results,
@@ -319,9 +447,13 @@ class TaskReturnMsg(DataClass):
         )
 
     def serialize(self):
+        if self.ok:
+            results = [task_res.serialize() for task_res in self.results]
+        else:
+            results = self.results
         return {
             'original_job': self.original_job.serialize(),
             'ok': self.ok,
-            'results': self.results.serialize() if self.ok else self.results,
+            'results': results,
             'error_message': self.error_message
         }

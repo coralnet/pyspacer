@@ -5,9 +5,10 @@ Defines feature-extractor ABC; implementations; and factory.
 import abc
 import random
 import time
-from PIL import Image
 from typing import List
 from typing import Tuple
+
+from PIL import Image
 
 from spacer import config
 from spacer.data_classes import PointFeatures, ImageFeatures
@@ -48,7 +49,7 @@ class DummyExtractor(FeatureExtractor):
                             for rc in rowcols],
             valid_rowcol=True,
             npoints=len(rowcols),
-            feature_dim=4096
+            feature_dim=self.feature_dim
         ), ExtractFeaturesReturnMsg.example()
 
     @property

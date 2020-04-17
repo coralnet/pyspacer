@@ -3,15 +3,29 @@ Defines data-classes for input and output types.
 Each data-class can serialize itself to a structure of JSON-friendly
 python-native data-structures such that it can be stored.
 """
-
+import json
 from abc import ABC, abstractmethod
+from io import BytesIO
 from pprint import pformat
 from typing import Dict, List, Tuple, Set, Optional, Union
 
 import numpy as np
 
+from spacer.storage import storage_factory
+
 
 class DataClass(ABC):  # pragma: no cover
+
+    @classmethod
+    def load(cls, loc: 'DataLocation'):
+        storage = storage_factory(loc.storage_type, loc.bucket_name)
+        return cls.deserialize(json.loads(
+            storage.load(loc.key).getvalue().decode('utf-8')))
+
+    def store(self, loc: 'DataLocation'):
+        storage = storage_factory(loc.storage_type, loc.bucket_name)
+        storage.store(loc.key, BytesIO(
+            json.dumps(self.serialize()).encode('utf-8')))
 
     @classmethod
     @abstractmethod
@@ -56,7 +70,7 @@ class ImageLabels(DataClass):
 
     def __init__(self,
                  # Data maps a feature key (or file path) to a List of
-                 # [row, col, label].
+                 # (row, col, label).
                  data: Dict[str, List[Tuple[int, int, int]]]):
         self.data = data
 
@@ -120,6 +134,10 @@ class PointFeatures(DataClass):
         """ Redefined here to help the Typing module. """
         return cls(**data)
 
+    @property
+    def data_np(self):
+        return np.array(self.data).reshape(1, -1)
+
 
 class ImageFeatures(DataClass):
     """ Contains row, col, feature-vectors for an image. """
@@ -174,15 +192,6 @@ class ImageFeatures(DataClass):
             npoints=2
         )
 
-    def serialize(self):
-        return {
-            'point_features': [feats.serialize() for
-                               feats in self.point_features],
-            'valid_rowcol': self.valid_rowcol,
-            'feature_dim': self.feature_dim,
-            'npoints': self.npoints
-        }
-
     @classmethod
     def deserialize(cls, data: Union[Dict, List]):
 
@@ -198,14 +207,23 @@ class ImageFeatures(DataClass):
                 feature_dim=len(data[0]),
                 npoints=len(data)
             )
+        else:
+            return ImageFeatures(
+                point_features=[PointFeatures.deserialize(feat)
+                                for feat in data['point_features']],
+                valid_rowcol=data['valid_rowcol'],
+                feature_dim=data['feature_dim'],
+                npoints=data['npoints']
+            )
 
-        return ImageFeatures(
-            point_features=[PointFeatures.deserialize(feat)
-                            for feat in data['point_features']],
-            valid_rowcol=data['valid_rowcol'],
-            feature_dim=data['feature_dim'],
-            npoints=data['npoints']
-        )
+    def serialize(self):
+        return {
+            'point_features': [feats.serialize() for
+                               feats in self.point_features],
+            'valid_rowcol': self.valid_rowcol,
+            'feature_dim': self.feature_dim,
+            'npoints': self.npoints
+        }
 
     def __eq__(self, other):
         return all([a == b for a, b in zip(self.point_features,
@@ -220,9 +238,7 @@ class ImageFeatures(DataClass):
                     feature_dim: int):
         pfs = [PointFeatures(row=itt,
                              col=itt,
-                             data=list(np.random.multivariate_normal(
-                                 np.ones(feature_dim) * label,
-                                 np.eye(feature_dim))))
+                             data=list(label + np.random.randn(feature_dim)))
                for itt, label in enumerate(point_labels)]
 
         return ImageFeatures(point_features=pfs,

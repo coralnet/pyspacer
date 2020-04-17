@@ -5,10 +5,14 @@ Defines storage ABC; implementations; and factory.
 import abc
 import os
 import pickle
-from PIL import Image
+import warnings
+from functools import lru_cache
 from io import BytesIO
 from typing import Union, Tuple
+from urllib.error import URLError
 
+import wget
+from PIL import Image
 from sklearn.calibration import CalibratedClassifierCV
 
 from spacer import config
@@ -17,36 +21,49 @@ from spacer import config
 class Storage(abc.ABC):  # pragma: no cover
 
     @abc.abstractmethod
-    def store_classifier(self, path: str, clf: CalibratedClassifierCV) -> None:
-        """ Stores a classifier instance """
+    def store(self, key: str, stream: BytesIO) -> None:
+        """ Stores a BytesIO stream """
 
     @abc.abstractmethod
-    def load_classifier(self, path: str) -> CalibratedClassifierCV:
-        """ Loads a classifier instance """
+    def load(self, key: str) -> BytesIO:
+        """ Loads key to BytesIO stream """
 
     @abc.abstractmethod
-    def store_image(self, path: str, content: Image) -> None:
-        """ Stores a PIL image instance """
+    def delete(self, key: str) -> None:
+        """ Deletes key if it exists """
 
     @abc.abstractmethod
-    def load_image(self, path: str) -> Image:
-        """ Loads a PIL image instance """
+    def exists(self, key: str) -> bool:
+        """ Checks if key exists """
 
-    @abc.abstractmethod
-    def store_string(self, path: str, content: str) -> None:
-        """ Stores a string """
 
-    @abc.abstractmethod
-    def load_string(self, path: str) -> str:
-        """ Loads a string """
+class URLStorage(Storage):
+    """ Loads items from URLs. Does not support store operations. """
 
-    @abc.abstractmethod
-    def delete(self, path: str) -> None:
-        """ Deletes the file if it exists """
+    def __init__(self):
+        self.fs_storage = FileSystemStorage()
 
-    @abc.abstractmethod
-    def exists(self, path: str) -> bool:
-        """ Checks if file exists """
+    def store(self, url: str, stream: BytesIO):
+        raise TypeError('Store operation not supported for URL storage.')
+
+    def load(self, url: str):
+        tmp_path = wget.download(url)
+        stream = self.fs_storage.load(tmp_path)
+        self.fs_storage.delete(tmp_path)
+        return stream
+
+    def delete(self, url: str) -> None:
+        raise TypeError('Delete operation not supported for URL storage.')
+
+    def exists(self, url: str) -> bool:
+        try:
+            tmp_path = wget.download(url)
+        except URLError:
+            return False
+        except ValueError:
+            return False
+        self.fs_storage.delete(tmp_path)
+        return True
 
 
 class S3Storage(Storage):
@@ -56,43 +73,19 @@ class S3Storage(Storage):
         conn = config.get_s3_conn()
         self.bucket = conn.get_bucket(bucketname)
 
-    def load_classifier(self, path: str):
-        key = self.bucket.get_key(path)
+    def store(self, key: str, stream: BytesIO):
+        key = self.bucket.new_key(key)
+        key.set_contents_from_file(stream)
 
-        # Make sure pickle.loads is compatible with legacy classifiers which
-        # were stored using pickle.dumps in python 2.7.
-        return pickle.loads(key.get_contents_as_string(), fix_imports=True,
-                            encoding='latin1')
+    def load(self, key: str):
+        key = self.bucket.get_key(key)
+        return BytesIO(key.get_contents_as_string())
 
-    def store_classifier(self, path: str, clf: CalibratedClassifierCV):
-        key = self.bucket.new_key(path)
-        key.set_contents_from_string(pickle.dumps(clf, protocol=2))
+    def delete(self, key: str) -> None:
+        self.bucket.delete_key(key)
 
-    def store_image(self, path: str, content: Image):
-
-        with BytesIO() as stream:
-            content.save(stream, 'JPEG')
-            stream.seek(0)
-            key = self.bucket.new_key(path)
-            key.set_contents_from_file(stream)
-
-    def load_image(self, path) -> Image:
-        key = self.bucket.get_key(path)
-        return Image.open(BytesIO(key.get_contents_as_string()))
-
-    def store_string(self, path: str, content: str):
-        key = self.bucket.new_key(path)
-        key.set_contents_from_string(content)
-
-    def load_string(self, path: str) -> str:
-        key = self.bucket.get_key(path)
-        return key.get_contents_as_string().decode('UTF-8')
-
-    def delete(self, path: str):
-        self.bucket.delete_key(path)
-
-    def exists(self, path: str):
-        return self.bucket.get_key(path) is not None
+    def exists(self, key: str):
+        return self.bucket.get_key(key) is not None
 
 
 class FileSystemStorage(Storage):
@@ -101,27 +94,13 @@ class FileSystemStorage(Storage):
     def __init__(self):
         pass
 
-    def load_classifier(self, path: str) -> CalibratedClassifierCV:
-        with open(path, 'rb') as f:
-            return pickle.load(f, encoding='latin1')
+    def store(self, key: str, stream: BytesIO):
+        with open(key, 'wb') as f:
+            f.write(stream.getbuffer())
 
-    def store_classifier(self, path: str, clf: CalibratedClassifierCV):
-        with open(path, 'wb') as f:
-            pickle.dump(clf, f, protocol=2)
-
-    def store_image(self, path: str, content: Image):
-        content.save(path)
-
-    def load_image(self, path) -> Image:
-        return Image.open(path)
-
-    def store_string(self, path: str, content: str):
-        with open(path, 'w') as f:
-            f.write(content)
-
-    def load_string(self, path: str):
-        with open(path, 'r') as f:
-            return f.read()
+    def load(self, key: str):
+        with open(key, 'rb') as f:
+            return BytesIO(f.read())
 
     def delete(self, path: str):
         os.remove(path)
@@ -136,23 +115,12 @@ class MemoryStorage(Storage):
     def __init__(self):
         self.blobs = {}
 
-    def load_classifier(self, path: str):
-        return self.blobs[path]
+    def store(self, key: str, stream: BytesIO):
+        self.blobs[key] = stream.getvalue()
 
-    def store_classifier(self, path: str, clf: CalibratedClassifierCV):
-        self.blobs[path] = clf
-
-    def store_image(self, path: str, content: Image):
-        self.blobs[path] = content
-
-    def load_image(self, path: str):
-        return self.blobs[path]
-
-    def store_string(self, path: str, content: str):
-        self.blobs[path] = content
-
-    def load_string(self, path: str):
-        return self.blobs[path]
+    def load(self, key: str):
+        stream = BytesIO(self.blobs[key])
+        return stream
 
     def delete(self, path: str):
         del self.blobs[path]
@@ -161,19 +129,31 @@ class MemoryStorage(Storage):
         return path in self.blobs
 
 
+# This holds the global memory storage.
+_memorystorage = None
+
+
+def clear_memory_storage():
+    """ Clears global memory storage"""
+    global _memorystorage
+    _memorystorage = None
+
+
 def storage_factory(storage_type: str, bucketname: Union[str, None] = None):
 
     assert storage_type in config.STORAGE_TYPES
 
     if storage_type == 's3':
-        print("-> Initializing s3 storage")
         return S3Storage(bucketname=bucketname)
     if storage_type == 'filesystem':
-        print("-> Initializing filesystem storage")
         return FileSystemStorage()
     if storage_type == 'memory':
-        print("-> Initializing memory storage")
-        return MemoryStorage()
+        global _memorystorage
+        if _memorystorage is None:
+            _memorystorage = MemoryStorage()
+        return _memorystorage
+    if storage_type == 'url':
+        return URLStorage()
 
 
 def download_model(keyname: str) -> Tuple[str, bool]:
@@ -197,3 +177,59 @@ def download_model(keyname: str) -> Tuple[str, bool]:
         was_cashed = True
 
     return destination, was_cashed
+
+
+def store_image(loc: 'DataLocation', img: Image):
+    storage = storage_factory(loc.storage_type, loc.bucket_name)
+    with BytesIO() as stream:
+        img.save(stream, 'JPEG')
+        stream.seek(0)
+        storage.store(loc.key, stream)
+
+
+def load_image(loc: 'DataLocation'):
+    storage = storage_factory(loc.storage_type, loc.bucket_name)
+    return Image.open(storage.load(loc.key))
+
+
+def store_classifier(loc: 'DataLocation', clf: CalibratedClassifierCV):
+    storage = storage_factory(loc.storage_type, loc.bucket_name)
+    storage.store(loc.key, BytesIO(pickle.dumps(clf, protocol=2)))
+
+
+@lru_cache(maxsize=3)
+def load_classifier(loc: 'DataLocation'):
+
+    # This warning is due to the sklearn 0.17.1, 0.22.2 migration.
+    warnings.filterwarnings('ignore', category=UserWarning,
+                            message="Trying to unpickle.*")
+
+    # This future warning also has to do with the unpickling of the
+    # legacy model. It uses a to-be-deprecated import statement.
+    warnings.filterwarnings('ignore', category=FutureWarning,
+                            message="The sklearn.linear_model.*")
+
+    def patch_legacy():
+        """
+        Upgrades models trained on scikit-learn 0.17.1 to 0.22.2
+        Note: this in only tested for inference.
+        """
+        from sklearn.calibration import LabelEncoder
+
+        print("-> Patching legacy classifier.")
+        assert len(clf.calibrated_classifiers_) == 1
+        assert all(clf.classes_ == clf.calibrated_classifiers_[0].classes_)
+        clf.calibrated_classifiers_[0].label_encoder_ = LabelEncoder()
+        clf.calibrated_classifiers_[0].label_encoder_.fit(clf.classes_)
+
+    storage = storage_factory(loc.storage_type, loc.bucket_name)
+    clf = pickle.loads(storage.load(loc.key).getbuffer(), fix_imports=True,
+                       encoding='latin1')
+
+    if hasattr(clf, 'calibrated_classifiers_') and not \
+            hasattr(clf.calibrated_classifiers_[0], 'label_encoder'):
+        patch_legacy()
+
+    return clf
+
+

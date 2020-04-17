@@ -11,13 +11,20 @@ from typing import Tuple, Optional
 import boto
 from boto import sqs
 
-# Per discussion in https://github.com/boto/boto3/issues/454,
-# the boto package is raising a lot of warnings that it shouldn't.
-warnings.simplefilter("ignore", ResourceWarning)
+
+def filter_warnings():
+    """ Filters out some verified warnings. """
+
+    # Per discussion in https://github.com/boto/boto3/issues/454,
+    # the boto package is raising a lot of warnings that it shouldn't.
+    warnings.filterwarnings("ignore", category=ResourceWarning,
+                            message="unclosed.*<ssl.SSLSocket.*>")
+    warnings.filterwarnings("ignore", category=ResourceWarning,
+                            message="unclosed.*<_io.TextIOWrapper.*>")
 
 
 def get_secret(key):
-    """ Try to load AWS access credentials from secrets.json file """
+    """ Try to load settings from secrets.json file """
     secrets_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 '..', 'secrets.json')
     if not os.path.exists(secrets_path):  # pragma: no cover
@@ -74,7 +81,7 @@ def get_sqs_conn():
 def get_local_model_path():
     local_model_path = os.getenv('SPACER_LOCAL_MODEL_PATH')
     if local_model_path is None:
-        return get_secret('SPACER_LOCAL_MODEL_PATH')
+        return get_secret('SPACER_LOCAL_MODEL_PATH')  # pragma: no cover
     return local_model_path
 
 
@@ -83,10 +90,14 @@ LOCAL_MODEL_PATH = get_local_model_path()
 assert LOCAL_MODEL_PATH is not None, \
     "SPACER_LOCAL_MODEL_PATH environmental variable must be set."
 
+assert os.path.exists(LOCAL_MODEL_PATH), "LOCAL_MODEL_PATH is set, " \
+                                         "but path doesn't exist"
+
 TASKS = [
     'extract_features',
     'train_classifier',
-    'deploy'
+    'classify_features',
+    'classify_image'
 ]
 
 FEATURE_EXTRACTOR_NAMES = [
@@ -96,7 +107,6 @@ FEATURE_EXTRACTOR_NAMES = [
 ]
 
 TRAINER_NAMES = [
-    'dummy',
     'minibatch'
 ]
 
@@ -105,7 +115,8 @@ MODELS_BUCKET = 'spacer-tools'
 STORAGE_TYPES = [
     's3',
     'filesystem',
-    'memory'
+    'memory',
+    'url'
 ]
 
 LOCAL_FIXTURE_DIR = os.path.join(os.path.dirname(

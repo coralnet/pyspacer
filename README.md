@@ -6,7 +6,7 @@ This repository provide utilities to extract features from random point
 locations in images and then training classifiers over those features.
 It is used in the vision backend of `https://github.com/beijbom/coralnet`.
 
-Spacer currently supports python3.5 and 3.6.
+Spacer currently supports python >=3.5.
 
 ### Overview
 Spacer executes tasks as defined in messages. The messages types are defined
@@ -22,8 +22,9 @@ Tasks can be executed directly by calling the methods in tasks.py.
 However, spacer also supports an interface with SQS 
 handled by `sqs_mailman()` in `mailman.py`. 
 
-Spacer supports there types of storage, s3, filesystem and memory. 
-Refer to `storage.py` for details. The Memory storage is mostly for testing.
+Spacer supports four storage types: `s3`, `filesystem`, `memory` and `url`.
+ Refer to `storage.py` for details. The Memory storage is mostly used for 
+ testing, and the `url` storage is read only.
 
 Also take a look at `config.py` for settings and configuration. 
 
@@ -53,11 +54,11 @@ The docker build is the preferred build and the one used in deployment.
 * Install docker on your system
 * Create `secrets.json` as detailed above.
 * Create folder `/path/to/your/local/models` for caching model files.
-* Build image: `docker build -t "test:Dockerfile" .`
-* Run: `docker run -v /path/to/your/local/models:/workspace/models -it test:Dockerfile`
+* Build image: `docker build -t spacer:test .`
+* Run: `docker run -v /path/to/your/local/models:/workspace/models -it spacer:test`
 
 The `-v /path/to/your/local/models:/workspace/models` part will make sure 
-the downloaded models are cached to your local disk (outside the container), 
+the downloaded models are cached to your host storage. 
 which makes rerunning stuff much faster.
 
 The last step will run the default CMD command specified in the dockerfile 
@@ -65,33 +66,22 @@ The last step will run the default CMD command specified in the dockerfile
 run the same command but append `bash` in the end: 
 
 ```
-docker run -v /path/to/your/local/models:/workspace/models -it test:Dockerfile bash
+docker run -v /path/to/your/local/models:/workspace/models -it spacer:test bash
 ```
 
 #### Pip install
-* Install virtualenv.
-* Set environmental variables.
 * `pip install spacer`
+* Set environmental variables.
 
 #### Local clone
 * Clone this repo
-* Create a virtualenv
-* pip install -r requirements.txt
+* `pip install -r requirements.txt`
 
 ### Code coverage
 If you are using the docker build or local install, 
 you can check code coverage like so:
- 
-1) Generate data
 ```
-    coverage run --source=spacer --omit=spacer/tests/* -m unittest
-``` 
-2) Render simple report
-```    
+    coverage run --source=spacer --omit=spacer/tests/* -m unittest    
     coverage report -m
-```    
-3) Render to html
-```
     coverage html
 ```
-which renders html files to `.htmlcov`.
