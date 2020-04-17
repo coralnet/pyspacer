@@ -2,14 +2,27 @@ import json
 import unittest
 
 from spacer.messages import \
+    DataLocation, \
     ExtractFeaturesMsg, \
     ExtractFeaturesReturnMsg, \
     TrainClassifierMsg, \
     TrainClassifierReturnMsg, \
-    DeployMsg, \
-    DeployReturnMsg, \
-    TaskMsg, \
-    TaskReturnMsg
+    ClassifyFeaturesMsg, \
+    ClassifyImageMsg, \
+    ClassifyReturnMsg, \
+    JobMsg, \
+    JobReturnMsg
+
+
+class TestDataLocation(unittest.TestCase):
+
+    def test_serialize(self):
+
+        msg = DataLocation.example()
+        self.assertEqual(msg, DataLocation.deserialize(
+            msg.serialize()))
+        self.assertEqual(msg, DataLocation.deserialize(
+            json.loads(json.dumps(msg.serialize()))))
 
 
 class TestExtractFeaturesMsg(unittest.TestCase):
@@ -25,24 +38,10 @@ class TestExtractFeaturesMsg(unittest.TestCase):
     def test_missing_fields_in_serialized_message(self):
 
         data = ExtractFeaturesMsg.example().serialize()
-        del data['pk']  # Delete one of the keys.
-        self.assertRaises(TypeError, ExtractFeaturesMsg.deserialize, data)
-
-    def test_missing_storage_type_in_serialized_message(self):
-
-        data = ExtractFeaturesMsg.example().serialize()
-        #  Delete storage_key. Should still work since it is optional.
-        del data['storage_type']
-        msg = ExtractFeaturesMsg.deserialize(data)
-        self.assertEqual(msg.storage_type, 's3')
+        del data['job_token']  # Delete one of the keys.
+        self.assertRaises(KeyError, ExtractFeaturesMsg.deserialize, data)
 
     def test_asserts(self):
-        msg = ExtractFeaturesMsg.example()
-        msg.storage_type = 'invalid_storage'
-        self.assertRaises(AssertionError,
-                          ExtractFeaturesMsg.deserialize,
-                          msg.serialize())
-
         msg = ExtractFeaturesMsg.example()
         msg.feature_extractor_name = 'invalid_modelname'
         self.assertRaises(AssertionError,
@@ -103,114 +102,160 @@ class TestTrainClassifierReturnMsg(unittest.TestCase):
             json.loads(json.dumps(msg.serialize()))))
 
 
-class TestDeployMsg(unittest.TestCase):
+class TestClassifyImageMsg(unittest.TestCase):
 
     def test_serialize(self):
 
-        msg = DeployMsg.example()
-        self.assertEqual(msg, DeployMsg.deserialize(
+        msg = ClassifyImageMsg.example()
+        self.assertEqual(msg, ClassifyImageMsg.deserialize(
             msg.serialize()))
-        self.assertEqual(msg, DeployMsg.deserialize(
+        self.assertEqual(msg, ClassifyImageMsg.deserialize(
             json.loads(json.dumps(msg.serialize()))))
 
 
-class TestDeployReturnMsg(unittest.TestCase):
+class TestClassifyFeaturesMsg(unittest.TestCase):
 
     def test_serialize(self):
 
-        msg = DeployReturnMsg.example()
-        self.assertEqual(msg, DeployReturnMsg.deserialize(
+        msg = ClassifyFeaturesMsg.example()
+        self.assertEqual(msg, ClassifyFeaturesMsg.deserialize(
             msg.serialize()))
-        self.assertEqual(msg, DeployReturnMsg.deserialize(
+        self.assertEqual(msg, ClassifyFeaturesMsg.deserialize(
             json.loads(json.dumps(msg.serialize()))))
 
 
-class TestTaskMsg(unittest.TestCase):
+class TestClassifyReturnMsg(unittest.TestCase):
+
+    def test_serialize(self):
+
+        msg = ClassifyReturnMsg.example()
+        self.assertEqual(msg, ClassifyReturnMsg.deserialize(
+            msg.serialize()))
+        self.assertEqual(msg, ClassifyReturnMsg.deserialize(
+            json.loads(json.dumps(msg.serialize()))))
+
+
+class TestJobMsg(unittest.TestCase):
 
     def test_serialize_extract_features(self):
 
         task = ExtractFeaturesMsg.example()
-        msg = TaskMsg(task='extract_features', payload=task)
-        self.assertEqual(msg, TaskMsg.deserialize(
+        msg = JobMsg(task_name='extract_features', tasks=[task])
+        self.assertEqual(msg, JobMsg.deserialize(
             msg.serialize()))
-        self.assertEqual(msg, TaskMsg.deserialize(
+        self.assertEqual(msg, JobMsg.deserialize(
             json.loads(json.dumps(msg.serialize()))))
 
     def test_serialize_train_classifier(self):
 
         task = TrainClassifierMsg.example()
-        msg = TaskMsg(task='train_classifier', payload=task)
-        self.assertEqual(msg, TaskMsg.deserialize(
+        msg = JobMsg(task_name='train_classifier', tasks=[task])
+        self.assertEqual(msg, JobMsg.deserialize(
             msg.serialize()))
-        self.assertEqual(msg, TaskMsg.deserialize(
+        self.assertEqual(msg, JobMsg.deserialize(
             json.loads(json.dumps(msg.serialize()))))
 
-    def test_serialize_deploy(self):
+    def test_serialize_classify_features(self):
 
-        task = DeployMsg.example()
-        msg = TaskMsg(task='deploy', payload=task)
-        self.assertEqual(msg, TaskMsg.deserialize(
+        task = ClassifyFeaturesMsg.example()
+        msg = JobMsg(task_name='classify_features', tasks=[task])
+        self.assertEqual(msg, JobMsg.deserialize(
             msg.serialize()))
-        self.assertEqual(msg, TaskMsg.deserialize(
+        self.assertEqual(msg, JobMsg.deserialize(
+            json.loads(json.dumps(msg.serialize()))))
+
+    def test_serialize_classify_image(self):
+
+        task = ClassifyImageMsg.example()
+        msg = JobMsg(task_name='classify_image', tasks=[task])
+        self.assertEqual(msg, JobMsg.deserialize(
+            msg.serialize()))
+        self.assertEqual(msg, JobMsg.deserialize(
+            json.loads(json.dumps(msg.serialize()))))
+
+    def test_serialize_many(self):
+
+        task = ClassifyImageMsg.example()
+        msg = JobMsg(task_name='classify_image',
+                     tasks=[task, task, task])
+        self.assertEqual(msg, JobMsg.deserialize(
+            msg.serialize()))
+        self.assertEqual(msg, JobMsg.deserialize(
             json.loads(json.dumps(msg.serialize()))))
 
 
-class TestTaskReturnMsg(unittest.TestCase):
+class TestJobReturnMsg(unittest.TestCase):
 
     def test_serialize_extract_features(self):
 
         task = ExtractFeaturesMsg.example()
-        org_msg = TaskMsg(task='extract_features', payload=task)
+        org_msg = JobMsg(task_name='extract_features', tasks=[task])
 
         return_task = ExtractFeaturesReturnMsg.example()
-        msg = TaskReturnMsg(
+        msg = JobReturnMsg(
             original_job=org_msg,
             ok=True,
-            results=return_task,
+            results=[return_task],
             error_message=None
         )
-        self.assertEqual(msg, TaskReturnMsg.deserialize(
+        self.assertEqual(msg, JobReturnMsg.deserialize(
             msg.serialize()))
-        self.assertEqual(msg, TaskReturnMsg.deserialize(
+        self.assertEqual(msg, JobReturnMsg.deserialize(
             json.loads(json.dumps(msg.serialize()))))
 
     def test_serialize_train_classifier(self):
 
         task = TrainClassifierMsg.example()
-        org_msg = TaskMsg(task='train_classifier', payload=task)
+        org_msg = JobMsg(task_name='train_classifier', tasks=[task])
 
         return_task = TrainClassifierReturnMsg.example()
-        msg = TaskReturnMsg(
+        msg = JobReturnMsg(
             original_job=org_msg,
             ok=True,
-            results=return_task,
+            results=[return_task],
             error_message=None
         )
-        self.assertEqual(msg, TaskReturnMsg.deserialize(
+        self.assertEqual(msg, JobReturnMsg.deserialize(
             msg.serialize()))
-        self.assertEqual(msg, TaskReturnMsg.deserialize(
+        self.assertEqual(msg, JobReturnMsg.deserialize(
             json.loads(json.dumps(msg.serialize()))))
 
-    def test_serialize_deploy(self):
-        msg = TaskReturnMsg.example()
-        self.assertEqual(msg, TaskReturnMsg.deserialize(
+    def test_serialize_classify(self):
+        msg = JobReturnMsg.example()
+        self.assertEqual(msg, JobReturnMsg.deserialize(
             msg.serialize()))
-        self.assertEqual(msg, TaskReturnMsg.deserialize(
+        self.assertEqual(msg, JobReturnMsg.deserialize(
+            json.loads(json.dumps(msg.serialize()))))
+
+    def test_serialize_many_tasks(self):
+
+        task = TrainClassifierMsg.example()
+        org_msg = JobMsg(task_name='train_classifier',
+                         tasks=[task, task, task, task])
+
+        return_task = TrainClassifierReturnMsg.example()
+        msg = JobReturnMsg(
+            original_job=org_msg,
+            ok=True,
+            results=[return_task],
+            error_message=None
+        )
+        self.assertEqual(msg, JobReturnMsg.deserialize(
+            msg.serialize()))
+        self.assertEqual(msg, JobReturnMsg.deserialize(
             json.loads(json.dumps(msg.serialize()))))
 
     def test_serialize_error(self):
-        task = DeployMsg.example()
-        org_msg = TaskMsg(task='deploy', payload=task)
+        task = ClassifyImageMsg.example()
+        org_msg = JobMsg(task_name='classify_image', tasks=[task])
 
-        msg = TaskReturnMsg(
+        msg = JobReturnMsg(
             original_job=org_msg,
             ok=False,
             results=None,
             error_message='some error message'
         )
-        self.assertEqual(msg, TaskReturnMsg.deserialize(
+        self.assertEqual(msg, JobReturnMsg.deserialize(
             msg.serialize()))
-        self.assertEqual(msg, TaskReturnMsg.deserialize(
+        self.assertEqual(msg, JobReturnMsg.deserialize(
             json.loads(json.dumps(msg.serialize()))))
-
-

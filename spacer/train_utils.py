@@ -2,7 +2,6 @@
 Utility methods for training classifiers.
 """
 
-import json
 import random
 import string
 from typing import Tuple, List
@@ -13,11 +12,11 @@ from sklearn.linear_model import SGDClassifier
 
 from spacer import config
 from spacer.data_classes import ImageLabels, ImageFeatures
-from spacer.storage import Storage
+from spacer.messages import DataLocation
 
 
 def train(labels: ImageLabels,
-          storage: Storage,
+          feature_loc: DataLocation,
           nbr_epochs: int) -> Tuple[CalibratedClassifierCV, List[float]]:
 
     if len(labels) < config.MIN_TRAINIMAGES:
@@ -57,7 +56,7 @@ def train(labels: ImageLabels,
 
     # Load reference data (must hold in memory for the calibration)
     print("-> Loading reference data.")
-    refx, refy = load_batch_data(labels, ref_set, classes, storage)
+    refx, refy = load_batch_data(labels, ref_set, classes, feature_loc)
 
     # Initialize classifier and ref set accuracy list
     print("-> Online training...")
@@ -67,7 +66,7 @@ def train(labels: ImageLabels,
         np.random.shuffle(train_set)
         mini_batches = chunkify(train_set, batches_per_epoch)
         for mb in mini_batches:
-            x, y = load_batch_data(labels, mb, classes, storage)
+            x, y = load_batch_data(labels, mb, classes, feature_loc)
             clf.partial_fit(x, y, classes=classes)
         ref_acc.append(calc_acc(refy, clf.predict(refx)))
         print("-> Epoch {}, acc: {}".format(epoch, ref_acc[-1]))
@@ -82,16 +81,16 @@ def train(labels: ImageLabels,
 def evaluate_classifier(clf: CalibratedClassifierCV,
                         labels: ImageLabels,
                         classes: List[int],
-                        storage: Storage):
+                        feature_loc: DataLocation):
     """
     Return the accuracy of classifier "clf" evaluated on "imkeys"
     with ground truth given in "gtdict". Features are fetched from S3 "bucket".
     """
     scores, gts, ests = [], [], []
     for imkey in labels.image_keys:
-        x, y = load_image_data(labels, imkey, classes, storage)
+        x, y = load_image_data(labels, imkey, classes, feature_loc)
         if len(x) > 0:
-            scores.extend(clf.predict_proba(x).max(axis=1))
+            scores.extend(clf.predict_proba(x).max(axis=1).tolist())
             ests.extend(clf.predict(x))
             gts.extend(y)
 
@@ -114,14 +113,15 @@ def calc_batch_size(max_imgs_in_memory, train_set_size):
 def load_image_data(labels: ImageLabels,
                     imkey: str,
                     classes: List[int],
-                    storage: Storage) -> Tuple[List[List[float]], List[int]]:
+                    feature_loc: DataLocation) \
+        -> Tuple[List[List[float]], List[int]]:
     """
     Loads features and labels for image and matches feature with labels.
     """
 
     # Load features for this image.
-    image_features = ImageFeatures.deserialize(
-        json.loads(storage.load_string(imkey)))
+    feature_loc.key = imkey  # Set the relevant key here.
+    image_features = ImageFeatures.load(feature_loc)
 
     # Load row, col, labels for this image.
     image_labels = labels.data[imkey]
@@ -155,11 +155,12 @@ def load_image_data(labels: ImageLabels,
 def load_batch_data(labels: ImageLabels,
                     imkeylist: List[str],
                     classes: List[int],
-                    storage: Storage) -> Tuple[List[List[float]], List[int]]:
+                    feature_loc: DataLocation) \
+        -> Tuple[List[List[float]], List[int]]:
     """ Loads features and labels and match them together. """
     x, y = [], []
     for imkey in imkeylist:
-        x_, y_ = load_image_data(labels, imkey, classes, storage)
+        x_, y_ = load_image_data(labels, imkey, classes, feature_loc)
         x.extend(x_)
         y.extend(y_)
     return x, y
@@ -186,11 +187,11 @@ def calc_acc(gt: List[int], est: List[int]) -> float:
     return float(sum([(g == e) for (g, e) in zip(gt, est)])) / len(gt)
 
 
-def make_random_data(im_count,
-                     class_list,
-                     points_per_image,
-                     feature_dim,
-                     storage) -> ImageLabels:
+def make_random_data(im_count: int,
+                     class_list: List[int],
+                     points_per_image: int,
+                     feature_dim: int,
+                     feature_loc: DataLocation) -> ImageLabels:
     """
     Utility method for testing that generates an ImageLabels instance
     complete with stored ImageFeatures.
@@ -200,6 +201,9 @@ def make_random_data(im_count,
 
         # Generate random features (using labels to draw from a Gaussian).
         point_labels = np.random.choice(class_list, points_per_image).tolist()
+
+        # Make sure all classes are present
+        point_labels[:len(class_list)] = class_list
         feats = ImageFeatures.make_random(point_labels, feature_dim)
 
         # Generate a random string as imkey.
@@ -207,7 +211,8 @@ def make_random_data(im_count,
                         for _ in range(20))
 
         # Store
-        storage.store_string(imkey, json.dumps(feats.serialize()))
+        feature_loc.key = imkey
+        feats.store(feature_loc)
         labels.data[imkey] = [
             (pf.row, pf.col, pl) for pf, pl in
             zip(feats.point_features, point_labels)
