@@ -53,7 +53,7 @@ class URLStorage(Storage):
         return stream
 
     def delete(self, url: str) -> None:
-        raise TypeError('Store operation not supported for URL storage.')
+        raise TypeError('Delete operation not supported for URL storage.')
 
     def exists(self, url: str) -> bool:
         try:

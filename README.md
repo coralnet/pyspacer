@@ -66,7 +66,7 @@ The last step will run the default CMD command specified in the dockerfile
 run the same command but append `bash` in the end: 
 
 ```
-docker run -v /path/to/your/local/models:/workspace/models -it test:Dockerfile bash
+docker run -v /path/to/your/local/models:/workspace/models -it spacer:test bash
 ```
 
 #### Pip install
