@@ -92,7 +92,7 @@ TASKS = [
 FEATURE_EXTRACTOR_NAMES = [
     'dummy',
     'vgg16_coralnet_ver1',
-    'efficientnet_b0_imagenet'
+    'efficientnet_b0_ver1'
 ]
 
 TRAINER_NAMES = [
@@ -116,6 +116,7 @@ MIN_TRAINIMAGES = 10
 
 # Check access to select which tests to run.
 HAS_CAFFE = importlib.util.find_spec("caffe") is not None
+HAS_TORCH = importlib.util.find_spec("torch") is not None
 
 conn = get_s3_conn()
 try:
