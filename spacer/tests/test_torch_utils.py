@@ -7,9 +7,10 @@ import numpy as np
 
 from spacer import config
 from spacer.storage import download_model
+from spacer.torch_utils import extract_feature
 
 
-@unittest.skipUnless(config.HAS_TORCH, 'Pytorch not installed')
+@unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
 class TestTransformation(unittest.TestCase):
 
     def test_transformer(self):
@@ -34,15 +35,14 @@ class TestTransformation(unittest.TestCase):
         self.assertTrue(np.allclose(output.numpy(), expected_output))
 
 
-@unittest.skipUnless(config.HAS_TORCH, 'Pytorch not installed')
-class TestClassifyFromPatchList(unittest.TestCase):
+@unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
+class TestExtractFeatures(unittest.TestCase):
 
     def setUp(self):
         self.modelweighs_path, self.model_was_cashed = download_model(
             'efficientnetb0_5eps_best.pt')
 
     def test_rgb(self):
-        from spacer.torch_utils import classify_from_patchlist
 
         torch_params = {'model_type': 'efficientnet',
                         'model_name': 'efficientnet-b0',
@@ -50,34 +50,10 @@ class TestClassifyFromPatchList(unittest.TestCase):
                         'num_class': 1279,
                         'crop_size': 224,
                         'batch_size': 10}
-        _, feats = classify_from_patchlist(Image.new('RGB', (600, 600)),
-                                           [(300, 300, 1)], torch_params)
+        feats = extract_feature([np.array(Image.new('RGB', (224, 224)))],
+                                torch_params)
         self.assertEqual(len(feats), 1)
         self.assertEqual(len(feats[0]), 1280)
-
-    def test_gray(self):
-        from spacer.torch_utils import classify_from_patchlist
-
-        torch_params = {'model_type': 'efficientnet',
-                        'model_name': 'efficientnet-b0',
-                        'weights_path': self.modelweighs_path,
-                        'num_class': 1279,
-                        'crop_size': 224,
-                        'batch_size': 10}
-        _, feats = classify_from_patchlist(Image.new('L', (600, 600)),
-                                           [(300, 300, 1)], torch_params)
-        self.assertEqual(len(feats), 1)
-        self.assertEqual(len(feats[0]), 1280)
-
-
-@unittest.skipUnless(config.HAS_TORCH, 'Pytorch not installed')
-class TestGray2RGB(unittest.TestCase):
-
-    def test_nominal(self):
-        from spacer.torch_utils import gray2rgb
-        out_arr = gray2rgb(np.array(Image.new('L', (200, 200))))
-        out_im = Image.fromarray(out_arr)
-        self.assertEqual(out_im.mode, "RGB")
 
 
 if __name__ == '__main__':

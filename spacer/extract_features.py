@@ -5,6 +5,7 @@ Defines feature-extractor ABC; implementations; and factory.
 import abc
 import random
 import time
+import numpy as np
 from typing import List
 from typing import Tuple
 
@@ -14,6 +15,8 @@ from spacer import config
 from spacer.data_classes import PointFeatures, ImageFeatures
 from spacer.messages import ExtractFeaturesReturnMsg
 from spacer.storage import download_model
+from spacer.torch_utils import extract_feature
+from spacer.extract_features_utils import gray2rgb, crop_patch
 
 
 class FeatureExtractor(abc.ABC):  # pragma: no cover
@@ -119,9 +122,6 @@ class EfficientNetExtractor(FeatureExtractor):
 
     def __call__(self, im, rowcols):
 
-        # We should only reach this line if it is confirmed torch is available
-        from spacer.torch_utils import classify_from_patchlist
-
         start_time = time.time()
 
         # Set torch parameters
@@ -135,7 +135,16 @@ class EfficientNetExtractor(FeatureExtractor):
         # The imdict data structure needs a label, set to 1, it's not used.
         rowcollabels = [(row, col, 1) for row, col in rowcols]
 
-        _, feats = classify_from_patchlist(im, rowcollabels, torch_params)
+        # Crop image to patch list
+        im = np.asarray(im)
+        if len(im.shape) == 2 or im.shape[2] == 1:
+            im = gray2rgb(im)
+        im = im[:, :, :3]  # only keep the first three color channels
+        patch_list, _ = crop_patch(im, torch_params['crop_size'],
+                                   scale=1, point_anns=rowcollabels)
+
+        # Extract features
+        feats = extract_feature(patch_list, torch_params)
 
         return ImageFeatures(
             point_features=[PointFeatures(row=rc[0], col=rc[1], data=ft)
@@ -162,7 +171,7 @@ def feature_extractor_factory(modelname,
             "Need Caffe installed to instantiate {}".format(modelname)
         print("-> Initializing VGG16CaffeExtractor")
         return VGG16CaffeExtractor()
-    if modelname == 'efficientnet_b0_imagenet':
+    if modelname == 'efficientnet_b0_ver1':
         print("-> Initializing EfficientNetExtractor")
         return EfficientNetExtractor()
     if modelname == 'dummy':
