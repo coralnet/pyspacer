@@ -60,8 +60,8 @@ def extract_feature(patch_list, pyparams):
     patch_list = torch.stack([transformer(i) for i in patch_list])
 
     # Feed forward and extract features
-    num_batch = int(np.ceil(len(patch_list) / pyparams['batch_size']))
     bs = pyparams['batch_size']
+    num_batch = int(np.ceil(len(patch_list) / bs))
     for b in range(num_batch):
         current_batch = patch_list[b*bs: b*bs + min(len(patch_list[b*bs:]), bs)]
         features = net.extract_features(current_batch)

@@ -78,44 +78,8 @@ def classify_from_imlist(im_list, net, transformer, batch_size,
                               astype(np.float)))
 
     scorelist = scorelist[:len(im_list)]
-    estlist = [np.argmax(s) for s in scorelist]
 
-    return estlist, scorelist
-
-
-def gray2rgb(im):
-    w, h = im.shape
-    ret = np.empty((w, h, 3), dtype=np.uint8)
-    ret[:, :, 0] = im
-    ret[:, :, 1] = im
-    ret[:, :, 2] = im
-    return ret
-
-
-def crop_patch(im, crop_size, point_anns):
-    """ Crops patches from images. """
-
-    patchlist = []
-    labellist = []
-    pad = crop_size
-
-    im = np.pad(im, ((pad, pad), (pad, pad), (0, 0)), mode='reflect')
-
-    for (row, col, label) in point_anns:
-        center_org = np.asarray([row, col])
-        center = np.round(pad + center_org).astype(np.int)
-        patch = crop_simple(im, center, crop_size)
-        patchlist.append(patch)
-        labellist.append(label)
-
-    return patchlist, labellist
-
-
-def crop_simple(im, center, crop_size):
-    """ Crops an image around the given center. """
-    upper = int(center[0] - crop_size / 2)
-    left = int(center[1] - crop_size / 2)
-    return im[upper: upper + crop_size, left: left + crop_size, :]
+    return scorelist
 
 
 @lru_cache(maxsize=1)
@@ -123,8 +87,7 @@ def load_net(modeldef_path, modelweighs_path):
     return caffe.Net(modeldef_path, modelweighs_path, caffe.TEST)
 
 
-def classify_from_patchlist(im_pil: Image,
-                            point_anns: List[Tuple[int, int, int]],
+def classify_from_patchlist(patchlist: List,
                             pyparams: dict,
                             modeldef_path: str,
                             modelweighs_path: str,
@@ -134,24 +97,11 @@ def classify_from_patchlist(im_pil: Image,
     caffe.set_mode_cpu()
     net = load_net(modeldef_path, modelweighs_path)
 
-    _ = np.array(im_pil)  # For some images np.array returns an empty array.
-    im = np.array(im_pil)  # Running it twice fixes this. Don't ask me why.
-
-    if len(im.shape) == 2 or im.shape[2] == 1:
-        im = gray2rgb(im)
-    im = im[:, :, :3]  # only keep the first three color channels
-
-    # Crop patches
-    patchlist, gtlist = crop_patch(im, pyparams['crop_size'], point_anns)
-
     # Classify
     transformer = Transformer(pyparams['im_mean'])
-    [estlist, scorelist] = \
-        classify_from_imlist(patchlist,
-                             net,
-                             transformer,
-                             pyparams['batch_size'],
-                             scorelayer=scorelayer,
-                             startlayer=startlayer)
+    scorelist = classify_from_imlist(
+        patchlist, net, transformer, pyparams['batch_size'],
+        scorelayer=scorelayer, startlayer=startlayer
+    )
 
-    return gtlist, estlist, scorelist
+    return scorelist

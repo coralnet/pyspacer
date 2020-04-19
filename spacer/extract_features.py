@@ -16,7 +16,7 @@ from spacer.data_classes import PointFeatures, ImageFeatures
 from spacer.messages import ExtractFeaturesReturnMsg
 from spacer.storage import download_model
 from spacer.torch_utils import extract_feature
-from spacer.extract_features_utils import gray2rgb, crop_patch
+from spacer.extract_features_utils import crop_patch
 
 
 class FeatureExtractor(abc.ABC):  # pragma: no cover
@@ -83,15 +83,15 @@ class VGG16CaffeExtractor(FeatureExtractor):
                         'crop_size': 224,
                         'batch_size': 10}
 
-        # The imdict data structure needs a label, set to 1, it's not used.
-        rowcollabels = [(row, col, 1) for row, col in rowcols]
+        # Crop patches
+        patch_list = crop_patch(im, rowcols, caffe_params['crop_size'], scale=1)
 
-        (_, _, feats) = classify_from_patchlist(im,
-                                                rowcollabels,
-                                                caffe_params,
-                                                self.modeldef_path,
-                                                self.modelweighs_path,
-                                                scorelayer='fc7')
+        # Extract features
+        feats = classify_from_patchlist(patch_list,
+                                        caffe_params,
+                                        self.modeldef_path,
+                                        self.modelweighs_path,
+                                        scorelayer='fc7')
 
         return \
             ImageFeatures(
@@ -132,16 +132,8 @@ class EfficientNetExtractor(FeatureExtractor):
                         'crop_size': 224,
                         'batch_size': 10}
 
-        # The imdict data structure needs a label, set to 1, it's not used.
-        rowcollabels = [(row, col, 1) for row, col in rowcols]
-
-        # Crop image to patch list
-        im = np.asarray(im)
-        if len(im.shape) == 2 or im.shape[2] == 1:
-            im = gray2rgb(im)
-        im = im[:, :, :3]  # only keep the first three color channels
-        patch_list, _ = crop_patch(im, torch_params['crop_size'],
-                                   scale=1, point_anns=rowcollabels)
+        # Crop patches
+        patch_list = crop_patch(im, rowcols, torch_params['crop_size'], scale=1)
 
         # Extract features
         feats = extract_feature(patch_list, torch_params)
