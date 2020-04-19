@@ -50,9 +50,12 @@ class TestExtractFeatures(unittest.TestCase):
                         'num_class': 1279,
                         'crop_size': 224,
                         'batch_size': 10}
-        feats = extract_feature([np.array(Image.new('RGB', (224, 224)))],
-                                torch_params)
-        self.assertEqual(len(feats), 1)
+        patch_list = [np.array(Image.new('RGB', (224, 224))),
+                      np.array(Image.new('RGB', (224, 224))),
+                      np.array(Image.new('RGB', (224, 224)))]
+        feats = extract_feature(patch_list=patch_list,
+                                pyparams=torch_params)
+        self.assertEqual(len(feats), len(patch_list))
         self.assertEqual(len(feats[0]), 1280)
 
 
