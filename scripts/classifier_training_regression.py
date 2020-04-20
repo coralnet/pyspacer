@@ -156,9 +156,11 @@ class ClassifierRegressionTest:
             md = json.loads(meta_key.get_contents_as_string().decode('UTF-8'))
 
             if not'pk' in md:
+                # One source "Mestrado" was deleted before we could
+                # refresh the export metadata. So get pk from the path.
                 print(entry_format.format(
                     md['name'][:20],
-                    'N/A',
+                    meta_key.name.split('/')[1][1:],
                     md['nbr_confirmed_images'], 0) + ' Old metadata!!')
             else:
                 print(entry_format.format(
