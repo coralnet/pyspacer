@@ -142,11 +142,3 @@ try:
 except boto.exception.S3ResponseError as err:  # pragma: no cover
     print("-> No connection to spacer-tools bucket, can't download models")
     HAS_S3_MODEL_ACCESS = False
-
-inqueue = get_sqs_conn().get_queue('spacer_test_jobs')
-
-if inqueue is None:  # pragma: no cover
-    HAS_SQS_QUEUE_ACCESS = False
-    print('-> No access to SQS found.')
-else:
-    HAS_SQS_QUEUE_ACCESS = True

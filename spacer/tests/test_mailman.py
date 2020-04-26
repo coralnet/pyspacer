@@ -4,7 +4,7 @@ import time
 import unittest
 
 from spacer import config
-from spacer.mailman import process_job, sqs_mailman
+from spacer.mailman import process_job, sqs_fetch
 from spacer.messages import \
     JobMsg, \
     JobReturnMsg, \
@@ -188,7 +188,6 @@ class TestProcessJobMultiple(unittest.TestCase):
 
 
 @unittest.skip("Skipping this since uses a shared queue.")
-@unittest.skipUnless(config.HAS_SQS_QUEUE_ACCESS, 'No SQS access.')
 class TestSQSMailman(unittest.TestCase):
 
     @staticmethod
@@ -208,8 +207,8 @@ class TestSQSMailman(unittest.TestCase):
         self.url = 'https://homepages.cae.wisc.edu/~ece533/images/baboon.png'
 
         self.conn = config.get_sqs_conn()
-        self.in_queue_name = 'spacer_test_jobs'
-        self.out_queue_name = 'spacer_test_results'
+        self.in_queue_name = 'spacer_test_jobs.fifo'
+        self.out_queue_name = 'spacer_test_results.fifo'
         self.in_queue = self.conn.get_queue(self.in_queue_name)
         if self.in_queue is None:
             self.sqs_access = False
@@ -245,8 +244,8 @@ class TestSQSMailman(unittest.TestCase):
         # Process job
         found_message = False
         while not found_message:
-            found_message = sqs_mailman(in_queue=self.in_queue_name,
-                                        out_queue=self.out_queue_name)
+            found_message = sqs_fetch(in_queue=self.in_queue_name,
+                                      out_queue=self.out_queue_name)
             time.sleep(1)
 
         # Retrieve the results from the results_queue
