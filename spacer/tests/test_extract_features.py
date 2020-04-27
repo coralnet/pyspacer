@@ -1,5 +1,6 @@
 import unittest
 
+import numpy as np
 from PIL import Image
 
 from spacer import config
@@ -290,9 +291,17 @@ class TestEfficientNetExtractor(unittest.TestCase):
         features_new, _ = ext(img, msg.rowcols)
         features_legacy = ImageFeatures.load(legacy_feat_loc)
 
+        self.assertFalse(features_legacy.valid_rowcol)
+        self.assertEqual(features_legacy.npoints, len(rowcols))
+        self.assertEqual(features_legacy.feature_dim, 1280)
+
+        self.assertTrue(features_new.valid_rowcol)
+        self.assertEqual(features_new.npoints, len(rowcols))
+        self.assertEqual(features_new.feature_dim, 1280)
+
         for pf_new, pf_legacy in zip(features_new.point_features,
                                      features_legacy.point_features):
-            self.assertEqual(pf_new.data, pf_legacy.data)
+            self.assertTrue(np.allclose(pf_new.data, pf_legacy.data))
             self.assertTrue(pf_legacy.row is None)
             self.assertTrue(pf_new.row is not None)
 
