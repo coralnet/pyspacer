@@ -52,8 +52,9 @@ def extract_feature(patch_list, pyparams):
                            model_name=pyparams['model_name'],
                            num_classes=pyparams['num_class'])
     net = load_weights(net, pyparams['weights_path'])
+    net.eval()
 
-    feats_list, gtlist = [], []
+    feats_list = []
     transformer = transformation()
 
     # Transform to normalized tensor
@@ -64,7 +65,8 @@ def extract_feature(patch_list, pyparams):
     num_batch = int(np.ceil(len(patch_list) / bs))
     for b in range(num_batch):
         current_batch = patch_list[b*bs: b*bs + min(len(patch_list[b*bs:]), bs)]
-        features = net.extract_features(current_batch)
+        with torch.no_grad():
+            features = net.extract_features(current_batch)
         feats_list.extend(features.tolist())
 
     return feats_list
