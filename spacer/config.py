@@ -121,6 +121,8 @@ STORAGE_TYPES = [
 
 LOCAL_FIXTURE_DIR = os.path.join(os.path.dirname(
     os.path.abspath(__file__)), 'tests', 'fixtures')
+LOCAL_FEATURE_DIR = os.path.join(os.path.dirname(
+    os.path.abspath(__file__)), 'tests', 'features')
 
 # The train_classifier task require as least this many images.
 MIN_TRAINIMAGES = 10
