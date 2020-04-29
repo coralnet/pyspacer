@@ -3,6 +3,7 @@ Defines the highest-level method for task handling through AWS SQS.
 """
 
 import json
+import fire
 
 from spacer import config
 from spacer.messages import JobMsg, JobReturnMsg
@@ -13,13 +14,15 @@ from spacer.tasks import \
     classify_image
 
 
-def sqs_mailman(in_queue='spacer_jobs',
-                out_queue='spacer_results') -> bool:  # pragma: no cover
+def sqs_mailman(in_queue: str ='spacer_test_jobs',
+                out_queue: str ='spacer_test_results') -> bool:  # pragma: no cover
     """
     Looks for jobs in AWS SQS in_queue, process the job and writes
     results back to out_queue
+    :param in_queue: Name of AWS SQS from which to fetch the job.
+    :param out_queue: Name of AWS SQS to which to store the results.
     """
-    print("-> Grabbing message.")
+    print("-> Grabbing message from {}.".format(in_queue))
 
     # Load default queue
     conn = config.get_sqs_conn()
@@ -48,6 +51,7 @@ def sqs_mailman(in_queue='spacer_jobs',
         }
 
     # Return
+    print("-> Writing results message to {}.".format(out_queue))
     m_out = out_queue.new_message(body=json.dumps(job_return_msg_dict))
     out_queue.write(m_out)
     in_queue.delete_message(m)
@@ -85,4 +89,4 @@ def process_job(job_msg: JobMsg) -> JobReturnMsg:
 
 
 if __name__ == '__main__':
-    sqs_mailman()  # pragma: no cover
+    fire.Fire()
