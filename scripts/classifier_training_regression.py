@@ -34,11 +34,9 @@ class ClassifierRegressionTest:
     It assumes read permission on the "spacer-trainingdata" bucket.
 
     All data is formatted per the management command in
+    https://github.com/beijbom/coralnet/blob/107257fd34cd2c16714b369ec7146ae7222af2c6/project/vision_backend/management/commands/vb_export_spacer_data.py
     ...
     """
-
-    # TODO: add permalink to management command --^
-
     @staticmethod
     def _cache_local(source_root, image_root, export_name, source_id):
 

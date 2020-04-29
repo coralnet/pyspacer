@@ -49,10 +49,7 @@ def crop_patch(im, rowcols, crop_size, scale, offsets=None):
     for ((row, col), offset) in zip(rowcols, offsets):
         center_org = np.asarray([row, col])
         center = np.round(pad + (center_org * scale) + offset).astype(np.int)
-
-        patch = crop_simple(im, center, crop_size)
-
-        patchlist.append(patch)
+        patchlist.append(crop_simple(im, center, crop_size))
 
     return patchlist
 

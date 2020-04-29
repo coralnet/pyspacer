@@ -5,7 +5,6 @@ Defines feature-extractor ABC; implementations; and factory.
 import abc
 import random
 import time
-import numpy as np
 from typing import List
 from typing import Tuple
 
@@ -13,10 +12,10 @@ from PIL import Image
 
 from spacer import config
 from spacer.data_classes import PointFeatures, ImageFeatures
+from spacer.extract_features_utils import crop_patch
 from spacer.messages import ExtractFeaturesReturnMsg
 from spacer.storage import download_model
 from spacer.torch_utils import extract_feature
-from spacer.extract_features_utils import crop_patch
 
 
 class FeatureExtractor(abc.ABC):  # pragma: no cover

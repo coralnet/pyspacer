@@ -1,4 +1,7 @@
-# Adapted from https://github.com/lukemelas/EfficientNet-PyTorch/blob/master/efficientnet_pytorch/model.py
+"""
+Adapted from
+https://github.com/lukemelas/EfficientNet-PyTorch/blob/master/efficientnet_pytorch/model.py
+"""
 
 import torch
 from torch import nn
