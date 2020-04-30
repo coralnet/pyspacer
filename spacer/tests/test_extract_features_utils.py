@@ -22,8 +22,7 @@ class TestCropPatch(unittest.TestCase):
         patch_list = crop_patch(
             im=Image.new('RGB', (600, 600)),
             rowcols=rowcols,
-            crop_size=crop_size,
-            scale=1
+            crop_size=crop_size
         )
         self.assertEqual(len(patch_list), len(rowcols))
         self.assertEqual(patch_list[0].shape[0], crop_size)
@@ -35,8 +34,7 @@ class TestCropPatch(unittest.TestCase):
         patch_list = crop_patch(
             im=Image.new('L', (600, 600)),
             rowcols=rowcols,
-            crop_size=crop_size,
-            scale=1
+            crop_size=crop_size
         )
         self.assertEqual(Image.fromarray(patch_list[0]).mode, "RGB")
         self.assertEqual(len(patch_list), len(rowcols))
