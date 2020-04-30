@@ -1,7 +1,10 @@
 import numpy as np
 
+from PIL import Image
+from typing import List, Tuple
 
-def gray2rgb(im):
+
+def gray2rgb(im: np.ndarray) -> np.ndarray:
     """
     Convert gray image to RGB image
     :param im: gray image to be converted
@@ -16,7 +19,10 @@ def gray2rgb(im):
     return ret
 
 
-def crop_patch(im, rowcols, crop_size, offsets=None):
+def crop_patch(im: Image,
+               rowcols: List[Tuple[int, int]],
+               crop_size: int,
+               offsets: np.ndarray = None) -> List[np.ndarray]:
     """
     Crop patches from an image
     :param im: image for cropping
@@ -51,7 +57,9 @@ def crop_patch(im, rowcols, crop_size, offsets=None):
     return patchlist
 
 
-def crop_simple(im, center, crop_size):
+def crop_simple(im: np.ndarray,
+                center: np.ndarray,
+                crop_size: int) -> np.ndarray:
     """
     Crops an image around the given center
     :param im: image to be cropped

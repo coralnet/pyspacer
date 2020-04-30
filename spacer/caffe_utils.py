@@ -6,28 +6,29 @@ these are only lightly cleaned up from their original state.
 
 from copy import copy
 from functools import lru_cache
-from typing import List, Tuple
+from typing import List, Any, Generic, Tuple
 
 import caffe
 import numpy as np
-from PIL import Image
 
 
 class Transformer:
     """
     Transformer is a class for preprocessing and deprocessing images
-    according to the vgg16 pre-processing paradigm
-    (scaling and mean subtraction.)
+    according to the vgg16 pre-processing paradigm.
+    (scaling and mean subtraction.).
     """
 
-    def __init__(self, mean=(0, 0, 0)):
+    def __init__(self, mean: Tuple = (0, 0, 0)) -> None:
         self.mean = np.array(mean, dtype=np.float32)
         self.scale = 1.0
 
-    def preprocess(self, im):
+    def preprocess(self, im: List[np.ndarray]) -> List[np.ndarray]:
         """
         preprocess() emulate the pre-processing occurring
         in the vgg16 caffe prototxt.
+        :param im: a list of numpy array.
+        :return: a list of normalized numpy array.
         """
 
         im = np.float32(im)
@@ -38,9 +39,11 @@ class Transformer:
 
         return im
 
-    def deprocess(self, im):
+    def deprocess(self, im: List[np.ndarray]) -> List[np.ndarray]:
         """
-        inverse of preprocess()
+        inverse of preprocess().
+        :param im: a list of normalized numpy array.
+        :return: inverse a list of normalized numpy array.
         """
         im = im.transpose(1, 2, 0)
         im /= self.scale
@@ -50,20 +53,23 @@ class Transformer:
         return np.uint8(im)
 
 
-def classify_from_imlist(im_list, net, transformer, batch_size,
-                         scorelayer='score', startlayer='conv1_1'):
+def classify_from_imlist(im_list: List,
+                         net: Any,
+                         transformer: Generic,
+                         batch_size: int,
+                         scorelayer: str = 'score',
+                         startlayer: str = 'conv1_1') -> List:
     """
     classify_from_imlist classifies a list of images and returns
     estimated labels and scores.
     Only support classification nets (not FCNs).
-
-    Takes
-    im_list: list of images to classify (each stored as a numpy array).
-    net: caffe net object
-    transformer: transformer object as defined above.
-    batch_size: batch size for the net.
-    scorelayer: name of the score layer.
-    startlayer: name of first convolutional layer.
+    :param im_list: list of images to classify (each stored as a numpy array).
+    :param net: caffe net object.
+    :param transformer: transformer object as defined above.
+    :param batch_size: batch size for the net.
+    :param scorelayer: name of the score (the last conv) layer.
+    :param startlayer: name of first convolutional layer.
+    :return: features list.
     """
 
     scorelist = []
@@ -83,7 +89,14 @@ def classify_from_imlist(im_list, net, transformer, batch_size,
 
 
 @lru_cache(maxsize=1)
-def load_net(modeldef_path, modelweighs_path):
+def load_net(modeldef_path: str,
+             modelweighs_path: str) -> Any:
+    """
+    load pretrained net.
+    :param modeldef_path: model path.
+    :param modelweighs_path: pretrained weights path.
+    :return: pretrained model.
+    """
     return caffe.Net(modeldef_path, modelweighs_path, caffe.TEST)
 
 
@@ -93,6 +106,16 @@ def classify_from_patchlist(patchlist: List,
                             modelweighs_path: str,
                             scorelayer: str = 'score',
                             startlayer: str = 'conv1_1'):
+    """
+    extract features of a list of patches
+    :param patchlist: a list of patches (cropped images).
+    :param pyparams: a set of parameters.
+    :param modeldef_path: model path.
+    :param modelweighs_path: pretrained weights path.
+    :param scorelayer: name of the score (the last conv) layer.
+    :param startlayer: name of first convolutional layer.
+    :return: a list of features
+    """
     # Setup caffe
     caffe.set_mode_cpu()
     net = load_net(modeldef_path, modelweighs_path)

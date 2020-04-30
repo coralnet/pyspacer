@@ -7,6 +7,7 @@ import numpy as np
 from spacer import models
 from torchvision import transforms
 from collections import OrderedDict
+from typing import Any, List
 
 
 def transformation():
@@ -21,7 +22,8 @@ def transformation():
     return transformer
 
 
-def load_weights(model, modelweighs_path):
+def load_weights(model: Any,
+                 modelweighs_path: str) -> Any:
     """
     Load model weights, original weight saved with DataParallel
     Create new OrderedDict that does not contain `module`.
@@ -40,12 +42,13 @@ def load_weights(model, modelweighs_path):
     return model
 
 
-def extract_feature(patch_list, pyparams):
+def extract_feature(patch_list: List,
+                    pyparams: dict) -> List:
     """
     Crop patches and extract features
     :param patch_list: a list of cropped images
     :param pyparams: parameter dict
-    :return:
+    :return: a list of features
     """
     # Model setup and load pretrained weight
     net = models.get_model(model_type=pyparams['model_type'],
