@@ -7,6 +7,7 @@ import numpy as np
 
 from spacer import config
 from spacer.storage import download_model
+from spacer.torch_utils import transformation
 from spacer.torch_utils import extract_feature
 
 
@@ -14,7 +15,6 @@ from spacer.torch_utils import extract_feature
 class TestTransformation(unittest.TestCase):
 
     def test_transformer(self):
-        from spacer.torch_utils import transformation
         test_channels = 3
         height, width = 4, 4
         transformer = transformation()
