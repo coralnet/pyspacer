@@ -16,18 +16,15 @@ def gray2rgb(im):
     return ret
 
 
-def crop_patch(im, rowcols, crop_size, scale, offsets=None):
+def crop_patch(im, rowcols, crop_size, offsets=None):
     """
     Crop patches from an image
     :param im: image for cropping
     :param rowcols: [(row1, col1), (row2, col2), ...]
     :param crop_size: patch size
-    :param scale: only supports scale = 1
     :param offsets: offset to the original (row, col)
     :return: patch list
     """
-
-    assert scale == 1, "Only supports scale == 1"
 
     if offsets is None:
         offsets = np.zeros([len(rowcols), 2])
@@ -48,7 +45,7 @@ def crop_patch(im, rowcols, crop_size, scale, offsets=None):
 
     for ((row, col), offset) in zip(rowcols, offsets):
         center_org = np.asarray([row, col])
-        center = np.round(pad + (center_org * scale) + offset).astype(np.int)
+        center = np.round(pad + center_org + offset).astype(np.int)
         patchlist.append(crop_simple(im, center, crop_size))
 
     return patchlist

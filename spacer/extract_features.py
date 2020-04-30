@@ -83,7 +83,7 @@ class VGG16CaffeExtractor(FeatureExtractor):
                         'batch_size': 10}
 
         # Crop patches
-        patch_list = crop_patch(im, rowcols, caffe_params['crop_size'], scale=1)
+        patch_list = crop_patch(im, rowcols, caffe_params['crop_size'])
 
         # Extract features
         feats = classify_from_patchlist(patch_list,
@@ -132,7 +132,7 @@ class EfficientNetExtractor(FeatureExtractor):
                         'batch_size': 10}
 
         # Crop patches
-        patch_list = crop_patch(im, rowcols, torch_params['crop_size'], scale=1)
+        patch_list = crop_patch(im, rowcols, torch_params['crop_size'])
 
         # Extract features
         feats = extract_feature(patch_list, torch_params)
