@@ -189,7 +189,7 @@ def store_image(loc: 'DataLocation', img: Image):
 
 def load_image(loc: 'DataLocation'):
     storage = storage_factory(loc.storage_type, loc.bucket_name)
-    return Image.open(storage.load(loc.key))
+    return Image.open(storage.load(loc.key)).convert('RGB')
 
 
 def store_classifier(loc: 'DataLocation', clf: CalibratedClassifierCV):
