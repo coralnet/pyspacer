@@ -3,6 +3,10 @@ import unittest
 import numpy as np
 from PIL import Image
 
+from io import BytesIO
+from spacer import config
+from spacer.storage import load_image
+from spacer.messages import DataLocation
 from spacer.extract_features_utils import gray2rgb, crop_patch
 
 
@@ -40,6 +44,22 @@ class TestCropPatch(unittest.TestCase):
         self.assertEqual(len(patch_list), len(rowcols))
         self.assertEqual(patch_list[0].shape[0], crop_size)
         self.assertEqual(patch_list[0].shape[1], crop_size)
+
+
+class TestOpenImage(unittest.TestCase):
+
+    def test_open(self):
+        conn = config.get_s3_conn()
+        bucket = conn.get_bucket('spacer-test', validate=True)
+        npy_key = bucket.get_key('legacy_np.npy')
+        legacy_npy = np.load(BytesIO(npy_key.get_contents_as_string()))
+
+        image_loc = DataLocation(storage_type='s3',
+                                 key='08bfc10v7t.png',
+                                 bucket_name='spacer-test')
+        img_npy = np.array(load_image(image_loc))[:, :, :3]
+
+        self.assertTrue(np.allclose(legacy_npy, img_npy))
 
 
 if __name__ == '__main__':
