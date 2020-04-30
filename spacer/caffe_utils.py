@@ -6,7 +6,7 @@ these are only lightly cleaned up from their original state.
 
 from copy import copy
 from functools import lru_cache
-from typing import List, Any, Generic, Tuple
+from typing import List, Any, Tuple
 
 import caffe
 import numpy as np
@@ -55,7 +55,7 @@ class Transformer:
 
 def classify_from_imlist(im_list: List,
                          net: Any,
-                         transformer: Generic,
+                         transformer: Transformer,
                          batch_size: int,
                          scorelayer: str = 'score',
                          startlayer: str = 'conv1_1') -> List:
@@ -105,7 +105,7 @@ def classify_from_patchlist(patchlist: List,
                             modeldef_path: str,
                             modelweighs_path: str,
                             scorelayer: str = 'score',
-                            startlayer: str = 'conv1_1'):
+                            startlayer: str = 'conv1_1') -> List:
     """
     extract features of a list of patches
     :param patchlist: a list of patches (cropped images).

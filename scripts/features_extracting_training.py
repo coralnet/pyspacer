@@ -29,11 +29,15 @@ class ExtractFeatures:
     2. Load images and anns.meta from s3
     3. Extract features and save to local
     """
-    def __init__(self, extractor_name, local_path):
+    def __init__(self,
+                 extractor_name: str,
+                 local_path: str) -> None:
         self.extractor_name = extractor_name
         self.local_path = local_path
 
-    def __call__(self, source_id, export_name='beta_export'):
+    def __call__(self,
+                 source_id: int,
+                 export_name: str = 'beta_export') -> None:
         conn = config.get_s3_conn()
         bucket = conn.get_bucket('spacer-trainingdata', validate=True)
 
@@ -84,11 +88,15 @@ class TrainClassifier:
     1. Download meta.json and anns.json to local
     2. Train the classifier
     """
-    def __init__(self, local_path):
+    def __init__(self,
+                 local_path: str) -> None:
         self.local_path = local_path
 
     @staticmethod
-    def _cache(source_id, source_root, feats_root, export_name='beta_export'):
+    def _cache(source_id: int,
+               source_root: str,
+               feats_root: str,
+               export_name: str = 'beta_export') -> None:
         conn = config.get_s3_conn()
         bucket = conn.get_bucket('spacer-trainingdata', validate=True)
 
@@ -121,7 +129,10 @@ class TrainClassifier:
             if not os.path.exists(meta_local):
                 meta_keys[idx].get_contents_to_filename(meta_local)
 
-    def __call__(self, source_id, n_epochs, export_name='beta_export'):
+    def __call__(self,
+                 source_id: int,
+                 n_epochs: int = 5,
+                 export_name: str = 'beta_export') -> None:
 
         print('-> Downloading data for source id: {}.'.format(source_id))
         source_root = os.path.join(self.local_path, 's{}'.format(source_id))
@@ -140,7 +151,10 @@ class TrainClassifier:
         start_training(source_root, train_labels, val_labels, n_epochs)
 
 
-def main(extractor_name, source_id, n_epochs, local_path):
+def main(extractor_name: str,
+         source_id: int,
+         n_epochs: int,
+         local_path: str) -> None:
     extractor = ExtractFeatures(extractor_name, local_path)
     extractor(source_id)
     classifier = TrainClassifier(local_path)

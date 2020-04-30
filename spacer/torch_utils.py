@@ -13,7 +13,7 @@ from typing import Any, List
 def transformation():
     """
     Transform an image or numpy array and normalize to [0, 1]
-    :return: a transformer which takes in a image and return a normalized tensor
+    :return: transformer which takes in a image and return a normalized tensor
     """
 
     transformer = transforms.Compose([
@@ -31,7 +31,8 @@ def load_weights(model: Any,
     :param modelweighs_path: pretrained model weight from new CoralNet
     :return: well trained model
     """
-    state_dicts = torch.load(modelweighs_path, map_location=torch.device('cpu'))
+    state_dicts = torch.load(modelweighs_path,
+                             map_location=torch.device('cpu'))
     new_state_dicts = OrderedDict()
     for k, v in state_dicts['net'].items():
         name = k[7:]
@@ -67,7 +68,8 @@ def extract_feature(patch_list: List,
     num_batch = int(np.ceil(len(patch_list) / bs))
     feats_list = []
     for b in range(num_batch):
-        current_batch = patch_list[b*bs: b*bs + min(len(patch_list[b*bs:]), bs)]
+        current_batch = patch_list[b*bs: b*bs + min(len(patch_list[b*bs:]),
+                                                    bs)]
         with torch.no_grad():
             features = net.extract_features(current_batch)
         feats_list.extend(features.tolist())

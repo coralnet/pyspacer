@@ -39,7 +39,7 @@ def build_traindata(image_root: str) -> Tuple[ImageLabels, ImageLabels]:
 def start_training(source_root: str,
                    train_labels: ImageLabels,
                    val_labels: ImageLabels,
-                   n_epochs: int):
+                   n_epochs: int) -> None:
     feature_loc = DataLocation(storage_type='filesystem', key='')
 
     trainer = trainer_factory('minibatch')

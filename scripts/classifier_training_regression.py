@@ -35,7 +35,10 @@ class ClassifierRegressionTest:
     ...
     """
     @staticmethod
-    def _cache_local(source_root, image_root, export_name, source_id):
+    def _cache_local(source_root: str,
+                     image_root: str,
+                     export_name: str,
+                     source_id: int) -> None:
 
         """ Download source data to local """
         conn = config.get_s3_conn()
@@ -66,7 +69,7 @@ class ClassifierRegressionTest:
               source_id: int,
               local_path: str,
               n_epochs: int = 5,
-              export_name: str = 'beta_export'):
+              export_name: str = 'beta_export') -> None:
 
         # Sci-kit learns calibration step throws out a ton of warnings.
         # That we don't need to see here.
@@ -91,7 +94,7 @@ class ClassifierRegressionTest:
         start_training(source_root, train_labels, val_labels, n_epochs)
 
     @staticmethod
-    def list(export_name: str = 'beta_export'):
+    def list(export_name: str = 'beta_export') -> None:
         """ Lists sources available in export. """
 
         conn = config.get_s3_conn()
