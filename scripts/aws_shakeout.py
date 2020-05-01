@@ -84,7 +84,7 @@ def purge_results(queue_name):
         m = queue.read()
         count += 1
 
-    print('-> Purged {} jobs from {}'.format(count, queue_name))
+    print('-> Purged {} messages from {}'.format(count, queue_name))
 
 
 def main():
