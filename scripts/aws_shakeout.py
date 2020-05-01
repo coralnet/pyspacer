@@ -1,6 +1,7 @@
 """
 This script submits 100 jobs to spacer_test_jobs queue and monitors as the
-jobs are completed.
+jobs are completed. The cluster is setup to add 20 instances as soon as we
+are jobs in the test_queue, so the 100 jobs are be completed quickly.
 """
 
 import json
@@ -14,7 +15,7 @@ from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg
 def submit_jobs(job_cnt):
     """ Submits job_cnt jobs. """
 
-    print('Submitting {} jobs... '.format(job_cnt))
+    print('-> Submitting {} jobs... '.format(job_cnt))
     targets = []
     for _ in range(job_cnt):
 
@@ -41,7 +42,7 @@ def submit_jobs(job_cnt):
         in_queue.write(msg)
         targets.append(feat_loc)
 
-    print('{} jobs submitted.'.format(job_cnt))
+    print('-> {} jobs submitted.'.format(job_cnt))
     return targets
 
 
@@ -83,11 +84,11 @@ def purge_results(queue_name):
         m = queue.read()
         count += 1
 
-    print('Purged {} jobs from {}'.format(count, queue_name))
+    print('-> Purged {} jobs from {}'.format(count, queue_name))
 
 
 def main():
-    print("Purging queues before getting starting")
+    print("-> Starting ECS shakeout script.")
     purge_results('spacer_test_results')
     purge_results('spacer_test_jobs')
 
@@ -97,11 +98,11 @@ def main():
         jobs_todo, jobs_ongoing = sqs_status('spacer_test_jobs')
         results_todo, _ = sqs_status('spacer_test_results')
         complete_count = count_jobs_complete(targets)
-        print("JOBS: {} todo, {} ongoing, {} done, {} extracted".format(
-            jobs_todo, jobs_ongoing, results_todo, complete_count
-        ))
+        print("-> [{}] Status: {} todo, {} ongoing, {} done, {} extracted".
+              format(datetime.now().strftime("%H:%M:%S"),
+                     jobs_todo, jobs_ongoing, results_todo, complete_count))
         time.sleep(10)
-    print("All jobs done, purging results queue")
+    print("-> All jobs done, purging results queue")
     purge_results('spacer_test_results')
 
 
