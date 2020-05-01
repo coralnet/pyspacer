@@ -81,7 +81,7 @@ def train(labels: ImageLabels,
 def evaluate_classifier(clf: CalibratedClassifierCV,
                         labels: ImageLabels,
                         classes: List[int],
-                        feature_loc: DataLocation):
+                        feature_loc: DataLocation) -> Tuple[List, List, List]:
     """
     Return the accuracy of classifier "clf" evaluated on "imkeys"
     with ground truth given in "gtdict". Features are fetched from S3 "bucket".
@@ -100,11 +100,13 @@ def evaluate_classifier(clf: CalibratedClassifierCV,
     return gts, ests, scores
 
 
-def chunkify(lst, nbr_chunks):
+def chunkify(lst: List,
+             nbr_chunks: int) -> List:
     return [lst[i::nbr_chunks] for i in range(nbr_chunks)]
 
 
-def calc_batch_size(max_imgs_in_memory, train_set_size):
+def calc_batch_size(max_imgs_in_memory: int,
+                    train_set_size: int) -> Tuple[int, int]:
     images_per_batch = min(max_imgs_in_memory, train_set_size)
     batches_per_epoch = int(np.ceil(train_set_size / images_per_batch))
     return images_per_batch, batches_per_epoch

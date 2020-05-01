@@ -6,28 +6,29 @@ these are only lightly cleaned up from their original state.
 
 from copy import copy
 from functools import lru_cache
-from typing import List, Tuple
+from typing import List, Any, Tuple
 
 import caffe
 import numpy as np
-from PIL import Image
 
 
 class Transformer:
     """
     Transformer is a class for preprocessing and deprocessing images
-    according to the vgg16 pre-processing paradigm
-    (scaling and mean subtraction.)
+    according to the vgg16 pre-processing paradigm.
+    (scaling and mean subtraction.).
     """
 
-    def __init__(self, mean=(0, 0, 0)):
+    def __init__(self, mean: Tuple = (0, 0, 0)) -> None:
         self.mean = np.array(mean, dtype=np.float32)
         self.scale = 1.0
 
-    def preprocess(self, im):
+    def preprocess(self, im: List[np.ndarray]) -> List[np.ndarray]:
         """
         preprocess() emulate the pre-processing occurring
         in the vgg16 caffe prototxt.
+        :param im: a list of numpy array.
+        :return: a list of normalized numpy array.
         """
 
         im = np.float32(im)
@@ -38,9 +39,11 @@ class Transformer:
 
         return im
 
-    def deprocess(self, im):
+    def deprocess(self, im: List[np.ndarray]) -> List[np.ndarray]:
         """
-        inverse of preprocess()
+        inverse of preprocess().
+        :param im: a list of normalized numpy array.
+        :return: inverse a list of normalized numpy array.
         """
         im = im.transpose(1, 2, 0)
         im /= self.scale
@@ -50,20 +53,23 @@ class Transformer:
         return np.uint8(im)
 
 
-def classify_from_imlist(im_list, net, transformer, batch_size,
-                         scorelayer='score', startlayer='conv1_1'):
+def classify_from_imlist(im_list: List,
+                         net: Any,
+                         transformer: Transformer,
+                         batch_size: int,
+                         scorelayer: str = 'score',
+                         startlayer: str = 'conv1_1') -> List:
     """
     classify_from_imlist classifies a list of images and returns
     estimated labels and scores.
     Only support classification nets (not FCNs).
-
-    Takes
-    im_list: list of images to classify (each stored as a numpy array).
-    net: caffe net object
-    transformer: transformer object as defined above.
-    batch_size: batch size for the net.
-    scorelayer: name of the score layer.
-    startlayer: name of first convolutional layer.
+    :param im_list: list of images to classify (each stored as a numpy array).
+    :param net: caffe net object.
+    :param transformer: transformer object as defined above.
+    :param batch_size: batch size for the net.
+    :param scorelayer: name of the score (the last conv) layer.
+    :param startlayer: name of first convolutional layer.
+    :return: features list.
     """
 
     scorelist = []
@@ -78,80 +84,47 @@ def classify_from_imlist(im_list, net, transformer, batch_size,
                               astype(np.float)))
 
     scorelist = scorelist[:len(im_list)]
-    estlist = [np.argmax(s) for s in scorelist]
 
-    return estlist, scorelist
-
-
-def gray2rgb(im):
-    w, h = im.shape
-    ret = np.empty((w, h, 3), dtype=np.uint8)
-    ret[:, :, 0] = im
-    ret[:, :, 1] = im
-    ret[:, :, 2] = im
-    return ret
-
-
-def crop_patch(im, crop_size, point_anns):
-    """ Crops patches from images. """
-
-    patchlist = []
-    labellist = []
-    pad = crop_size
-
-    im = np.pad(im, ((pad, pad), (pad, pad), (0, 0)), mode='reflect')
-
-    for (row, col, label) in point_anns:
-        center_org = np.asarray([row, col])
-        center = np.round(pad + center_org).astype(np.int)
-        patch = crop_simple(im, center, crop_size)
-        patchlist.append(patch)
-        labellist.append(label)
-
-    return patchlist, labellist
-
-
-def crop_simple(im, center, crop_size):
-    """ Crops an image around the given center. """
-    upper = int(center[0] - crop_size / 2)
-    left = int(center[1] - crop_size / 2)
-    return im[upper: upper + crop_size, left: left + crop_size, :]
+    return scorelist
 
 
 @lru_cache(maxsize=1)
-def load_net(modeldef_path, modelweighs_path):
+def load_net(modeldef_path: str,
+             modelweighs_path: str) -> Any:
+    """
+    load pretrained net.
+    :param modeldef_path: model path.
+    :param modelweighs_path: pretrained weights path.
+    :return: pretrained model.
+    """
     return caffe.Net(modeldef_path, modelweighs_path, caffe.TEST)
 
 
-def classify_from_patchlist(im_pil: Image,
-                            point_anns: List[Tuple[int, int, int]],
+def classify_from_patchlist(patchlist: List,
                             pyparams: dict,
                             modeldef_path: str,
                             modelweighs_path: str,
                             scorelayer: str = 'score',
-                            startlayer: str = 'conv1_1'):
+                            startlayer: str = 'conv1_1') -> List:
+    """
+    extract features of a list of patches
+    :param patchlist: a list of patches (cropped images).
+    :param pyparams: a set of parameters.
+    :param modeldef_path: model path.
+    :param modelweighs_path: pretrained weights path.
+    :param scorelayer: name of the score (the last conv) layer.
+    :param startlayer: name of first convolutional layer.
+    :return: a list of features
+    """
     # Setup caffe
     caffe.set_mode_cpu()
     net = load_net(modeldef_path, modelweighs_path)
 
-    _ = np.array(im_pil)  # For some images np.array returns an empty array.
-    im = np.array(im_pil)  # Running it twice fixes this. Don't ask me why.
-
-    if len(im.shape) == 2 or im.shape[2] == 1:
-        im = gray2rgb(im)
-    im = im[:, :, :3]  # only keep the first three color channels
-
-    # Crop patches
-    patchlist, gtlist = crop_patch(im, pyparams['crop_size'], point_anns)
-
     # Classify
     transformer = Transformer(pyparams['im_mean'])
-    [estlist, scorelist] = \
-        classify_from_imlist(patchlist,
-                             net,
-                             transformer,
-                             pyparams['batch_size'],
-                             scorelayer=scorelayer,
-                             startlayer=startlayer)
+    scorelist = classify_from_imlist(
+        patchlist, net, transformer, pyparams['batch_size'],
+        scorelayer=scorelayer, startlayer=startlayer
+    )
 
-    return gtlist, estlist, scorelist
+    return scorelist

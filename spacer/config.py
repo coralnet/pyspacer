@@ -103,7 +103,7 @@ TASKS = [
 FEATURE_EXTRACTOR_NAMES = [
     'dummy',
     'vgg16_coralnet_ver1',
-    'efficientnet_b0_imagenet'
+    'efficientnet_b0_ver1'
 ]
 
 TRAINER_NAMES = [
