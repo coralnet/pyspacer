@@ -22,7 +22,7 @@ def check_rowcols(rowcols: List[Tuple[int, int]],
             "Columns must be non-negative. Given was: [{}]".format(col)
 
         assert row < im_height, \
-            "Roe {} outside image with nrows: {}".format(col, im_height)
+            "Row {} outside image with nrows: {}".format(row, im_height)
 
         assert col < im_width, \
             "Column {} outside image with ncols: {}".format(col, im_width)
