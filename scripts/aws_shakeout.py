@@ -1,10 +1,29 @@
-from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg
-from spacer import config
+"""
+This script submits 100 jobs to spacer_test_jobs queue and monitors as the
+jobs are completed.
+"""
+
 import json
+import time
+from datetime import datetime
+
+from spacer import config
+from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg
 
 
-def submit_simple(job_cnt):
-    for jobid in range(job_cnt):
+def submit_jobs(job_cnt):
+    """ Submits job_cnt jobs. """
+
+    print('Submitting {} jobs... '.format(job_cnt))
+    targets = []
+    for _ in range(job_cnt):
+
+        # Assign each job a unique feature target location, so we can monitor
+        # as the jobs are completed. Use timestamp to get a unique name.
+        feat_loc = DataLocation(storage_type='s3',
+                                key='tmp/08bfc10v7t.png.{}.feats.json'.
+                                format(str(datetime.now()).replace(' ', '_')),
+                                bucket_name='spacer-test')
         msg = JobMsg(
             task_name='extract_features',
             tasks=[ExtractFeaturesMsg(
@@ -14,35 +33,77 @@ def submit_simple(job_cnt):
                 image_loc=DataLocation(storage_type='s3',
                                        key='08bfc10v7t.png',
                                        bucket_name='spacer-test'),
-                feature_loc=DataLocation(storage_type='s3',
-                                         key='tmp/08bfc10v7t.png.feats{}.json'.
-                                         format(jobid),
-                                         bucket_name='spacer-test')
+                feature_loc=feat_loc
             )])
-
-        queue_name = 'spacer_test_jobs'
         conn = config.get_sqs_conn()
-        in_queue = conn.get_queue(queue_name)
+        in_queue = conn.get_queue('spacer_test_jobs')
         msg = in_queue.new_message(body=json.dumps(msg.serialize()))
         in_queue.write(msg)
-        print('submitted job {}'.format(jobid))
+        targets.append(feat_loc)
+
+    print('{} jobs submitted.'.format(job_cnt))
+    return targets
 
 
-def read_results():
-
-    queue_name = 'spacer_test_results'
+def sqs_status(queue_name):
+    """
+    Returns number of pending and ongoing jobs in the queue.
+    """
     conn = config.get_sqs_conn()
     queue = conn.get_queue(queue_name)
-    # Read message
+    attr = queue.get_attributes()
+    return int(attr['ApproximateNumberOfMessages']), \
+           int(attr['ApproximateNumberOfMessagesNotVisible'])
+
+
+def count_jobs_complete(targets):
+    """ Check the target locations and counts how many are complete. """
+
+    conn = config.get_s3_conn()
+    bucket = conn.get_bucket('spacer-test', validate=True)
+
+    complete_count = 0
+    for target in targets:
+        key = bucket.get_key(target.key)
+        if key is not None:
+            complete_count += 1
+
+    return complete_count
+
+
+def purge_results(queue_name):
+    """ Deletes all messages in queue. """
+
+    conn = config.get_sqs_conn()
+    queue = conn.get_queue(queue_name)
     m = queue.read()
+    count = 0
     while m is not None:
-        print(m.get_body())
         queue.delete_message(m)
         m = queue.read()
+        count += 1
 
-    print('Done reading results queue.')
+    print('Purged {} jobs from {}'.format(count, queue_name))
+
+
+def main():
+    print("Purging queues before getting starting")
+    purge_results('spacer_test_results')
+    purge_results('spacer_test_jobs')
+
+    targets = submit_jobs(100)
+    complete_count = 0
+    while complete_count < len(targets):
+        jobs_todo, jobs_ongoing = sqs_status('spacer_test_jobs')
+        results_todo, _ = sqs_status('spacer_test_results')
+        complete_count = count_jobs_complete(targets)
+        print("JOBS: {} todo, {} ongoing, {} done, {} extracted".format(
+            jobs_todo, jobs_ongoing, results_todo, complete_count
+        ))
+        time.sleep(10)
+    print("All jobs done, purging results queue")
+    purge_results('spacer_test_results')
 
 
 if __name__ == '__main__':
-    read_results()
-    submit_simple(5)
+    main()
