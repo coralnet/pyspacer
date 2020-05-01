@@ -14,7 +14,6 @@ from spacer.storage import load_image
 
 
 class TestDummyExtractor(unittest.TestCase):
-    maxDiff = None
 
     def test_simple(self):
         msg = ExtractFeaturesMsg(
@@ -265,6 +264,7 @@ class TestEfficientNetExtractor(unittest.TestCase):
         self.assertEqual(len(features.point_features[0].data), 1280)
 
     def test_regression(self):
+        self.maxDiff = None
         rowcols = [(20, 265),
                    (76, 295),
                    (59, 274),
