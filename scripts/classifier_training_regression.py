@@ -13,7 +13,6 @@ where source_id is an integer defining which source to train.
 """
 
 
-import glob
 import json
 import os
 
@@ -23,9 +22,7 @@ import tqdm
 import warnings
 
 from spacer import config
-from spacer.data_classes import ImageLabels
-from spacer.train_classifier import trainer_factory
-from spacer.messages import DataLocation
+from scripts.scripts_utils import build_traindata, start_training
 
 
 class ClassifierRegressionTest:
@@ -34,13 +31,14 @@ class ClassifierRegressionTest:
     It assumes read permission on the "spacer-trainingdata" bucket.
 
     All data is formatted per the management command in
+    https://github.com/beijbom/coralnet/blob/107257fd34cd2c16714b369ec7146ae7222af2c6/project/vision_backend/management/commands/vb_export_spacer_data.py
     ...
     """
-
-    # TODO: add permalink to management command --^
-
     @staticmethod
-    def _cache_local(source_root, image_root, export_name, source_id):
+    def _cache_local(source_root: str,
+                     image_root: str,
+                     export_name: str,
+                     source_id: int) -> None:
 
         """ Download source data to local """
         conn = config.get_s3_conn()
@@ -67,40 +65,11 @@ class ClassifierRegressionTest:
             if not os.path.exists(local_path):
                 key.get_contents_to_filename(local_path)
 
-    @staticmethod
-    def _build_traindata(image_root):
-
-        # Create the train and val ImageLabels data structures.
-        ann_files = glob.glob(os.path.join(image_root, "*.anns.json"))
-        train_labels = ImageLabels(data={})
-        val_labels = ImageLabels(data={})
-        for itt, ann_file in enumerate(ann_files):
-
-            meta_file = ann_file.replace('anns', 'meta')
-            features_file = ann_file.replace('anns', 'features')
-
-            with open(ann_file) as fp:
-                anns = json.load(fp)
-
-            with open(meta_file) as fp:
-                meta = json.load(fp)
-
-            if meta['in_trainset']:
-                labels = train_labels
-            else:
-                assert meta['in_valset']
-                labels = val_labels
-
-            labels.data[features_file] = [
-                (ann['row'], ann['col'], ann['label']) for ann in anns
-            ]
-        return train_labels, val_labels
-
     def train(self,
               source_id: int,
               local_path: str,
               n_epochs: int = 5,
-              export_name: str = 'beta_export'):
+              export_name: str = 'beta_export') -> None:
 
         # Sci-kit learns calibration step throws out a ton of warnings.
         # That we don't need to see here.
@@ -118,26 +87,14 @@ class ClassifierRegressionTest:
         # Build traindata
         print('-> Assembling train and val data for source id: {}'.format(
             source_id))
-        train_labels, val_labels = self._build_traindata(image_root)
-        feature_loc_template = DataLocation(storage_type='filesystem', key='')
+        train_labels, val_labels = build_traindata(image_root)
 
         # Perform training
         print("-> Training...")
-        trainer = trainer_factory('minibatch')
-        clf, val_results, return_message = trainer(
-            train_labels, val_labels, n_epochs, [], feature_loc_template)
-        with open(os.path.join(source_root, 'meta.json')) as fp:
-            source_meta = json.load(fp)
-
-        print('-> Re-trained {} ({}). Old acc: {:.1f}, new acc: {:.1f}'.format(
-            source_meta['name'],
-            source_meta['pk'],
-            100 * float(source_meta['best_robot_accuracy']),
-            100 * return_message.acc)
-        )
+        start_training(source_root, train_labels, val_labels, n_epochs)
 
     @staticmethod
-    def list(export_name: str = 'beta_export'):
+    def list(export_name: str = 'beta_export') -> None:
         """ Lists sources available in export. """
 
         conn = config.get_s3_conn()

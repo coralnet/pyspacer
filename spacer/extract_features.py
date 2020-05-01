@@ -12,8 +12,10 @@ from PIL import Image
 
 from spacer import config
 from spacer.data_classes import PointFeatures, ImageFeatures
+from spacer.extract_features_utils import crop_patch
 from spacer.messages import ExtractFeaturesReturnMsg
 from spacer.storage import download_model
+from spacer.torch_utils import extract_feature
 
 
 class FeatureExtractor(abc.ABC):  # pragma: no cover
@@ -80,15 +82,15 @@ class VGG16CaffeExtractor(FeatureExtractor):
                         'crop_size': 224,
                         'batch_size': 10}
 
-        # The imdict data structure needs a label, set to 1, it's not used.
-        rowcollabels = [(row, col, 1) for row, col in rowcols]
+        # Crop patches
+        patch_list = crop_patch(im, rowcols, caffe_params['crop_size'])
 
-        (_, _, feats) = classify_from_patchlist(im,
-                                                rowcollabels,
-                                                caffe_params,
-                                                self.modeldef_path,
-                                                self.modelweighs_path,
-                                                scorelayer='fc7')
+        # Extract features
+        feats = classify_from_patchlist(patch_list,
+                                        caffe_params,
+                                        self.modeldef_path,
+                                        self.modelweighs_path,
+                                        scorelayer='fc7')
 
         return \
             ImageFeatures(
@@ -111,12 +113,42 @@ class VGG16CaffeExtractor(FeatureExtractor):
 
 class EfficientNetExtractor(FeatureExtractor):
 
+    def __init__(self):
+
+        # Cache models locally.
+        self.modelweighs_path, self.model_was_cashed = download_model(
+            'efficientnetb0_5eps_best.pt')
+
     def __call__(self, im, rowcols):
-        raise NotImplementedError
+
+        start_time = time.time()
+
+        # Set torch parameters
+        torch_params = {'model_type': 'efficientnet',
+                        'model_name': 'efficientnet-b0',
+                        'weights_path': self.modelweighs_path,
+                        'num_class': 1279,
+                        'crop_size': 224,
+                        'batch_size': 10}
+
+        # Crop patches
+        patch_list = crop_patch(im, rowcols, torch_params['crop_size'])
+
+        # Extract features
+        feats = extract_feature(patch_list, torch_params)
+
+        return ImageFeatures(
+            point_features=[PointFeatures(row=rc[0], col=rc[1], data=ft)
+                            for rc, ft in zip(rowcols, feats)],
+            valid_rowcol=True, feature_dim=len(feats[0]), npoints=len(feats)
+        ), ExtractFeaturesReturnMsg(
+            model_was_cashed=self.model_was_cashed,
+            runtime=time.time() - start_time
+        )
 
     @property
     def feature_dim(self):
-        raise NotImplementedError
+        return 1280
 
 
 def feature_extractor_factory(modelname,
@@ -130,7 +162,7 @@ def feature_extractor_factory(modelname,
             "Need Caffe installed to instantiate {}".format(modelname)
         print("-> Initializing VGG16CaffeExtractor")
         return VGG16CaffeExtractor()
-    if modelname == 'efficientnet_b0_imagenet':
+    if modelname == 'efficientnet_b0_ver1':
         print("-> Initializing EfficientNetExtractor")
         return EfficientNetExtractor()
     if modelname == 'dummy':

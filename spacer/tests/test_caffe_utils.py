@@ -38,26 +38,8 @@ class TestClassifyFromPatchList(unittest.TestCase):
                         'crop_size': 224,
                         'batch_size': 10}
 
-        _, _, feats = classify_from_patchlist(
-            Image.new('RGB', (600, 600)),
-            [(300, 300, 1)],
-            caffe_params,
-            self.modeldef_path,
-            self.modelweighs_path,
-            scorelayer='fc7')
-        self.assertEqual(len(feats), 1)
-        self.assertEqual(len(feats[0]), 4096)
-
-    def test_gray(self):
-        from spacer.caffe_utils import classify_from_patchlist
-        caffe_params = {'im_mean': [128, 128, 128],
-                        'scaling_method': 'scale',
-                        'crop_size': 224,
-                        'batch_size': 10}
-
-        _, _, feats = classify_from_patchlist(
-            Image.new('L', (600, 600)),
-            [(300, 300, 1)],
+        feats = classify_from_patchlist(
+            [np.array(Image.new('RGB', (224, 224)))],
             caffe_params,
             self.modeldef_path,
             self.modelweighs_path,
@@ -81,16 +63,6 @@ class TestClassifyFromPatchList(unittest.TestCase):
         _ = load_net(self.modeldef_path, self.modelweighs_path)
         t2 = time.time() - t0
         self.assertLess(t2, t1)
-
-
-@unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
-class TestGray2RGB(unittest.TestCase):
-
-    def test_default(self):
-        from spacer.caffe_utils import gray2rgb
-        out_arr = gray2rgb(np.array(Image.new('L', (200, 200))))
-        out_im = Image.fromarray(out_arr)
-        self.assertEqual(out_im.mode, "RGB")
 
 
 if __name__ == '__main__':
