@@ -14,6 +14,7 @@ from spacer.storage import load_image
 
 
 class TestDummyExtractor(unittest.TestCase):
+    maxDiff = None
 
     def test_simple(self):
         msg = ExtractFeaturesMsg(
