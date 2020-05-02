@@ -98,9 +98,10 @@ def main():
         jobs_todo, jobs_ongoing = sqs_status('spacer_test_jobs')
         results_todo, _ = sqs_status('spacer_test_results')
         complete_count = count_jobs_complete(targets)
-        print("-> [{}] Status: {} todo, {} ongoing, {} done, {} extracted".
-              format(datetime.now().strftime("%H:%M:%S"),
-                     jobs_todo, jobs_ongoing, results_todo, complete_count))
+        print("-> [{}] Status: {} todo, {} ongoing, {} in results queue, "
+              "{} done".format(datetime.now().strftime("%H:%M:%S"),
+                               jobs_todo, jobs_ongoing, results_todo,
+                               complete_count))
         time.sleep(10)
     print("-> All jobs done, purging results queue")
     purge_results('spacer_test_results')
