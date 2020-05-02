@@ -1,18 +1,19 @@
 """
-This script submits 100 jobs to spacer_test_jobs queue and monitors as the
+This script submits 100 jobs to queues and monitors as the
 jobs are completed. The cluster is setup to add 20 instances as soon as there
 are jobs in the test_queue, so the 100 jobs are be completed quickly.
 """
 
 import json
 import time
+import fire
 from datetime import datetime
 
 from spacer import config
 from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg
 
 
-def submit_jobs(job_cnt):
+def submit_jobs(job_cnt, queue_name):
     """ Submits job_cnt jobs. """
 
     print('-> Submitting {} jobs... '.format(job_cnt))
@@ -37,7 +38,7 @@ def submit_jobs(job_cnt):
                 feature_loc=feat_loc
             )])
         conn = config.get_sqs_conn()
-        in_queue = conn.get_queue('spacer_test_jobs')
+        in_queue = conn.get_queue(queue_name)
         msg = in_queue.new_message(body=json.dumps(msg.serialize()))
         in_queue.write(msg)
         targets.append(feat_loc)
@@ -87,16 +88,16 @@ def purge_results(queue_name):
     print('-> Purged {} messages from {}'.format(count, queue_name))
 
 
-def main():
+def main(jobs_queue='spacer_test_jobs', results_queue='spacer_test_results'):
     print("-> Starting ECS shakeout script.")
-    purge_results('spacer_test_results')
-    purge_results('spacer_test_jobs')
+    purge_results(jobs_queue)
+    purge_results(results_queue)
 
-    targets = submit_jobs(100)
+    targets = submit_jobs(100, jobs_queue)
     complete_count = 0
     while complete_count < len(targets):
-        jobs_todo, jobs_ongoing = sqs_status('spacer_test_jobs')
-        results_todo, _ = sqs_status('spacer_test_results')
+        jobs_todo, jobs_ongoing = sqs_status(jobs_queue)
+        results_todo, _ = sqs_status(results_queue)
         complete_count = count_jobs_complete(targets)
         print("-> [{}] Status: {} todo, {} ongoing, {} in results queue, "
               "{} done".format(datetime.now().strftime("%H:%M:%S"),
@@ -104,8 +105,8 @@ def main():
                                complete_count))
         time.sleep(10)
     print("-> All jobs done, purging results queue")
-    purge_results('spacer_test_results')
+    purge_results(results_queue)
 
 
 if __name__ == '__main__':
-    main()
+    fire.Fire()

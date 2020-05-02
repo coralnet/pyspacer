@@ -14,8 +14,8 @@ from spacer.tasks import \
     classify_image
 
 
-def sqs_fetch(in_queue: str = 'spacer_test_jobs.fifo',
-              out_queue: str ='spacer_test_results.fifo') -> bool:  # pragma: no cover
+def sqs_fetch(in_queue: str = 'spacer_test_jobs',
+              out_queue: str ='spacer_test_results') -> bool:  # pragma: no cover
     """
     Looks for jobs in AWS SQS in_queue, process the job and writes
     results back to out_queue
@@ -89,4 +89,4 @@ def process_job(job_msg: JobMsg) -> JobReturnMsg:
 
 
 if __name__ == '__main__':
-    fire.Fire()
+    fire.Fire()  # pragma: no cover
