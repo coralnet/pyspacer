@@ -31,7 +31,7 @@ def build_traindata(image_root: str) -> Tuple[ImageLabels, ImageLabels]:
             labels = val_labels
 
         labels.data[features_file] = [
-            (ann['row'], ann['col'], ann['label']) for ann in anns
+            (ann['row']-1, ann['col']-1, ann['label']) for ann in anns
         ]
     return train_labels, val_labels
 

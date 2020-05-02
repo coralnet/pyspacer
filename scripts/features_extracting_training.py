@@ -64,7 +64,7 @@ class ExtractFeatures:
                 anns = json.load(BytesIO(
                     ann_keys[idx].get_contents_as_string()
                 ))
-                rowcols = [(ann['row'], ann['col']) for ann in anns]
+                rowcols = [(ann['row']-1, ann['col']-1) for ann in anns]
 
                 img_loc = DataLocation(storage_type='s3',
                                        key=im_key,
