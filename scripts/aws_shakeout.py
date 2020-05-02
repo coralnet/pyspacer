@@ -1,6 +1,6 @@
 """
 This script submits 100 jobs to spacer_test_jobs queue and monitors as the
-jobs are completed. The cluster is setup to add 20 instances as soon as we
+jobs are completed. The cluster is setup to add 20 instances as soon as there
 are jobs in the test_queue, so the 100 jobs are be completed quickly.
 """
 
