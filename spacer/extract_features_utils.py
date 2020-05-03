@@ -19,21 +19,16 @@ def gray2rgb(im: np.ndarray) -> np.ndarray:
     return ret
 
 
-def crop_patch(im: Image,
-               rowcols: List[Tuple[int, int]],
-               crop_size: int,
-               offsets: np.ndarray = None) -> List[np.ndarray]:
+def crop_patches(im: Image,
+                 rowcols: List[Tuple[int, int]],
+                 crop_size: int) -> List[np.ndarray]:
     """
     Crop patches from an image
     :param im: image for cropping
     :param rowcols: [(row1, col1), (row2, col2), ...]
     :param crop_size: patch size
-    :param offsets: offset to the original (row, col)
     :return: patch list
     """
-
-    if offsets is None:
-        offsets = np.zeros([len(rowcols), 2])
 
     # Ref: https://github.com/numpy/numpy/issues/11629
     # Looks like it's PIL issue
@@ -44,21 +39,15 @@ def crop_patch(im: Image,
         im = gray2rgb(im)
     im = im[:, :, :3]  # only keep the first three color channels
 
-    patchlist = []
     pad = crop_size
-
     im = np.pad(im, ((pad, pad), (pad, pad), (0, 0)), mode='reflect')
 
-    for ((row, col), offset) in zip(rowcols, offsets):
-        center_org = np.asarray([row, col])
-        center = np.round(pad + center_org + offset).astype(np.int)
-        patchlist.append(crop_simple(im, center, crop_size))
-
-    return patchlist
+    return [crop_simple(im, (row + pad, col + pad), crop_size)
+            for row, col in rowcols]
 
 
 def crop_simple(im: np.ndarray,
-                center: np.ndarray,
+                center: Tuple[int, int],
                 crop_size: int) -> np.ndarray:
     """
     Crops an image around the given center

@@ -12,7 +12,7 @@ from PIL import Image
 
 from spacer import config
 from spacer.data_classes import PointFeatures, ImageFeatures
-from spacer.extract_features_utils import crop_patch
+from spacer.extract_features_utils import crop_patches
 from spacer.messages import ExtractFeaturesReturnMsg
 from spacer.storage import download_model
 from spacer.torch_utils import extract_feature
@@ -83,7 +83,8 @@ class VGG16CaffeExtractor(FeatureExtractor):
                         'batch_size': 10}
 
         # Crop patches
-        patch_list = crop_patch(im, rowcols, caffe_params['crop_size'])
+        patch_list = crop_patches(im, rowcols, caffe_params['crop_size'])
+        del im
 
         # Extract features
         feats = classify_from_patchlist(patch_list,
@@ -132,7 +133,7 @@ class EfficientNetExtractor(FeatureExtractor):
                         'batch_size': 10}
 
         # Crop patches
-        patch_list = crop_patch(im, rowcols, torch_params['crop_size'])
+        patch_list = crop_patches(im, rowcols, torch_params['crop_size'])
 
         # Extract features
         feats = extract_feature(patch_list, torch_params)
