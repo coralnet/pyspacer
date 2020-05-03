@@ -20,7 +20,7 @@ from spacer import config
 from spacer.tasks import extract_features
 from spacer.messages import DataLocation, ExtractFeaturesMsg
 
-from .utils import build_traindata, start_training
+from scripts.regression.utils import build_traindata, start_training
 
 
 class ExtractFeatures:

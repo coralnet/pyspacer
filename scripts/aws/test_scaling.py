@@ -6,11 +6,15 @@ are jobs in the test_queue, so the 100 jobs are be completed quickly.
 
 import json
 import time
-import fire
 from datetime import datetime
 
+import fire
+
+from scripts.aws.utils import purge
 from spacer import config
-from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg, JobReturnMsg
+from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg, \
+    JobReturnMsg
+from scripts.aws.utils import sqs_status, count_jobs_complete
 
 
 def submit_jobs(job_cnt, queue_name, extractor_name):
@@ -47,32 +51,6 @@ def submit_jobs(job_cnt, queue_name, extractor_name):
     return targets
 
 
-def sqs_status(queue_name):
-    """
-    Returns number of pending and ongoing jobs in the queue.
-    """
-    conn = config.get_sqs_conn()
-    queue = conn.get_queue(queue_name)
-    attr = queue.get_attributes()
-    return int(attr['ApproximateNumberOfMessages']), \
-           int(attr['ApproximateNumberOfMessagesNotVisible'])
-
-
-def count_jobs_complete(targets):
-    """ Check the target locations and counts how many are complete. """
-
-    conn = config.get_s3_conn()
-    bucket = conn.get_bucket('spacer-test', validate=True)
-
-    complete_count = 0
-    for target in targets:
-        key = bucket.get_key(target.key)
-        if key is not None:
-            complete_count += 1
-
-    return complete_count
-
-
 def purge_and_calc_runtime(queue_name):
 
     conn = config.get_sqs_conn()
@@ -93,24 +71,11 @@ def purge_and_calc_runtime(queue_name):
         return 0
 
 
-def purge(queue_name):
-    """ Deletes all messages in queue. """
-
-    conn = config.get_sqs_conn()
-    queue = conn.get_queue(queue_name)
-    m = queue.read()
-    count = 0
-    while m is not None:
-        m = queue.read()
-        count += 1
-    print('-> Purged {} messages from {}'.format(count, queue_name))
-
-
 def main(jobs_queue='spacer_test_jobs',
          results_queue='spacer_test_results',
          extractor_name='efficientnet_b0_ver1'):
 
-    print("-> Starting ECS feature extraction for {}.".format(extractor_name))
+    print("-> Starting memory test for {}.".format(extractor_name))
     purge(jobs_queue)
     purge(results_queue)
 

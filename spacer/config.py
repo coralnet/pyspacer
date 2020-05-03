@@ -11,6 +11,10 @@ from typing import Tuple, Optional
 import boto
 from boto import sqs
 
+from PIL import Image
+
+Image.MAX_IMAGE_PIXELS = 2500000001  # 50000 x 50000 pixels (+1 for margin)
+
 
 def filter_warnings():
     """ Filters out some verified warnings. """
