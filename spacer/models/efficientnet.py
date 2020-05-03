@@ -6,7 +6,6 @@ https://github.com/lukemelas/EfficientNet-PyTorch/blob/master/efficientnet_pytor
 import torch
 from torch import nn
 from torch.nn import functional as F
-from torch.utils import model_zoo
 
 from .effcientnet_utils import (
     relu_fn,
@@ -16,7 +15,6 @@ from .effcientnet_utils import (
     get_same_padding_conv2d,
     get_model_params,
     efficientnet_params,
-    url_map,
 )
 
 
@@ -226,18 +224,10 @@ class EfficientNet(nn.Module):
         return EfficientNet(blocks_args, global_params)
 
     @classmethod
-    def from_pretrained(cls, model_name, pretrained=False, num_classes=1000):
+    def from_pretrained(cls, model_name, num_classes=1000):
         model = EfficientNet.from_name(model_name, override_params={
             'num_classes': num_classes
         })
-        if pretrained:
-            state_dict = model_zoo.load_url(url_map[model_name])
-            model_state = model.state_dict()
-            pretrained_state = {k: v for k, v in state_dict.items() if k in
-                                model_state and
-                                v.size() == model_state[k].size()}
-            model_state.update(pretrained_state)
-            model.load_state_dict(model_state)
         if num_classes != 1000:
             num_ftrs = model._fc.in_features
             model._fc = nn.Linear(num_ftrs, num_classes)
