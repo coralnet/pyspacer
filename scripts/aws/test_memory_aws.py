@@ -20,12 +20,12 @@ from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg, \
 from spacer.storage import store_image
 
 IMAGE_SIZES = [
-    (3000, 3000),  # 10 mega pixel
+    (5000, 5000),  # 10 mega pixel
     (10000, 10000),  # 100 mega pixel
-    (20000, 20000),  # 400 mega pixel
+    (15000, 15000),  # 225 mega pixel
 ]
 
-NBR_ROWCOLS = [100, 1000, 3000]
+NBR_ROWCOLS = [100, 1000, 3000, 5000]
 
 
 def submit_jobs(queue_name):
