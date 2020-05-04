@@ -28,38 +28,42 @@ IMAGE_SIZES = [
 NBR_ROWCOLS = [100, 1000, 3000]
 
 
-def submit_jobs(queue_name, extractor_name):
+def submit_jobs(queue_name):
 
     log('Submitting memory test jobs to {}.'.format(queue_name))
+
     targets = []
-    for (nrows, ncols) in IMAGE_SIZES:
+    for extractor_name in ['vgg16_coralnet_ver1', 'efficientnet_b0_ver1']:
 
-        # Create a image and upload to s3.
-        img = Image.new('RGB', (nrows, ncols))
-        img_loc = DataLocation(storage_type='s3',
-                               key='tmp/{}_{}.jpg'.format(nrows, ncols),
-                               bucket_name='spacer-test')
-        store_image(img_loc, img)
+        for (nrows, ncols) in IMAGE_SIZES:
 
-        for npts in NBR_ROWCOLS:
+            # Create a image and upload to s3.
+            img = Image.new('RGB', (nrows, ncols))
+            img_loc = DataLocation(storage_type='s3',
+                                   key='tmp/{}_{}.jpg'.format(nrows, ncols),
+                                   bucket_name='spacer-test')
+            store_image(img_loc, img)
 
-            feat_loc = DataLocation(storage_type='s3',
-                                    key=img_loc.key + '.{}feats'.format(npts),
-                                    bucket_name='spacer-test')
-            msg = JobMsg(
-                task_name='extract_features',
-                tasks=[ExtractFeaturesMsg(
-                    job_token='({}, {}): {}'.format(nrows, ncols, npts),
-                    feature_extractor_name=extractor_name,
-                    rowcols=[(i, i) for i in list(range(npts))],
-                    image_loc=img_loc,
-                    feature_loc=feat_loc
-                )])
-            conn = config.get_sqs_conn()
-            in_queue = conn.get_queue(queue_name)
-            msg = in_queue.new_message(body=json.dumps(msg.serialize()))
-            in_queue.write(msg)
-            targets.append(feat_loc)
+            for npts in NBR_ROWCOLS:
+
+                feat_loc = DataLocation(storage_type='s3',
+                                        key=img_loc.key + '.{}feats'.format(npts),
+                                        bucket_name='spacer-test')
+                msg = JobMsg(
+                    task_name='extract_features',
+                    tasks=[ExtractFeaturesMsg(
+                        job_token='{} ({}, {}): {}'.format(
+                            extractor_name, nrows, ncols, npts),
+                        feature_extractor_name=extractor_name,
+                        rowcols=[(i, i) for i in list(range(npts))],
+                        image_loc=img_loc,
+                        feature_loc=feat_loc
+                    )])
+                conn = config.get_sqs_conn()
+                in_queue = conn.get_queue(queue_name)
+                msg = in_queue.new_message(body=json.dumps(msg.serialize()))
+                in_queue.write(msg)
+                targets.append(feat_loc)
 
     log('{} jobs submitted.'.format(len(targets)))
     return targets
@@ -94,25 +98,21 @@ def fetch_jobs(queue_name):
 
 
 def main(jobs_queue='spacer_test_jobs',
-         results_queue='spacer_test_results',
-         extractor_name='efficientnet_b0_ver1'):
+         results_queue='spacer_test_results'):
 
-    log("Starting ECS feature extraction for {}.".format(extractor_name))
+    log("Starting ECS feature extraction.")
     purge(jobs_queue)
     purge(results_queue)
 
-    targets = submit_jobs(jobs_queue, extractor_name)
+    _ = submit_jobs(jobs_queue)
     complete_count = 0
-    while complete_count < len(targets):
+    while True:
         jobs_todo, jobs_ongoing = sqs_status(jobs_queue)
         results_todo, _ = sqs_status(results_queue)
         complete_count += fetch_jobs(results_queue)
         log("Status: {} todo, {} ongoing, {} in results queue {} done".format(
             jobs_todo, jobs_ongoing, results_todo, complete_count))
-        time.sleep(10)
-
-    print("-> All jobs done.")
-    purge(results_queue)
+        time.sleep(60)
 
 
 if __name__ == '__main__':
