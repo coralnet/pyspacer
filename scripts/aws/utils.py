@@ -8,8 +8,8 @@ def sqs_status(queue_name):
     conn = config.get_sqs_conn()
     queue = conn.get_queue(queue_name)
     attr = queue.get_attributes()
-    return int(attr['ApproximateNumberOfMessages']), \
-           int(attr['ApproximateNumberOfMessagesNotVisible'])
+    return int(attr['ApproximateNumberOfMessages']), int(
+        attr['ApproximateNumberOfMessagesNotVisible'])
 
 
 def count_jobs_complete(targets):

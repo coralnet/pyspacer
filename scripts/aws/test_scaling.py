@@ -11,10 +11,10 @@ from datetime import datetime
 import fire
 
 from scripts.aws.utils import purge
+from scripts.aws.utils import sqs_status, count_jobs_complete
 from spacer import config
 from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg, \
     JobReturnMsg
-from scripts.aws.utils import sqs_status, count_jobs_complete
 
 
 def submit_jobs(job_cnt, queue_name, extractor_name):

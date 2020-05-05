@@ -3,6 +3,7 @@ Defines the highest level methods for completing tasks.
 """
 import time
 
+from spacer import config
 from spacer.data_classes import ImageLabels, ImageFeatures
 from spacer.extract_features import feature_extractor_factory
 from spacer.messages import \
@@ -16,7 +17,6 @@ from spacer.messages import \
 from spacer.storage import load_image, load_classifier, store_classifier
 from spacer.task_utils import check_rowcols
 from spacer.train_classifier import trainer_factory
-from spacer import config
 
 
 def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:

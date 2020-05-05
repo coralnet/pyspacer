@@ -1,15 +1,12 @@
-import json
 import os
-import time
 import unittest
 
 from spacer import config
-from spacer.mailman import process_job, sqs_fetch
+from spacer.mailman import process_job
 from spacer.messages import \
     JobMsg, \
     JobReturnMsg, \
     ExtractFeaturesMsg, \
-    ExtractFeaturesReturnMsg, \
     TrainClassifierMsg, \
     ClassifyImageMsg, \
     DataLocation

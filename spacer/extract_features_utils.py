@@ -1,7 +1,7 @@
-import numpy as np
-
-from PIL import Image
 from typing import List, Tuple
+
+import numpy as np
+from PIL import Image
 
 
 def gray2rgb(im: np.ndarray) -> np.ndarray:

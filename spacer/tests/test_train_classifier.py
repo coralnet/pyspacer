@@ -4,9 +4,9 @@ import unittest
 import numpy as np
 
 from spacer import config
+from spacer.messages import DataLocation
 from spacer.train_classifier import trainer_factory
 from spacer.train_utils import make_random_data, train
-from spacer.messages import DataLocation
 
 
 @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
@@ -52,9 +52,6 @@ class TestDefaultTrainerDummyData(unittest.TestCase):
         # The way we rendered the data, accuracy is usually around 90%.
         # Adding some margin to account for randomness.
         # TODO: fix random seed; somehow the set above didn't work.
-        # Seems it was a known problem in 0.17.1
-        # (we are stuck at 0.17.1 due to caffe dependencies).
-        # https://github.com/scikit-learn/scikit-learn/issues/10237
         self.assertGreater(return_message.acc,
                            0.75,
                            "Failure may be due to random generated numbers,"

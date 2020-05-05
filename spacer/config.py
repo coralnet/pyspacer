@@ -37,9 +37,9 @@ def get_secret(key):
             with open(secrets_path) as fp:
                 secrets = json.load(fp)
             return secrets[key]
-        except Exception as err:  # pragma: no cover
+        except Exception as err_:  # pragma: no cover
             RuntimeWarning(
-                'Unable to parse secrets.json: {}'.format(repr(err)))
+                'Unable to parse secrets.json: {}'.format(repr(err_)))
             return None
 
 

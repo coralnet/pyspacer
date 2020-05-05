@@ -1,5 +1,5 @@
 """
-This script submits a few jobs to our AWS cluster. The goal is to test
+This script run local memory stress tests.
 1) how large images we can extract features for before running out of memory.
 2) how many patches we can handle.
 If there is a difference across feature extractors, this needs to be set to the

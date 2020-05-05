@@ -2,12 +2,14 @@
 This file contains a set of pytorch utility functions
 """
 
-import torch
-import numpy as np
-from spacer import models
-from torchvision import transforms
 from collections import OrderedDict
 from typing import Any, List
+
+import numpy as np
+import torch
+from torchvision import transforms
+
+from spacer import models
 
 
 def transformation():

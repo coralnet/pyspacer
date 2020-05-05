@@ -1,5 +1,7 @@
 import unittest
+
 from PIL import Image
+
 from spacer.task_utils import check_rowcols
 
 

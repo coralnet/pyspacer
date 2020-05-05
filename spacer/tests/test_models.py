@@ -1,6 +1,7 @@
-import torch
-import unittest
 import collections
+import unittest
+
+import torch
 
 from spacer import config
 from spacer import models
@@ -86,11 +87,11 @@ class TestEfficientNetUtils(unittest.TestCase):
         self.assertEqual(num_repeat, 8)
 
     def test_drop_connect(self):
-        input = torch.rand(1, 10, 5, 5)
-        output1 = drop_connect(input, p=0.5, training=False)
-        output2 = drop_connect(input, p=0.999, training=True)
+        input_ = torch.rand(1, 10, 5, 5)
+        output1 = drop_connect(input_, p=0.5, training=False)
+        output2 = drop_connect(input_, p=0.999, training=True)
 
-        self.assertListEqual(input.tolist(), output1.tolist())
+        self.assertListEqual(input_.tolist(), output1.tolist())
         self.assertAlmostEqual(torch.sum(output2).item(), 0)
 
     def test_get_same_padding_conv2d(self):
@@ -129,7 +130,8 @@ class TestBlockDecoder(unittest.TestCase):
             se_ratio=0.25
         )]
         block_strings = BlockDecoder.encode(block_params)
-        self.assertListEqual(block_strings, ['r1_k3_s11_e1_i32_o16_se0.25_noskip'])
+        self.assertListEqual(block_strings,
+                             ['r1_k3_s11_e1_i32_o16_se0.25_noskip'])
 
 
 if __name__ == '__main__':

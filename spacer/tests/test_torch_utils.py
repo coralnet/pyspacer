@@ -1,14 +1,14 @@
-import torch
 import unittest
+
+import numpy as np
+import torch
 from PIL import Image
 from torchvision import transforms
 
-import numpy as np
-
 from spacer import config
 from spacer.storage import download_model
-from spacer.torch_utils import transformation
 from spacer.torch_utils import extract_feature
+from spacer.torch_utils import transformation
 
 
 @unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
@@ -19,17 +19,21 @@ class TestTransformation(unittest.TestCase):
         height, width = 4, 4
         transformer = transformation()
 
-        input_data = torch.ByteTensor(test_channels, height, width).random_(0, 255).float().div_(255)
+        input_data = torch.ByteTensor(test_channels, height, width).\
+            random_(0, 255).float().div_(255)
         img = transforms.ToPILImage()(input_data)
         output = transformer(img)
         self.assertTrue(np.allclose(input_data.numpy(), output.numpy()))
 
-        ndarray = np.random.randint(low=0, high=255, size=(height, width, test_channels)).astype(np.uint8)
+        ndarray = np.random.randint(
+            low=0, high=255, size=(height, width, test_channels)).\
+            astype(np.uint8)
         output = transformer(ndarray)
         expected_output = ndarray.transpose((2, 0, 1)) / 255.0
         self.assertTrue(np.allclose(output.numpy(), expected_output))
 
-        ndarray = np.random.rand(height, width, test_channels).astype(np.float32)
+        ndarray = np.random.rand(height, width, test_channels).\
+            astype(np.float32)
         output = transformer(ndarray)
         expected_output = ndarray.transpose((2, 0, 1))
         self.assertTrue(np.allclose(output.numpy(), expected_output))
