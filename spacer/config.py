@@ -13,8 +13,6 @@ from boto import sqs
 
 from PIL import Image
 
-Image.MAX_IMAGE_PIXELS = 2500000001  # 50000 x 50000 pixels (+1 for margin)
-
 
 def filter_warnings():
     """ Filters out some verified warnings. """
@@ -123,6 +121,9 @@ STORAGE_TYPES = [
     'url'
 ]
 
+MAX_IMAGE_PIXELS = 10000 * 10000  # 100 mega pixels is max we allow.
+MAX_POINTS_PER_IMAGE = 1000
+
 LOCAL_FIXTURE_DIR = os.path.join(os.path.dirname(
     os.path.abspath(__file__)), 'tests', 'fixtures')
 
@@ -146,3 +147,6 @@ try:
 except boto.exception.S3ResponseError as err:  # pragma: no cover
     print("-> No connection to spacer-tools bucket, can't download models")
     HAS_S3_MODEL_ACCESS = False
+
+# Add margin to avoid warnings when running unit-test.
+Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS + 20000
