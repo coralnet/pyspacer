@@ -30,12 +30,10 @@ class TestEfficientNet(unittest.TestCase):
     def test_efficientnet(self):
         model_param = {'model_type': 'efficientnet',
                        'model_name': 'efficientnet-b0',
-                       'num_classes': 1000,
-                       'pretrained': True}
+                       'num_classes': 1000}
         net = models.get_model(model_type=model_param['model_type'],
                                model_name=model_param['model_name'],
-                               num_classes=model_param['num_classes'],
-                               pretrained=model_param['pretrained'])
+                               num_classes=model_param['num_classes'])
         with torch.no_grad():
             output = net(torch.rand(1, 3, 224, 224))
 
