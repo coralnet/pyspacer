@@ -173,7 +173,8 @@ class TestCaffeExtractor(unittest.TestCase):
 
         for pf_new, pf_legacy in zip(features_new.point_features,
                                      features_legacy.point_features):
-            self.assertEqual(pf_new.data, pf_legacy.data)
+            self.assertTrue(np.allclose(pf_legacy.data, pf_new.data,
+                                        atol=1e-5))
             self.assertTrue(pf_legacy.row is None)
             self.assertTrue(pf_new.row is not None)
 
@@ -302,7 +303,7 @@ class TestEfficientNetExtractor(unittest.TestCase):
         for pf_new, pf_legacy in zip(features_new.point_features,
                                      features_legacy.point_features):
             self.assertTrue(np.allclose(pf_legacy.data, pf_new.data,
-                                        atol=1e-4))
+                                        atol=1e-5))
             self.assertTrue(pf_legacy.row is None)
             self.assertTrue(pf_new.row is not None)
 
