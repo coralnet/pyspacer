@@ -61,6 +61,9 @@ The `-v /path/to/your/local/models:/workspace/models` part will make sure
 the downloaded models are cached to your host storage. 
 which makes rerunning stuff much faster.
 
+The `-v ${PWD}:/workspace/spacer/` mounts your current folder including 
+`secrets.json` so that the container has the right permissions.
+
 The last step will run the default CMD command specified in the dockerfile 
 (unit-test with coverage). If you want to enter the docker container 
 run the same command but append `bash` in the end: 
