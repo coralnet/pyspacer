@@ -87,6 +87,7 @@ ENV SPACER_LOCAL_MODEL_PATH=/workspace/models
 ENV PYTHONPATH="/workspace/spacer:${PYTHONPATH}"
 WORKDIR /workspace
 RUN mkdir models
-COPY . spacer
+RUN mkdir spacer
+COPY .spacer spacer/spacer
 WORKDIR spacer
 CMD coverage run --source=spacer --omit=spacer/tests/* -m unittest; coverage report -m
