@@ -3,6 +3,7 @@ Defines the highest level methods for completing tasks.
 """
 import time
 
+from spacer import config
 from spacer.data_classes import ImageLabels, ImageFeatures
 from spacer.extract_features import feature_extractor_factory
 from spacer.messages import \
@@ -23,6 +24,16 @@ def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
     print("-> Extracting features for job:{}.".format(msg.job_token))
     extractor = feature_extractor_factory(msg.feature_extractor_name)
     img = load_image(msg.image_loc)
+
+    assert img.width * img.height <= config.MAX_IMAGE_PIXELS, \
+        "Image ({}, {}) with {} pixels too large. (max: {})".format(
+            img.width, img.height, img.width * img.height,
+            config.MAX_IMAGE_PIXELS)
+    assert len(msg.rowcols) <= config.MAX_POINTS_PER_IMAGE, \
+        "Too many rowcol locations ({}). Max {} allowed".format(
+            len(msg.rowcols), config.MAX_POINTS_PER_IMAGE
+        )
+
     check_rowcols(msg.rowcols, img)
     features, return_msg = extractor(img, msg.rowcols)
     features.store(msg.feature_loc)

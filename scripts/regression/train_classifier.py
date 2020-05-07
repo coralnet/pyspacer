@@ -22,7 +22,7 @@ import tqdm
 import warnings
 
 from spacer import config
-from scripts.scripts_utils import build_traindata, start_training
+from scripts.regression.utils import build_traindata, start_training
 
 
 class ClassifierRegressionTest:

@@ -11,6 +11,8 @@ from typing import Tuple, Optional
 import boto
 from boto import sqs
 
+from PIL import Image
+
 
 def filter_warnings():
     """ Filters out some verified warnings. """
@@ -35,9 +37,9 @@ def get_secret(key):
             with open(secrets_path) as fp:
                 secrets = json.load(fp)
             return secrets[key]
-        except Exception as err:  # pragma: no cover
+        except Exception as err_:  # pragma: no cover
             RuntimeWarning(
-                'Unable to parse secrets.json: {}'.format(repr(err)))
+                'Unable to parse secrets.json: {}'.format(repr(err_)))
             return None
 
 
@@ -119,6 +121,9 @@ STORAGE_TYPES = [
     'url'
 ]
 
+MAX_IMAGE_PIXELS = 10000 * 10000  # 100 mega pixels is max we allow.
+MAX_POINTS_PER_IMAGE = 1000
+
 LOCAL_FIXTURE_DIR = os.path.join(os.path.dirname(
     os.path.abspath(__file__)), 'tests', 'fixtures')
 
@@ -143,10 +148,5 @@ except boto.exception.S3ResponseError as err:  # pragma: no cover
     print("-> No connection to spacer-tools bucket, can't download models")
     HAS_S3_MODEL_ACCESS = False
 
-inqueue = get_sqs_conn().get_queue('spacer_test_jobs')
-
-if inqueue is None:  # pragma: no cover
-    HAS_SQS_QUEUE_ACCESS = False
-    print('-> No access to SQS found.')
-else:
-    HAS_SQS_QUEUE_ACCESS = True
+# Add margin to avoid warnings when running unit-test.
+Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS + 20000

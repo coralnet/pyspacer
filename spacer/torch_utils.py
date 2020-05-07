@@ -2,12 +2,14 @@
 This file contains a set of pytorch utility functions
 """
 
-import torch
-import numpy as np
-from spacer import models
-from torchvision import transforms
 from collections import OrderedDict
 from typing import Any, List
+
+import numpy as np
+import torch
+from torchvision import transforms
+
+from spacer import models
 
 
 def transformation():
@@ -60,18 +62,15 @@ def extract_feature(patch_list: List,
 
     transformer = transformation()
 
-    # Transform to normalized tensor
-    patch_list = torch.stack([transformer(i) for i in patch_list])
-
     # Feed forward and extract features
     bs = pyparams['batch_size']
     num_batch = int(np.ceil(len(patch_list) / bs))
     feats_list = []
     for b in range(num_batch):
-        current_batch = patch_list[b*bs: b*bs + min(len(patch_list[b*bs:]),
-                                                    bs)]
+        batch = patch_list[b*bs: b*bs + min(len(patch_list[b*bs:]), bs)]
+        batch = torch.stack([transformer(i) for i in batch])
         with torch.no_grad():
-            features = net.extract_features(current_batch)
+            features = net.extract_features(batch)
         feats_list.extend(features.tolist())
 
     return feats_list

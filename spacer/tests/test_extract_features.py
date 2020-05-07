@@ -211,6 +211,9 @@ class TestEfficientNetExtractor(unittest.TestCase):
         self.assertEqual(features.point_features[0].row, 100)
         self.assertEqual(features.point_features[0].col, 100)
 
+        self.assertEqual(len(features.point_features[0].data), 1280)
+        self.assertEqual(features.feature_dim, 1280)
+
     def test_dims(self):
 
         ext = feature_extractor_factory('efficientnet_b0_ver1')
@@ -283,7 +286,8 @@ class TestEfficientNetExtractor(unittest.TestCase):
         )
 
         legacy_feat_loc = DataLocation(storage_type='s3',
-                                       key='08bfc10v7t.png.effnet.featurevector',
+                                       key='08bfc10v7t.png.effnet.'
+                                           'featurevector',
                                        bucket_name='spacer-test')
 
         ext = feature_extractor_factory(msg.feature_extractor_name)

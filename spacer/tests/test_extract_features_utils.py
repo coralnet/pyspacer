@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from PIL import Image
 
-from spacer.extract_features_utils import gray2rgb, crop_patch
+from spacer.extract_features_utils import gray2rgb, crop_patches
 
 
 class TestGray2RGB(unittest.TestCase):
@@ -19,7 +19,7 @@ class TestCropPatch(unittest.TestCase):
     def test_rgb(self):
         rowcols = [(190, 226), (25, 359)]
         crop_size = 224
-        patch_list = crop_patch(
+        patch_list = crop_patches(
             im=Image.new('RGB', (600, 600)),
             rowcols=rowcols,
             crop_size=crop_size
@@ -31,7 +31,7 @@ class TestCropPatch(unittest.TestCase):
     def test_gray(self):
         rowcols = [(190, 226), (25, 359)]
         crop_size = 224
-        patch_list = crop_patch(
+        patch_list = crop_patches(
             im=Image.new('L', (600, 600)),
             rowcols=rowcols,
             crop_size=crop_size

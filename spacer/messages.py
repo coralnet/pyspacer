@@ -55,7 +55,7 @@ class ExtractFeaturesMsg(DataClass):
         assert isinstance(rowcols, List)
         assert len(rowcols) > 0, "Invalid message, rowcols entry is empty."
         assert len(rowcols[0]) == 2
-        assert feature_loc.storage_type is not 'url', \
+        assert feature_loc.storage_type != 'url', \
             "Write not supported for url storage type."
 
         self.job_token = job_token

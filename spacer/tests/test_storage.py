@@ -134,7 +134,7 @@ class TestS3Storage(unittest.TestCase):
         store_image(self.tmp_image_loc, img)
         img2 = load_image(self.tmp_image_loc)
 
-        self.assertTrue(np.array_equal(np.array(img), np.array(img2)))
+        self.assertTrue(np.allclose(np.array(img), np.array(img2), atol=1e-5))
         self.assertTrue(isinstance(img2, Image.Image))
 
     def test_load_legacy_features(self):

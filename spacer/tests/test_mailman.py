@@ -1,15 +1,12 @@
-import json
 import os
-import time
 import unittest
 
 from spacer import config
-from spacer.mailman import process_job, sqs_mailman
+from spacer.mailman import process_job
 from spacer.messages import \
     JobMsg, \
     JobReturnMsg, \
     ExtractFeaturesMsg, \
-    ExtractFeaturesReturnMsg, \
     TrainClassifierMsg, \
     ClassifyImageMsg, \
     DataLocation
@@ -185,108 +182,6 @@ class TestProcessJobMultiple(unittest.TestCase):
         self.assertFalse(return_msg.ok)
         self.assertIn('bad_url', return_msg.error_message)
         self.assertTrue(type(return_msg), JobReturnMsg)
-
-
-@unittest.skip("Skipping this since uses a shared queue.")
-@unittest.skipUnless(config.HAS_SQS_QUEUE_ACCESS, 'No SQS access.')
-class TestSQSMailman(unittest.TestCase):
-
-    @staticmethod
-    def purge_queue(queue, name):
-        """
-        Manually purges a SQS queue since queue.purge is only allowed
-        every 60 seconds.
-        """
-        m = queue.read()
-        while m is not None:
-            queue.delete_message(m)
-            m = queue.read()
-            print("Purged old message from {}.".format(name))
-
-    def setUp(self):
-        config.filter_warnings()
-        self.url = 'https://homepages.cae.wisc.edu/~ece533/images/baboon.png'
-
-        self.conn = config.get_sqs_conn()
-        self.in_queue_name = 'spacer_test_jobs'
-        self.out_queue_name = 'spacer_test_results'
-        self.in_queue = self.conn.get_queue(self.in_queue_name)
-        if self.in_queue is None:
-            self.sqs_access = False
-            return
-
-        self.sqs_access = True
-        self.out_queue = self.conn.get_queue(self.out_queue_name)
-
-        self.purge_queue(self.in_queue, self.in_queue_name)
-        self.purge_queue(self.out_queue, self.out_queue_name)
-
-    def tearDown(self):
-
-        if os.path.exists('baboon.png'):
-            os.remove('baboon.png')
-
-        self.in_queue = self.conn.get_queue(self.in_queue_name)
-        if self.in_queue is None:
-            self.sqs_access = False
-            return
-
-        self.sqs_access = True
-        self.out_queue = self.conn.get_queue(self.out_queue_name)
-        self.purge_queue(self.in_queue, self.in_queue_name)
-        self.purge_queue(self.out_queue, self.out_queue_name)
-
-    def post(self, body):
-
-        # Make new message and write job to queue
-        m_job = self.in_queue.new_message(body=body)
-        self.in_queue.write(m_job)
-
-        # Process job
-        found_message = False
-        while not found_message:
-            found_message = sqs_mailman(in_queue=self.in_queue_name,
-                                        out_queue=self.out_queue_name)
-            time.sleep(1)
-
-        # Retrieve the results from the results_queue
-        m_result = self.out_queue.read()
-        while m_result is None:
-            print('-> No message in result queue, trying again.')
-            time.sleep(1)
-            m_result = self.out_queue.read()
-        return m_result
-
-    def test_nonsense_body(self):
-        if not self.sqs_access:
-            return 1
-
-        m_result = self.post(json.dumps({'nonsense': 'value'}))
-
-        body = json.loads(m_result.get_body())
-
-        self.assertFalse(body['ok'])
-        self.assertEqual(body['error_message'],
-                         "Error deserializing message: KeyError('task_name',)")
-
-    def test_extract_feats(self):
-
-        msg = JobMsg(task_name='extract_features',
-                     tasks=[ExtractFeaturesMsg(
-                         job_token='test_job',
-                         feature_extractor_name='dummy',
-                         rowcols=[(1, 1)],
-                         image_loc=DataLocation(storage_type='url',
-                                                key=self.url),
-                         feature_loc=DataLocation(storage_type='memory',
-                                                  key='my_feats'))])
-
-        m_result = self.post(json.dumps(msg.serialize()))
-        body = json.loads(m_result.get_body())
-        return_msg = JobReturnMsg.deserialize(body)
-
-        self.assertTrue(return_msg.ok)
-        self.assertTrue(type(return_msg.results), ExtractFeaturesReturnMsg)
 
 
 if __name__ == '__main__':

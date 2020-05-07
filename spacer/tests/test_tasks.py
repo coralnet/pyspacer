@@ -1,4 +1,3 @@
-import os
 import unittest
 
 from PIL import Image
@@ -27,6 +26,81 @@ from spacer.tasks import \
     classify_image
 from spacer.train_utils import make_random_data
 from spacer.train_utils import train
+
+
+class TestImageAndPointLimitsAsserts(unittest.TestCase):
+
+    def test_image_too_large(self):
+        clear_memory_storage()
+        img_loc = DataLocation(storage_type='memory', key='img')
+
+        store_image(img_loc, Image.new('RGB', (10001, 10000)))
+        msg = ExtractFeaturesMsg(
+            job_token='test',
+            feature_extractor_name='dummy',
+            image_loc=img_loc,
+            rowcols=[(1, 1)],
+            feature_loc=DataLocation(storage_type='memory',
+                                     key='feats')
+        )
+        try:
+            extract_features(msg)
+        except AssertionError as err:
+            assert "too large" in repr(err)
+
+    def test_image_ok_size(self):
+        clear_memory_storage()
+        img_loc = DataLocation(storage_type='memory', key='img')
+
+        store_image(img_loc, Image.new('RGB', (10000, 10000)))
+        msg = ExtractFeaturesMsg(
+            job_token='test',
+            feature_extractor_name='dummy',
+            image_loc=img_loc,
+            rowcols=[(1, 1)],
+            feature_loc=DataLocation(storage_type='memory',
+                                     key='feats')
+        )
+        try:
+            extract_features(msg)
+        except AssertionError:
+            self.fail("Image size assert tripped unexpectedly.")
+
+    def test_too_many_points(self):
+        clear_memory_storage()
+        img_loc = DataLocation(storage_type='memory', key='img')
+
+        store_image(img_loc, Image.new('RGB', (1000, 1000)))
+        msg = ExtractFeaturesMsg(
+            job_token='test',
+            feature_extractor_name='dummy',
+            image_loc=img_loc,
+            rowcols=[(i, i) for i in range(config.MAX_POINTS_PER_IMAGE + 1)],
+            feature_loc=DataLocation(storage_type='memory',
+                                     key='feats')
+        )
+        try:
+            extract_features(msg)
+        except AssertionError as err:
+            assert "Too many rowcol locations" in repr(err)
+
+    def test_ok_nbr_points(self):
+        clear_memory_storage()
+        img_loc = DataLocation(storage_type='memory', key='img')
+
+        store_image(img_loc, Image.new('RGB', (1000, 1000)))
+        msg = ExtractFeaturesMsg(
+            job_token='test',
+            feature_extractor_name='dummy',
+            image_loc=img_loc,
+            rowcols=[(i, i) for i in range(config.MAX_POINTS_PER_IMAGE)],
+            feature_loc=DataLocation(storage_type='memory',
+                                     key='feats')
+        )
+        try:
+            extract_features(msg)
+        except AssertionError as err:
+            self.fail("Point count assert tripped unexpectedly.")
 
 
 class TestExtractFeatures(unittest.TestCase):

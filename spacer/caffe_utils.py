@@ -23,14 +23,13 @@ class Transformer:
         self.mean = np.array(mean, dtype=np.float32)
         self.scale = 1.0
 
-    def preprocess(self, im: List[np.ndarray]) -> List[np.ndarray]:
+    def preprocess(self, im: np.ndarray) -> np.ndarray:
         """
         preprocess() emulate the pre-processing occurring
         in the vgg16 caffe prototxt.
-        :param im: a list of numpy array.
-        :return: a list of normalized numpy array.
+        :param im: numpy array.
+        :return: normalized numpy array.
         """
-
         im = np.float32(im)
         im = im[:, :, ::-1]  # change to BGR
         im -= self.mean
@@ -39,13 +38,13 @@ class Transformer:
 
         return im
 
-    def deprocess(self, im: List[np.ndarray]) -> List[np.ndarray]:
+    def deprocess(self, im: np.ndarray) -> np.ndarray:
         """
         inverse of preprocess().
-        :param im: a list of normalized numpy array.
-        :return: inverse a list of normalized numpy array.
+        :param im: normalized numpy array.
+        :return: original image.
         """
-        im = im.transpose(1, 2, 0)
+        im = im.transpose((1, 2, 0))
         im /= self.scale
         im += self.mean
         im = im[:, :, ::-1]  # change to RGB

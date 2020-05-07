@@ -1,10 +1,10 @@
-import os
 import glob
 import json
+import os
 from typing import Tuple
 
-from spacer.messages import DataLocation
 from spacer.data_classes import ImageLabels
+from spacer.messages import DataLocation
 from spacer.train_classifier import trainer_factory
 
 
