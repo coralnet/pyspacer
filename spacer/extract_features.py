@@ -134,6 +134,7 @@ class EfficientNetExtractor(FeatureExtractor):
 
         # Crop patches
         patch_list = crop_patches(im, rowcols, torch_params['crop_size'])
+        del im
 
         # Extract features
         feats = extract_feature(patch_list, torch_params)
