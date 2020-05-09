@@ -346,7 +346,8 @@ class TestMemoryUsage(unittest.TestCase):
         tracemalloc.start()
         features_new, _ = ext(img, msg.rowcols)
         current, peak = tracemalloc.get_traced_memory()
-        print(f"Numpy: Current memory usage is {current / 10 ** 6}MB; Peak was {peak / 10 ** 6}MB")
+        print("Numpy: Current memory usage is {}MB; "
+              "Peak was {}MB".format(current / 10 ** 6, peak / 10 ** 6))
         tracemalloc.stop()
         features_legacy = ImageFeatures.load(legacy_feat_loc)
 
@@ -386,7 +387,8 @@ class TestMemoryUsage(unittest.TestCase):
         tracemalloc.start()
         features_new, _ = ext(img, msg.rowcols, types='pil')
         current, peak = tracemalloc.get_traced_memory()
-        print(f"PIL: Current memory usage is {current / 10 ** 6}MB; Peak was {peak / 10 ** 6}MB")
+        print("PIL: Current memory usage is {}MB; "
+              "Peak was {}MB".format(current / 10 ** 6, peak / 10 ** 6))
         tracemalloc.stop()
         features_legacy = ImageFeatures.load(legacy_feat_loc)
 
