@@ -60,3 +60,20 @@ def crop_simple(im: np.ndarray,
     left = int(center[1] - crop_size / 2)
 
     return im[upper: upper + crop_size, left: left + crop_size, :]
+
+
+def crop_patches_pil(im: Image,
+                     rowcols: List[Tuple[int, int]],
+                     crop_size: int):
+    pad = crop_size
+    image = Image.fromarray(
+        np.pad(im.convert('RGB'),
+               ((pad, pad), (pad, pad), (0, 0)), mode='reflect'),
+        'RGB'
+    )
+
+    return [image.crop((pad + col - crop_size / 2,
+                        pad + row - crop_size / 2,
+                        pad + col + crop_size / 2,
+                        pad + row + crop_size / 2))
+            for row, col in rowcols]

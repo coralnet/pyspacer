@@ -1,5 +1,6 @@
 import unittest
 
+import tracemalloc
 import numpy as np
 from PIL import Image
 
@@ -303,6 +304,91 @@ class TestEfficientNetExtractor(unittest.TestCase):
         self.assertTrue(features_new.valid_rowcol)
         self.assertEqual(features_new.npoints, len(rowcols))
         self.assertEqual(features_new.feature_dim, 1280)
+
+        for pf_new, pf_legacy in zip(features_new.point_features,
+                                     features_legacy.point_features):
+            self.assertTrue(np.allclose(pf_legacy.data, pf_new.data,
+                                        atol=1e-5))
+            self.assertTrue(pf_legacy.row is None)
+            self.assertTrue(pf_new.row is not None)
+
+
+@unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
+@unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
+class TestMemoryUsage(unittest.TestCase):
+
+    def test_numpy_memory(self):
+        rowcols = [(20, 265),
+                   (76, 295),
+                   (59, 274),
+                   (151, 62),
+                   (265, 234)]
+
+        msg = ExtractFeaturesMsg(
+            job_token='regression_job',
+            feature_extractor_name='efficientnet_b0_ver1',
+            rowcols=rowcols,
+            image_loc=DataLocation(storage_type='s3',
+                                   key='08bfc10v7t.png',
+                                   bucket_name='spacer-test'),
+            feature_loc=DataLocation(storage_type='memory',
+                                     key='dummy')
+        )
+
+        legacy_feat_loc = DataLocation(storage_type='s3',
+                                       key='08bfc10v7t.png.effnet.'
+                                           'featurevector',
+                                       bucket_name='spacer-test')
+
+        ext = feature_extractor_factory(msg.feature_extractor_name)
+        img = load_image(msg.image_loc)
+
+        tracemalloc.start()
+        features_new, _ = ext(img, msg.rowcols)
+        current, peak = tracemalloc.get_traced_memory()
+        print(f"Numpy: Current memory usage is {current / 10 ** 6}MB; Peak was {peak / 10 ** 6}MB")
+        tracemalloc.stop()
+        features_legacy = ImageFeatures.load(legacy_feat_loc)
+
+        for pf_new, pf_legacy in zip(features_new.point_features,
+                                     features_legacy.point_features):
+            self.assertTrue(np.allclose(pf_legacy.data, pf_new.data,
+                                        atol=1e-5))
+            self.assertTrue(pf_legacy.row is None)
+            self.assertTrue(pf_new.row is not None)
+
+    def test_pil_memory(self):
+        rowcols = [(20, 265),
+                   (76, 295),
+                   (59, 274),
+                   (151, 62),
+                   (265, 234)]
+
+        msg = ExtractFeaturesMsg(
+            job_token='regression_job',
+            feature_extractor_name='efficientnet_b0_ver1',
+            rowcols=rowcols,
+            image_loc=DataLocation(storage_type='s3',
+                                   key='08bfc10v7t.png',
+                                   bucket_name='spacer-test'),
+            feature_loc=DataLocation(storage_type='memory',
+                                     key='dummy')
+        )
+
+        legacy_feat_loc = DataLocation(storage_type='s3',
+                                       key='08bfc10v7t.png.effnet.'
+                                           'featurevector',
+                                       bucket_name='spacer-test')
+
+        ext = feature_extractor_factory(msg.feature_extractor_name)
+        img = load_image(msg.image_loc)
+
+        tracemalloc.start()
+        features_new, _ = ext(img, msg.rowcols, types='pil')
+        current, peak = tracemalloc.get_traced_memory()
+        print(f"PIL: Current memory usage is {current / 10 ** 6}MB; Peak was {peak / 10 ** 6}MB")
+        tracemalloc.stop()
+        features_legacy = ImageFeatures.load(legacy_feat_loc)
 
         for pf_new, pf_legacy in zip(features_new.point_features,
                                      features_legacy.point_features):

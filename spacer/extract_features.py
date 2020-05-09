@@ -12,7 +12,7 @@ from PIL import Image
 
 from spacer import config
 from spacer.data_classes import PointFeatures, ImageFeatures
-from spacer.extract_features_utils import crop_patches
+from spacer.extract_features_utils import crop_patches, crop_patches_pil
 from spacer.messages import ExtractFeaturesReturnMsg
 from spacer.storage import download_model
 from spacer.torch_utils import extract_feature
@@ -120,7 +120,7 @@ class EfficientNetExtractor(FeatureExtractor):
         self.modelweighs_path, self.model_was_cashed = download_model(
             'efficientnetb0_5eps_best.pt')
 
-    def __call__(self, im, rowcols):
+    def __call__(self, im, rowcols, types='numpy'):
 
         start_time = time.time()
 
@@ -133,7 +133,10 @@ class EfficientNetExtractor(FeatureExtractor):
                         'batch_size': 10}
 
         # Crop patches
-        patch_list = crop_patches(im, rowcols, torch_params['crop_size'])
+        if types == 'numpy':
+            patch_list = crop_patches(im, rowcols, torch_params['crop_size'])
+        else:
+            patch_list = crop_patches_pil(im, rowcols, torch_params['crop_size'])
         del im
 
         # Extract features
