@@ -11,7 +11,7 @@ from datetime import datetime
 import fire
 from PIL import Image
 
-from spacer.mailman import process_job
+from spacer.tasks import process_job
 from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg
 from spacer.storage import store_image
 

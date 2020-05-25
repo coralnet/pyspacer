@@ -215,6 +215,10 @@ class TrainClassifierReturnMsg(DataClass):
             runtime=123.4,
         )
 
+    @classmethod
+    def deserialize(cls, data: Dict) -> 'TrainClassifierReturnMsg':
+        return cls.deserialize(data)
+
 
 class ClassifyFeaturesMsg(DataClass):
     """ Specifies the classify_features task. """
@@ -248,7 +252,7 @@ class ClassifyFeaturesMsg(DataClass):
         }
 
     @classmethod
-    def deserialize(cls, data: Dict):
+    def deserialize(cls, data: Dict) -> 'ClassifyFeaturesMsg':
         return ClassifyFeaturesMsg(
             job_token=data['job_token'],
             feature_loc=DataLocation.deserialize(data['feature_loc']),
@@ -368,7 +372,7 @@ class JobMsg(DataClass):
         self.tasks = tasks
 
     @classmethod
-    def deserialize(cls, data: Dict):
+    def deserialize(cls, data: Dict) -> 'JobMsg':
 
         task_name = data['task_name']
         assert task_name in config.TASKS
@@ -422,7 +426,7 @@ class JobReturnMsg(DataClass):
         )
 
     @classmethod
-    def deserialize(cls, data: Dict):
+    def deserialize(cls, data: Dict) -> 'JobReturnMsg':
 
         original_job = JobMsg.deserialize(data['original_job'])
 

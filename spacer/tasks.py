@@ -13,7 +13,7 @@ from spacer.messages import \
     TrainClassifierReturnMsg, \
     ClassifyFeaturesMsg, \
     ClassifyImageMsg, \
-    ClassifyReturnMsg
+    ClassifyReturnMsg, JobMsg, JobReturnMsg
 from spacer.storage import load_image, load_classifier, store_classifier
 from spacer.task_utils import check_rowcols
 from spacer.train_classifier import trainer_factory
@@ -102,3 +102,33 @@ def classify_image(msg: ClassifyImageMsg) -> ClassifyReturnMsg:
         scores=scores,
         classes=list(clf.classes_),
         valid_rowcol=True)
+
+
+def process_job(job_msg: JobMsg) -> JobReturnMsg:
+
+    run = {
+        'extract_features': extract_features,
+        'train_classifier': train_classifier,
+        'classify_features': classify_features,
+        'classify_image': classify_image,
+    }
+
+    assert isinstance(job_msg, JobMsg)
+    assert job_msg.task_name in config.TASKS
+
+    try:
+        results = [run[job_msg.task_name](task) for task in job_msg.tasks]
+        return_msg = JobReturnMsg(
+            original_job=job_msg,
+            ok=True,
+            results=results,
+            error_message=None
+        )
+    except Exception as e:
+        return_msg = JobReturnMsg(
+            original_job=job_msg,
+            ok=False,
+            results=None,
+            error_message=repr(e)
+        )
+    return return_msg

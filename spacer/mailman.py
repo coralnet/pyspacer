@@ -7,16 +7,13 @@ import json
 import fire
 
 from spacer import config
-from spacer.messages import JobMsg, JobReturnMsg
+from spacer.messages import JobMsg
 from spacer.tasks import \
-    extract_features, \
-    train_classifier, \
-    classify_features, \
-    classify_image
+    process_job
 
 
 def sqs_fetch(in_queue: str = 'spacer_test_jobs',  # pragma: no cover
-              out_queue: str ='spacer_test_results') -> bool:
+              out_queue: str = 'spacer_test_results') -> bool:
     """
     Looks for jobs in AWS SQS in_queue, process the job and writes
     results back to out_queue
@@ -57,36 +54,6 @@ def sqs_fetch(in_queue: str = 'spacer_test_jobs',  # pragma: no cover
     out_queue.write(m_out)
     in_queue.delete_message(m)
     return True
-
-
-def process_job(job_msg: JobMsg) -> JobReturnMsg:
-
-    run = {
-        'extract_features': extract_features,
-        'train_classifier': train_classifier,
-        'classify_features': classify_features,
-        'classify_image': classify_image,
-    }
-
-    assert isinstance(job_msg, JobMsg)
-    assert job_msg.task_name in config.TASKS
-
-    try:
-        results = [run[job_msg.task_name](task) for task in job_msg.tasks]
-        return_msg = JobReturnMsg(
-            original_job=job_msg,
-            ok=True,
-            results=results,
-            error_message=None
-        )
-    except Exception as e:
-        return_msg = JobReturnMsg(
-            original_job=job_msg,
-            ok=False,
-            results=None,
-            error_message=repr(e)
-        )
-    return return_msg
 
 
 if __name__ == '__main__':
