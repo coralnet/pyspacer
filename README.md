@@ -14,9 +14,6 @@ in `messages.py` and the tasks in `tasks.py`. We also define several data-types
 in `data_classes.py` which define input and output types. 
 
 Refer to the unit-test in `test_tasks.py` for examples on how to create tasks.
-Currently the `extract_features` task only has a valid implementation 
-through caffe, which requires the Docker build. We will add a PyTorch based
-feature extractor soon.
 
 Tasks can be executed directly by calling the methods in tasks.py. 
 However, spacer also supports an interface with SQS 
