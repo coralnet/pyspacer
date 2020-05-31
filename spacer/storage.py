@@ -164,6 +164,7 @@ def download_model(keyname: str) -> Tuple[str, bool]:
     shared with host filesystem.
     """
     assert config.HAS_S3_MODEL_ACCESS, "Need access to model bucket."
+    assert config.HAS_LOCAL_MODEL_PATH, "Model path not set or is invalid."
     destination = os.path.join(config.LOCAL_MODEL_PATH, keyname)
     if not os.path.isfile(destination):
         print("-> Downloading {}".format(keyname))

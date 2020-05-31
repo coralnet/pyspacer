@@ -89,11 +89,8 @@ def get_local_model_path():
 
 LOCAL_MODEL_PATH = get_local_model_path()
 
-assert LOCAL_MODEL_PATH is not None, \
-    "SPACER_LOCAL_MODEL_PATH environmental variable must be set."
-
-assert os.path.exists(LOCAL_MODEL_PATH), "LOCAL_MODEL_PATH is set, " \
-                                         "but path doesn't exist"
+HAS_LOCAL_MODEL_PATH = LOCAL_MODEL_PATH is not None and \
+                       os.path.exists(LOCAL_MODEL_PATH)
 
 TASKS = [
     'extract_features',
