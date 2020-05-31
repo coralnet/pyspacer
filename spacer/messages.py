@@ -217,7 +217,7 @@ class TrainClassifierReturnMsg(DataClass):
 
     @classmethod
     def deserialize(cls, data: Dict) -> 'TrainClassifierReturnMsg':
-        return cls.deserialize(data)
+        return TrainClassifierReturnMsg(**data)
 
 
 class ClassifyFeaturesMsg(DataClass):
