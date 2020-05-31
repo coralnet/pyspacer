@@ -1,6 +1,7 @@
 # PySpacer
 
 [![Build Status](https://travis-ci.org/beijbom/pyspacer.svg?branch=master)](https://travis-ci.org/beijbom/pyspacer)
+[![PyPI version](https://badge.fury.io/py/pyspacer.svg)](https://badge.fury.io/py/pyspacer)
 
 This repository provide utilities to extract features from random point 
 locations in images and then training classifiers over those features.
