@@ -2,7 +2,7 @@ import os
 import unittest
 
 from spacer import config
-from spacer.mailman import process_job
+from spacer.tasks import process_job
 from spacer.messages import \
     JobMsg, \
     JobReturnMsg, \

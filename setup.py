@@ -5,14 +5,19 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="pyspacer",  # Replace with your own username
-    version="0.2.0",
+    version="0.2.1",
     author="Oscar Beijbom",
     author_email="oscar.beijbom@gmail.com",
     description="Spatial image analysis with caffe and pytorch backends.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/beijbom/pyspacer",
-    packages=setuptools.find_packages(exclude=['scripts']),
+    packages=setuptools.find_packages(exclude=['scripts',
+                                               'scripts.*',
+                                               'scripts.aws.*',
+                                               'scripts.regression.*',
+                                               'spacer.tests',
+                                               'spacer.tests.*']),
     classifiers=[
         "Programming Language :: Python :: 3.5",
         "License :: OSI Approved :: MIT License",

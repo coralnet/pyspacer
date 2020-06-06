@@ -2,6 +2,7 @@
 Defines the highest level methods for completing tasks.
 """
 import time
+import logging
 
 from spacer import config
 from spacer.data_classes import ImageLabels, ImageFeatures
@@ -13,7 +14,7 @@ from spacer.messages import \
     TrainClassifierReturnMsg, \
     ClassifyFeaturesMsg, \
     ClassifyImageMsg, \
-    ClassifyReturnMsg
+    ClassifyReturnMsg, JobMsg, JobReturnMsg
 from spacer.storage import load_image, load_classifier, store_classifier
 from spacer.task_utils import check_rowcols
 from spacer.train_classifier import trainer_factory
@@ -21,7 +22,7 @@ from spacer.train_classifier import trainer_factory
 
 def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
 
-    print("-> Extracting features for job:{}.".format(msg.job_token))
+    logging.info("-> Extracting features for job:{}.".format(msg.job_token))
     extractor = feature_extractor_factory(msg.feature_extractor_name)
     img = load_image(msg.image_loc)
 
@@ -42,7 +43,7 @@ def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
 
 def train_classifier(msg: TrainClassifierMsg) -> TrainClassifierReturnMsg:
 
-    print("Training classifier pk:{}.".format(msg.job_token))
+    logging.info("-> Training classifier pk:{}.".format(msg.job_token))
     trainer = trainer_factory(msg.trainer_name)
 
     # Do the actual training
@@ -102,3 +103,33 @@ def classify_image(msg: ClassifyImageMsg) -> ClassifyReturnMsg:
         scores=scores,
         classes=list(clf.classes_),
         valid_rowcol=True)
+
+
+def process_job(job_msg: JobMsg) -> JobReturnMsg:
+
+    run = {
+        'extract_features': extract_features,
+        'train_classifier': train_classifier,
+        'classify_features': classify_features,
+        'classify_image': classify_image,
+    }
+
+    assert isinstance(job_msg, JobMsg)
+    assert job_msg.task_name in config.TASKS
+
+    try:
+        results = [run[job_msg.task_name](task) for task in job_msg.tasks]
+        return_msg = JobReturnMsg(
+            original_job=job_msg,
+            ok=True,
+            results=results,
+            error_message=None
+        )
+    except Exception as e:
+        return_msg = JobReturnMsg(
+            original_job=job_msg,
+            ok=False,
+            results=None,
+            error_message=repr(e)
+        )
+    return return_msg

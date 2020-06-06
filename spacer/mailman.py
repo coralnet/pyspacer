@@ -3,27 +3,25 @@ Defines the highest-level method for task handling through AWS SQS.
 """
 
 import json
+import logging
 
 import fire
 
 from spacer import config
-from spacer.messages import JobMsg, JobReturnMsg
+from spacer.messages import JobMsg
 from spacer.tasks import \
-    extract_features, \
-    train_classifier, \
-    classify_features, \
-    classify_image
+    process_job
 
 
 def sqs_fetch(in_queue: str = 'spacer_test_jobs',  # pragma: no cover
-              out_queue: str ='spacer_test_results') -> bool:
+              out_queue: str = 'spacer_test_results') -> bool:
     """
     Looks for jobs in AWS SQS in_queue, process the job and writes
     results back to out_queue
     :param in_queue: Name of AWS SQS from which to fetch the job.
     :param out_queue: Name of AWS SQS to which to store the results.
     """
-    print("-> Grabbing message from {}.".format(in_queue))
+    logging.info("-> Grabbing message from {}.".format(in_queue))
 
     # Load default queue
     conn = config.get_sqs_conn()
@@ -33,7 +31,7 @@ def sqs_fetch(in_queue: str = 'spacer_test_jobs',  # pragma: no cover
     # Read message
     m = in_queue.read()
     if m is None:
-        print("-> No messages in inqueue.")
+        logging.info("-> No messages in inqueue.")
         return False
     job_msg_dict = json.loads(m.get_body())
     # Try to deserialize message
@@ -52,41 +50,11 @@ def sqs_fetch(in_queue: str = 'spacer_test_jobs',  # pragma: no cover
         }
 
     # Return
-    print("-> Writing results message to {}.".format(out_queue))
+    logging.info("-> Writing results message to {}.".format(out_queue))
     m_out = out_queue.new_message(body=json.dumps(job_return_msg_dict))
     out_queue.write(m_out)
     in_queue.delete_message(m)
     return True
-
-
-def process_job(job_msg: JobMsg) -> JobReturnMsg:
-
-    run = {
-        'extract_features': extract_features,
-        'train_classifier': train_classifier,
-        'classify_features': classify_features,
-        'classify_image': classify_image,
-    }
-
-    assert isinstance(job_msg, JobMsg)
-    assert job_msg.task_name in config.TASKS
-
-    try:
-        results = [run[job_msg.task_name](task) for task in job_msg.tasks]
-        return_msg = JobReturnMsg(
-            original_job=job_msg,
-            ok=True,
-            results=results,
-            error_message=None
-        )
-    except Exception as e:
-        return_msg = JobReturnMsg(
-            original_job=job_msg,
-            ok=False,
-            results=None,
-            error_message=repr(e)
-        )
-    return return_msg
 
 
 if __name__ == '__main__':

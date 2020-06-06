@@ -6,6 +6,8 @@ import abc
 import os
 import pickle
 import warnings
+import logging
+
 from functools import lru_cache
 from io import BytesIO
 from typing import Union, Tuple
@@ -164,9 +166,10 @@ def download_model(keyname: str) -> Tuple[str, bool]:
     shared with host filesystem.
     """
     assert config.HAS_S3_MODEL_ACCESS, "Need access to model bucket."
+    assert config.HAS_LOCAL_MODEL_PATH, "Model path not set or is invalid."
     destination = os.path.join(config.LOCAL_MODEL_PATH, keyname)
     if not os.path.isfile(destination):
-        print("-> Downloading {}".format(keyname))
+        logging.info("-> Downloading {}".format(keyname))
         conn = config.get_s3_conn()
         bucket = conn.get_bucket(config.MODELS_BUCKET, validate=True)
         key = bucket.get_key(keyname)
@@ -216,7 +219,7 @@ def load_classifier(loc: 'DataLocation'):
         """
         from sklearn.calibration import LabelEncoder
 
-        print("-> Patching legacy classifier.")
+        logging.info("-> Patching legacy classifier.")
         assert len(clf.calibrated_classifiers_) == 1
         assert all(clf.classes_ == clf.calibrated_classifiers_[0].classes_)
         clf.calibrated_classifiers_[0].label_encoder_ = LabelEncoder()
