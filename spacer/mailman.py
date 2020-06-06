@@ -3,6 +3,7 @@ Defines the highest-level method for task handling through AWS SQS.
 """
 
 import json
+import logging
 
 import fire
 
@@ -20,7 +21,7 @@ def sqs_fetch(in_queue: str = 'spacer_test_jobs',  # pragma: no cover
     :param in_queue: Name of AWS SQS from which to fetch the job.
     :param out_queue: Name of AWS SQS to which to store the results.
     """
-    print("-> Grabbing message from {}.".format(in_queue))
+    logging.info("-> Grabbing message from {}.".format(in_queue))
 
     # Load default queue
     conn = config.get_sqs_conn()
@@ -30,7 +31,7 @@ def sqs_fetch(in_queue: str = 'spacer_test_jobs',  # pragma: no cover
     # Read message
     m = in_queue.read()
     if m is None:
-        print("-> No messages in inqueue.")
+        logging.info("-> No messages in inqueue.")
         return False
     job_msg_dict = json.loads(m.get_body())
     # Try to deserialize message
@@ -49,7 +50,7 @@ def sqs_fetch(in_queue: str = 'spacer_test_jobs',  # pragma: no cover
         }
 
     # Return
-    print("-> Writing results message to {}.".format(out_queue))
+    logging.info("-> Writing results message to {}.".format(out_queue))
     m_out = out_queue.new_message(body=json.dumps(job_return_msg_dict))
     out_queue.write(m_out)
     in_queue.delete_message(m)

@@ -2,6 +2,7 @@
 Defines the highest level methods for completing tasks.
 """
 import time
+import logging
 
 from spacer import config
 from spacer.data_classes import ImageLabels, ImageFeatures
@@ -21,7 +22,7 @@ from spacer.train_classifier import trainer_factory
 
 def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
 
-    print("-> Extracting features for job:{}.".format(msg.job_token))
+    logging.info("-> Extracting features for job:{}.".format(msg.job_token))
     extractor = feature_extractor_factory(msg.feature_extractor_name)
     img = load_image(msg.image_loc)
 
@@ -42,7 +43,7 @@ def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
 
 def train_classifier(msg: TrainClassifierMsg) -> TrainClassifierReturnMsg:
 
-    print("Training classifier pk:{}.".format(msg.job_token))
+    logging.info("-> Training classifier pk:{}.".format(msg.job_token))
     trainer = trainer_factory(msg.trainer_name)
 
     # Do the actual training

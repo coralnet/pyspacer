@@ -4,6 +4,7 @@ Utility methods for training classifiers.
 
 import random
 import string
+import logging
 from typing import Tuple, List
 
 import numpy as np
@@ -35,31 +36,31 @@ def train(labels: ImageLabels,
     np.random.shuffle(ref_set)
     ref_set = ref_set[:max_imgs_in_memory]  # Enforce memory limit.
     train_set = list(set(labels.image_keys) - set(ref_set))
-    print("-> Trainset: {}, valset: {} images".
+    logging.info("-> Trainset: {}, valset: {} images".
           format(len(train_set), len(ref_set)))
 
     # Figure out # images per batch and batches per epoch.
     images_per_batch, batches_per_epoch = \
         calc_batch_size(max_imgs_in_memory, len(train_set))
-    print("-> Using {} images per mini-batch and {} mini-batches per epoch".
-          format(images_per_batch, batches_per_epoch))
+    logging.info("-> Using {} images per mini-batch and {} mini-batches per "
+                 "epoch".format(images_per_batch, batches_per_epoch))
 
     # Identify classes common to both train and val.
     # This will be our labelset for the training.
     trainclasses = labels.unique_classes(train_set)
     refclasses = labels.unique_classes(ref_set)
     classes = list(trainclasses.intersection(refclasses))
-    print("-> Trainset: {}, valset: {}, common: {} labels".format(
+    logging.info("-> Trainset: {}, valset: {}, common: {} labels".format(
         len(trainclasses), len(refclasses), len(classes)))
     if len(classes) == 1:
         raise ValueError('Not enough classes to do training (only 1)')
 
     # Load reference data (must hold in memory for the calibration)
-    print("-> Loading reference data.")
+    logging.info("-> Loading reference data.")
     refx, refy = load_batch_data(labels, ref_set, classes, feature_loc)
 
     # Initialize classifier and ref set accuracy list
-    print("-> Online training...")
+    logging.info("-> Online training...")
     clf = SGDClassifier(loss='log', average=True, random_state=0)
     ref_acc = []
     for epoch in range(nbr_epochs):
@@ -69,9 +70,9 @@ def train(labels: ImageLabels,
             x, y = load_batch_data(labels, mb, classes, feature_loc)
             clf.partial_fit(x, y, classes=classes)
         ref_acc.append(calc_acc(refy, clf.predict(refx)))
-        print("-> Epoch {}, acc: {}".format(epoch, ref_acc[-1]))
+        logging.info("-> Epoch {}, acc: {}".format(epoch, ref_acc[-1]))
 
-    print("-> Calibrating.")
+    logging.info("-> Calibrating.")
     clf_calibrated = CalibratedClassifierCV(clf, cv="prefit")
     clf_calibrated.fit(refx, refy)
 

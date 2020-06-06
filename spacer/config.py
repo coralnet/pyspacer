@@ -6,6 +6,7 @@ import importlib
 import json
 import os
 import warnings
+import logging
 from typing import Tuple, Optional
 
 import boto
@@ -135,14 +136,16 @@ try:
     bucket = conn.get_bucket('spacer-test', validate=True)
     HAS_S3_TEST_ACCESS = True
 except boto.exception.S3ResponseError as err:  # pragma: no cover
-    print("-> No connection to spacer-test bucket, can't run remote tests")
+    logging.info("-> No connection to spacer-test bucket, "
+                 "can't run remote tests")
     HAS_S3_TEST_ACCESS = False
 
 try:
     bucket = conn.get_bucket('spacer-tools', validate=True)
     HAS_S3_MODEL_ACCESS = True
 except boto.exception.S3ResponseError as err:  # pragma: no cover
-    print("-> No connection to spacer-tools bucket, can't download models")
+    logging.info("-> No connection to spacer-tools bucket, "
+                 "can't download models")
     HAS_S3_MODEL_ACCESS = False
 
 # Add margin to avoid warnings when running unit-test.

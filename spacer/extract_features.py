@@ -5,6 +5,7 @@ Defines feature-extractor ABC; implementations; and factory.
 import abc
 import random
 import time
+import logging
 from typing import List
 from typing import Tuple
 
@@ -162,11 +163,11 @@ def feature_extractor_factory(modelname,
     if modelname == 'vgg16_coralnet_ver1':
         assert config.HAS_CAFFE, \
             "Need Caffe installed to instantiate {}".format(modelname)
-        print("-> Initializing VGG16CaffeExtractor")
+        logging.info("-> Initializing VGG16CaffeExtractor")
         return VGG16CaffeExtractor()
     if modelname == 'efficientnet_b0_ver1':
-        print("-> Initializing EfficientNetExtractor")
+        logging.info("-> Initializing EfficientNetExtractor")
         return EfficientNetExtractor()
     if modelname == 'dummy':
-        print("-> Initializing DummyExtractor")
+        logging.info("-> Initializing DummyExtractor")
         return DummyExtractor(dummy_featuredim)
