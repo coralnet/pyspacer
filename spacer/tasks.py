@@ -50,7 +50,7 @@ def train_classifier(msg: TrainClassifierMsg) -> TrainClassifierReturnMsg:
     # Do the actual training
     clf, val_results, return_message = trainer(
         ImageLabels.load(msg.traindata_loc),
-        ImageLabels.load(msg.traindata_loc),
+        ImageLabels.load(msg.valdata_loc),
         msg.nbr_epochs,
         [load_classifier(loc) for loc in msg.previous_model_locs],
         msg.features_loc
