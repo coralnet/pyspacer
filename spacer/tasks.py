@@ -3,6 +3,7 @@ Defines the highest level methods for completing tasks.
 """
 import time
 import logging
+import traceback
 
 from spacer import config
 from spacer.data_classes import ImageLabels, ImageFeatures
@@ -130,6 +131,6 @@ def process_job(job_msg: JobMsg) -> JobReturnMsg:
             original_job=job_msg,
             ok=False,
             results=None,
-            error_message=repr(e)
+            error_message=traceback.format_exc()
         )
     return return_msg
