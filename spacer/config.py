@@ -131,8 +131,8 @@ MIN_TRAINIMAGES = 10
 # Check access to select which tests to run.
 HAS_CAFFE = importlib.util.find_spec("caffe") is not None
 
-conn = get_s3_conn()
 try:
+    conn = get_s3_conn()
     bucket = conn.get_bucket('spacer-test', validate=True)
     HAS_S3_TEST_ACCESS = True
 except boto.exception.S3ResponseError as err:  # pragma: no cover
@@ -141,6 +141,7 @@ except boto.exception.S3ResponseError as err:  # pragma: no cover
     HAS_S3_TEST_ACCESS = False
 
 try:
+    conn = get_s3_conn()
     bucket = conn.get_bucket('spacer-tools', validate=True)
     HAS_S3_MODEL_ACCESS = True
 except boto.exception.S3ResponseError as err:  # pragma: no cover

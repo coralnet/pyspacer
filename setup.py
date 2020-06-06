@@ -12,7 +12,12 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/beijbom/pyspacer",
-    packages=setuptools.find_packages(exclude=['scripts']),
+    packages=setuptools.find_packages(exclude=['scripts',
+                                               'scripts.*',
+                                               'scripts.aws.*',
+                                               'scripts.regression.*',
+                                               'spacer.tests',
+                                               'spacer.tests.*']),
     classifiers=[
         "Programming Language :: Python :: 3.5",
         "License :: OSI Approved :: MIT License",
