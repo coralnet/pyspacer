@@ -97,6 +97,10 @@ class FileSystemStorage(Storage):
         pass
 
     def store(self, key: str, stream: BytesIO):
+
+        dirname = os.path.dirname(os.path.abspath(key))
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
         with open(key, 'wb') as f:
             f.write(stream.getbuffer())
 

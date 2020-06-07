@@ -106,3 +106,52 @@ class TestValResults(unittest.TestCase):
             msg.serialize()))
         self.assertEqual(msg, ValResults.deserialize(
             json.loads(json.dumps(msg.serialize()))))
+
+    def test_asserts(self):
+
+        gt = [0, 1, 2]
+        est = [0, 1, 2]
+        scores = [.2, .3, 5]
+        classes = [123, 232, 11]
+
+        try:
+            ValResults(gt=gt,
+                       est=est,
+                       scores=scores,
+                       classes=classes)
+        except AssertionError:
+            self.fail('AssertionError raised when it should not.')
+
+        gt = [0, 1, 3]  # Index 3 is too large for 3 classes.
+        est = [0, 1, 2]
+        scores = [.2, .3, 5]
+        classes = [123, 232, 11]
+
+        self.assertRaises(AssertionError, ValResults,
+                          gt=gt, est=est, scores=scores, classes=classes)
+
+        gt = [0, 1, 2]
+        est = [0, 1, 3]  # Index 3 is too large for 3 classes.
+        scores = [.2, .3, 5]
+        classes = [123, 232, 11]
+
+        self.assertRaises(AssertionError, ValResults,
+                          gt=gt, est=est, scores=scores, classes=classes)
+
+        gt = [0, 1, 2]
+        est = [0, 1, 2]
+        scores = [.2, .3]  # Too few scores.
+        classes = [123, 232, 11]
+
+        self.assertRaises(AssertionError, ValResults,
+                          gt=gt, est=est, scores=scores, classes=classes)
+
+    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
+    def test_legacy(self):
+        legacy_loc = DataLocation(storage_type='s3',
+                                  key='beta.valresult',
+                                  bucket_name='spacer-test')
+
+        res = ValResults.load(legacy_loc)
+        self.assertEqual(res, ValResults.deserialize(json.loads(
+            json.dumps(res.serialize()))))

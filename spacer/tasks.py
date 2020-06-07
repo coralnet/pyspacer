@@ -3,6 +3,7 @@ Defines the highest level methods for completing tasks.
 """
 import time
 import logging
+import traceback
 
 from spacer import config
 from spacer.data_classes import ImageLabels, ImageFeatures
@@ -49,7 +50,7 @@ def train_classifier(msg: TrainClassifierMsg) -> TrainClassifierReturnMsg:
     # Do the actual training
     clf, val_results, return_message = trainer(
         ImageLabels.load(msg.traindata_loc),
-        ImageLabels.load(msg.traindata_loc),
+        ImageLabels.load(msg.valdata_loc),
         msg.nbr_epochs,
         [load_classifier(loc) for loc in msg.previous_model_locs],
         msg.features_loc
@@ -130,6 +131,6 @@ def process_job(job_msg: JobMsg) -> JobReturnMsg:
             original_job=job_msg,
             ok=False,
             results=None,
-            error_message=repr(e)
+            error_message=traceback.format_exc()
         )
     return return_msg

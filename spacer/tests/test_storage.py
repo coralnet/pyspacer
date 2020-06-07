@@ -25,7 +25,6 @@ from spacer.storage import \
 class TestGlobalMemoryStorage(unittest.TestCase):
 
     def test_simple(self):
-
         clear_memory_storage()
 
         # Check that memory storage is global.
@@ -72,7 +71,7 @@ class TestURLStorage(unittest.TestCase):
         loc = DataLocation(
             storage_type='url',
             key='https://spacer-test.s3-us-west-2.amazonaws.com/'
-            '08bfc10v7t.png.featurevector'
+                '08bfc10v7t.png.featurevector'
         )
         feats = ImageFeatures.load(loc)
         self.assertTrue(isinstance(feats, ImageFeatures))
@@ -129,7 +128,6 @@ class TestS3Storage(unittest.TestCase):
         self.bucket.delete_key(self.tmp_model_loc.key)
 
     def test_load_store_image(self):
-
         img = Image.new('RGB', (100, 200))
         store_image(self.tmp_image_loc, img)
         img2 = load_image(self.tmp_image_loc)
@@ -173,17 +171,17 @@ class TestLocalStorage(unittest.TestCase):
     def setUp(self):
         self.tmp_image_loc = DataLocation(
             storage_type='filesystem',
-            key='tmp_image.jpg',
+            key='tmp/tmp_image.jpg',
             bucket_name=''
         )
         self.tmp_json_loc = DataLocation(
             storage_type='filesystem',
-            key='tmp_data.json',
+            key='tmp/tmp_data.json',
             bucket_name=''
         )
         self.tmp_model_loc = DataLocation(
             storage_type='filesystem',
-            key='tmp_model.pkl',
+            key='tmp/tmp_model.pkl',
             bucket_name=''
         )
         self.storage = storage_factory('filesystem', '')
@@ -195,9 +193,11 @@ class TestLocalStorage(unittest.TestCase):
                         self.tmp_model_loc]:
             if os.path.exists(tmp_loc.key):
                 os.remove(tmp_loc.key)
+            dirname = os.path.abspath(os.path.dirname(self.tmp_json_loc.key))
+            if os.path.exists(dirname):
+                os.rmdir(dirname)
 
     def test_load_store_image(self):
-
         img = Image.new('RGB', (100, 200))
         store_image(self.tmp_image_loc, img)
         img2 = load_image(self.tmp_image_loc)
@@ -301,7 +301,6 @@ class TestMemoryStorage(unittest.TestCase):
 class TestFactory(unittest.TestCase):
 
     def test_bad_storage_type(self):
-
         self.assertRaises(AssertionError,
                           storage_factory,
                           'not_a_valid_storage')
@@ -339,7 +338,7 @@ class TestLRUCache(unittest.TestCase):
         load_classifier.cache_clear()
         t0 = time.time()
         load_classifier(loc)
-        t1 = time.time()-t0
+        t1 = time.time() - t0
 
         t0 = time.time()
         load_classifier(loc)

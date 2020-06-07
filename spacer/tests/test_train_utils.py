@@ -9,6 +9,35 @@ from spacer.train_utils import train, calc_batch_size, chunkify, calc_acc, \
     load_image_data, load_batch_data, make_random_data, evaluate_classifier
 
 
+class TestMakeRandom(unittest.TestCase):
+
+    def test_nominal(self):
+
+        n_traindata = 200
+        points_per_image = 20
+        feature_dim = 5
+        class_list = [1, 2]
+
+        # Create train and val data.
+        features_loc_template = DataLocation(storage_type='memory', key='')
+
+        traindata = make_random_data(n_traindata,
+                                     class_list,
+                                     points_per_image,
+                                     feature_dim,
+                                     features_loc_template)
+
+        self.assertEqual(traindata.samples_per_image, points_per_image)
+        self.assertEqual(len(traindata), n_traindata)
+        self.assertEqual(traindata.samples_per_image * len(traindata),
+                         points_per_image * n_traindata)
+
+        one_feature_loc = features_loc_template
+        one_feature_loc.key = list(traindata.data.keys())[0]
+        feats = ImageFeatures.load(one_feature_loc)
+        self.assertEqual(feats.feature_dim, feature_dim)
+
+
 class TestTrain(unittest.TestCase):
 
     def test_ok(self):
