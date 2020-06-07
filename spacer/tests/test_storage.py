@@ -193,9 +193,9 @@ class TestLocalStorage(unittest.TestCase):
                         self.tmp_model_loc]:
             if os.path.exists(tmp_loc.key):
                 os.remove(tmp_loc.key)
-            dirname = os.path.abspath(os.path.dirname(self.tmp_json_loc.key))
-            if os.path.exists(dirname):
-                os.rmdir(dirname)
+        dirname = os.path.abspath(os.path.dirname(self.tmp_json_loc.key))
+        if os.path.exists(dirname):
+            os.rmdir(dirname)
 
     def test_load_store_image(self):
         img = Image.new('RGB', (100, 200))
