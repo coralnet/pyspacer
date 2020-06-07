@@ -133,21 +133,30 @@ HAS_CAFFE = importlib.util.find_spec("caffe") is not None
 
 try:
     conn = get_s3_conn()
-    bucket = conn.get_bucket('spacer-test', validate=True)
     HAS_S3_TEST_ACCESS = True
-except boto.exception.S3ResponseError as err:  # pragma: no cover
-    logging.info("-> No connection to spacer-test bucket, "
-                 "can't run remote tests")
-    HAS_S3_TEST_ACCESS = False
-
-try:
-    conn = get_s3_conn()
-    bucket = conn.get_bucket('spacer-tools', validate=True)
     HAS_S3_MODEL_ACCESS = True
-except boto.exception.S3ResponseError as err:  # pragma: no cover
-    logging.info("-> No connection to spacer-tools bucket, "
-                 "can't download models")
+except boto.exception.NoAuthHandlerFound:
+    conn = None
+    HAS_S3_TEST_ACCESS = False
     HAS_S3_MODEL_ACCESS = False
+    logging.info("-> No s3 connection.")
+
+
+if HAS_S3_TEST_ACCESS:
+    try:
+        bucket = conn.get_bucket('spacer-test', validate=True)
+    except boto.exception.S3ResponseError:  # pragma: no cover
+        logging.info("-> No connection to spacer-test bucket, "
+                     "can't run remote tests")
+        HAS_S3_TEST_ACCESS = False
+
+if HAS_S3_MODEL_ACCESS:
+    try:
+        bucket = conn.get_bucket('spacer-tools', validate=True)
+    except boto.exception.S3ResponseError:  # pragma: no cover
+        logging.info("-> No connection to spacer-tools bucket, "
+                     "can't download models")
+        HAS_S3_MODEL_ACCESS = False
 
 # Add margin to avoid warnings when running unit-test.
 Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS + 20000

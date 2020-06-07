@@ -21,6 +21,7 @@ class TestTransformer(unittest.TestCase):
 
 
 @unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
+@unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'Need model access')
 class TestClassifyFromPatchList(unittest.TestCase):
 
     def setUp(self):
