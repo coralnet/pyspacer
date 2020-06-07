@@ -193,7 +193,7 @@ class ImageFeatures(DataClass):
         )
 
     @classmethod
-    def deserialize(cls, data: Union[Dict, List]):
+    def deserialize(cls, data: Union[Dict, List]) -> 'ImageFeatures':
 
         if isinstance(data, List):
             # Legacy feature were stored as a list of list
@@ -256,6 +256,8 @@ class ValResults(DataClass):
                  est: List[int],  # Using singular for backwards compatibility.
                  classes: List[int]):
 
+        assert len(gt) == len(est)
+        assert len(gt) == len(scores)
         self.scores = scores
         self.gt = gt
         self.est = est
@@ -267,3 +269,8 @@ class ValResults(DataClass):
                    gt=[0, 1, 0],
                    est=[0, 1, 1],
                    classes=[121, 1222])
+
+    @classmethod
+    def deserialize(cls, data: Dict) -> 'ValResults':
+        """ Redefined here to help the Typing module. """
+        return ValResults(**data)

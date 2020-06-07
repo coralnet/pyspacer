@@ -3,7 +3,7 @@ import unittest
 from PIL import Image
 
 from spacer import config
-from spacer.data_classes import ImageFeatures
+from spacer.data_classes import ImageFeatures, ValResults
 from spacer.messages import \
     ExtractFeaturesMsg, \
     ExtractFeaturesReturnMsg, \
@@ -130,8 +130,8 @@ class TestTrainClassifier(unittest.TestCase):
     def test_default(self):
 
         # Set some hyper parameters for data generation
-        n_valdata = 20
         n_traindata = 200
+        n_valdata = 20
         points_per_image = 20
         feature_dim = 5
         class_list = [1, 2]
@@ -140,19 +140,19 @@ class TestTrainClassifier(unittest.TestCase):
         features_loc_template = DataLocation(storage_type='memory', key='')
 
         traindata_loc = DataLocation(storage_type='memory', key='traindata')
-        traindata = make_random_data(n_valdata,
+        traindata = make_random_data(n_traindata,
                                      class_list,
                                      points_per_image,
                                      feature_dim,
                                      features_loc_template)
         traindata.store(traindata_loc)
 
-        valdata = make_random_data(n_traindata,
+        valdata = make_random_data(n_valdata,
                                    class_list,
                                    points_per_image,
                                    feature_dim,
                                    features_loc_template)
-        valdata_loc = DataLocation(storage_type='memory', key='traindata')
+        valdata_loc = DataLocation(storage_type='memory', key='valdata')
         valdata.store(valdata_loc)
 
         # Train once by calling directly so that we have a previous classifier.
@@ -161,6 +161,8 @@ class TestTrainClassifier(unittest.TestCase):
         previous_classifier_loc = DataLocation(storage_type='memory',
                                                key='pc')
         store_classifier(previous_classifier_loc, clf)
+
+        valresult_loc = DataLocation(storage_type='memory', key='val_res')
 
         msg = TrainClassifierMsg(
             job_token='test',
@@ -171,10 +173,20 @@ class TestTrainClassifier(unittest.TestCase):
             features_loc=features_loc_template,
             previous_model_locs=[previous_classifier_loc],
             model_loc=DataLocation(storage_type='memory', key='model'),
-            valresult_loc=DataLocation(storage_type='memory', key='val_res')
+            valresult_loc=valresult_loc
         )
         return_msg = train_classifier(msg)
         self.assertTrue(type(return_msg) == TrainClassifierReturnMsg)
+
+        # Do some checks on ValResults
+        val_res = ValResults.load(valresult_loc)
+        self.assertTrue(type(val_res) == ValResults)
+        self.assertEqual(len(val_res.gt),  len(val_res.est))
+        self.assertEqual(len(val_res.gt),  len(val_res.scores))
+
+        # Check that the amount of labels corresponds to the given val_data.
+        self.assertEqual(len(val_res.gt),
+                         len(valdata) * valdata.samples_per_image)
 
 
 class TestClassifyFeatures(unittest.TestCase):

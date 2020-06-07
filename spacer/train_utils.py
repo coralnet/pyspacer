@@ -37,7 +37,7 @@ def train(labels: ImageLabels,
     ref_set = ref_set[:max_imgs_in_memory]  # Enforce memory limit.
     train_set = list(set(labels.image_keys) - set(ref_set))
     logging.info("-> Trainset: {}, valset: {} images".
-          format(len(train_set), len(ref_set)))
+                 format(len(train_set), len(ref_set)))
 
     # Figure out # images per batch and batches per epoch.
     images_per_batch, batches_per_epoch = \
