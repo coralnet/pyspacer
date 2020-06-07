@@ -106,3 +106,13 @@ class TestValResults(unittest.TestCase):
             msg.serialize()))
         self.assertEqual(msg, ValResults.deserialize(
             json.loads(json.dumps(msg.serialize()))))
+
+    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
+    def test_legacy(self):
+        legacy_loc = DataLocation(storage_type='s3',
+                                  key='beta.valresult',
+                                  bucket_name='spacer-test')
+
+        res = ValResults.load(legacy_loc)
+        self.assertEqual(res, ValResults.deserialize(json.loads(
+            json.dumps(res.serialize()))))
