@@ -248,7 +248,8 @@ class ImageFeatures(DataClass):
 
 
 class ValResults(DataClass):
-    """ Defines the validation results data class. """
+    """ Defines the validation results data class. Note that the gt and est
+    lists points to the index into the classes list."""
 
     def __init__(self,
                  scores: List[float],
@@ -258,6 +259,11 @@ class ValResults(DataClass):
 
         assert len(gt) == len(est)
         assert len(gt) == len(scores)
+        assert max(gt) < len(classes)
+        assert max(est) < len(classes)
+        assert min(gt) >= 0
+        assert min(est) >= 0
+
         self.scores = scores
         self.gt = gt
         self.est = est
