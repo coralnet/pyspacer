@@ -287,7 +287,7 @@ class TestEfficientNetExtractor(unittest.TestCase):
 
         legacy_feat_loc = DataLocation(storage_type='s3',
                                        key='08bfc10v7t.png.effnet.'
-                                           'featurevector',
+                                           'ver1.featurevector',
                                        bucket_name='spacer-test')
 
         ext = feature_extractor_factory(msg.feature_extractor_name)

@@ -119,7 +119,7 @@ class EfficientNetExtractor(FeatureExtractor):
 
         # Cache models locally.
         self.modelweighs_path, self.model_was_cashed = download_model(
-            'efficientnetb0_5eps_best.pt')
+            'efficientnet_b0_ver1.pt')
 
     def __call__(self, im, rowcols):
 
@@ -129,7 +129,7 @@ class EfficientNetExtractor(FeatureExtractor):
         torch_params = {'model_type': 'efficientnet',
                         'model_name': 'efficientnet-b0',
                         'weights_path': self.modelweighs_path,
-                        'num_class': 1279,
+                        'num_class': 1275,
                         'crop_size': 224,
                         'batch_size': 10}
 

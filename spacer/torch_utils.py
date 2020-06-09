@@ -7,6 +7,7 @@ from typing import Any, List
 
 import numpy as np
 import torch
+import hashlib
 from torchvision import transforms
 
 from spacer import models
@@ -33,6 +34,10 @@ def load_weights(model: Any,
     :param modelweighs_path: pretrained model weight from new CoralNet
     :return: well trained model
     """
+    with open(modelweighs_path, 'rb') as fp:
+        sha256 = hashlib.sha256(fp.read()).hexdigest()
+    assert sha256 == \
+           'c3dc6d304179c6729c0a0b3d4e60c728bdcf0d82687deeba54af71827467204c'
     state_dicts = torch.load(modelweighs_path,
                              map_location=torch.device('cpu'))
     new_state_dicts = OrderedDict()
