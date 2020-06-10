@@ -9,7 +9,10 @@ from functools import lru_cache
 from typing import List, Any, Tuple
 
 import caffe
+import hashlib
 import numpy as np
+
+from spacer import config
 
 
 class Transformer:
@@ -96,6 +99,11 @@ def load_net(modeldef_path: str,
     :param modelweighs_path: pretrained weights path.
     :return: pretrained model.
     """
+    # To verify that the correct weight is loaded
+    with open(modelweighs_path, 'rb') as fp:
+        sha256 = hashlib.sha256(fp.read()).hexdigest()
+    assert sha256 == config.MODEL_WEIGHTS_SHA['vgg16']
+
     return caffe.Net(modeldef_path, modelweighs_path, caffe.TEST)
 
 
