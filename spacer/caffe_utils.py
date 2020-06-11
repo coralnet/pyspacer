@@ -9,6 +9,7 @@ from functools import lru_cache
 from typing import List, Any, Tuple
 
 import caffe
+import time
 import hashlib
 import numpy as np
 
@@ -100,9 +101,11 @@ def load_net(modeldef_path: str,
     :return: pretrained model.
     """
     # To verify that the correct weight is loaded
+    start = time.time()
     with open(modelweighs_path, 'rb') as fp:
         sha256 = hashlib.sha256(fp.read()).hexdigest()
     assert sha256 == config.MODEL_WEIGHTS_SHA['vgg16']
+    print("==> time spent on checking sha: {}".format(time.time() - start))
 
     return caffe.Net(modeldef_path, modelweighs_path, caffe.TEST)
 
@@ -125,7 +128,9 @@ def classify_from_patchlist(patchlist: List,
     """
     # Setup caffe
     caffe.set_mode_cpu()
+    start = time.time()
     net = load_net(modeldef_path, modelweighs_path)
+    print("==> time spent in total: {}".format(time.time() - start))
 
     # Classify
     transformer = Transformer(pyparams['im_mean'])
