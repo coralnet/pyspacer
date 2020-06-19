@@ -4,6 +4,7 @@ simplicity. Since support for Caffe will be deprecate,
 these are only lightly cleaned up from their original state.
 """
 
+import logging
 from copy import copy
 from functools import lru_cache
 from typing import List, Any, Tuple
@@ -105,8 +106,9 @@ def load_net(modeldef_path: str,
     with open(modelweighs_path, 'rb') as fp:
         sha256 = hashlib.sha256(fp.read()).hexdigest()
     assert sha256 == config.MODEL_WEIGHTS_SHA['vgg16']
-    print("==> time spent on checking sha: {}".format(time.time() - start))
-
+    logging.debug("-> Time spent on checking SHA: {}".format(
+        time.time() - start
+    ))
     return caffe.Net(modeldef_path, modelweighs_path, caffe.TEST)
 
 
@@ -128,9 +130,7 @@ def classify_from_patchlist(patchlist: List,
     """
     # Setup caffe
     caffe.set_mode_cpu()
-    start = time.time()
     net = load_net(modeldef_path, modelweighs_path)
-    print("==> time spent in total: {}".format(time.time() - start))
 
     # Classify
     transformer = Transformer(pyparams['im_mean'])
