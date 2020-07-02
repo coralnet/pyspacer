@@ -44,14 +44,14 @@ class TestExtractFeatures(unittest.TestCase):
 
     def setUp(self):
         self.modelweighs_path, self.model_was_cashed = download_model(
-            'efficientnetb0_5eps_best.pt')
+            'efficientnet_b0_ver1.pt')
 
     def test_rgb(self):
 
         torch_params = {'model_type': 'efficientnet',
                         'model_name': 'efficientnet-b0',
                         'weights_path': self.modelweighs_path,
-                        'num_class': 1279,
+                        'num_class': 1275,
                         'crop_size': 224,
                         'batch_size': 10}
         patch_list = [np.array(Image.new('RGB', (224, 224))),

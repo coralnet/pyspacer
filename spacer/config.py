@@ -106,6 +106,13 @@ FEATURE_EXTRACTOR_NAMES = [
     'efficientnet_b0_ver1'
 ]
 
+MODEL_WEIGHTS_SHA = {
+    'vgg16':
+        'fb83781de0e207ded23bd42d7eb6e75c1e915a6fbef74120f72732984e227cca',
+    'efficientnet-b0':
+        'c3dc6d304179c6729c0a0b3d4e60c728bdcf0d82687deeba54af71827467204c',
+}
+
 TRAINER_NAMES = [
     'minibatch'
 ]
