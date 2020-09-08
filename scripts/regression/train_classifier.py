@@ -69,7 +69,8 @@ class ClassifierRegressionTest:
               source_id: int,
               local_path: str,
               n_epochs: int = 5,
-              export_name: str = 'beta_export') -> None:
+              export_name: str = 'beta_export',
+              clf_type: str = 'MLP') -> None:
 
         # Sci-kit learns calibration step throws out a ton of warnings.
         # That we don't need to see here.
@@ -91,7 +92,7 @@ class ClassifierRegressionTest:
 
         # Perform training
         print("-> Training...")
-        start_training(source_root, train_labels, val_labels, n_epochs)
+        start_training(source_root, train_labels, val_labels, n_epochs, clf_type)
 
     @staticmethod
     def list(export_name: str = 'beta_export') -> None:

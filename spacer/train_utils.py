@@ -10,6 +10,7 @@ from typing import Tuple, List
 import numpy as np
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.linear_model import SGDClassifier
+from sklearn.neural_network import MLPClassifier
 
 from spacer import config
 from spacer.data_classes import ImageLabels, ImageFeatures
@@ -18,7 +19,8 @@ from spacer.messages import DataLocation
 
 def train(labels: ImageLabels,
           feature_loc: DataLocation,
-          nbr_epochs: int) -> Tuple[CalibratedClassifierCV, List[float]]:
+          nbr_epochs: int,
+          clf_type: str) -> Tuple[CalibratedClassifierCV, List[float]]:
 
     if len(labels) < config.MIN_TRAINIMAGES:
         raise ValueError('Not enough training samples.')
@@ -61,7 +63,14 @@ def train(labels: ImageLabels,
 
     # Initialize classifier and ref set accuracy list
     logging.info("-> Online training...")
-    clf = SGDClassifier(loss='log', average=True, random_state=0)
+    if clf_type == 'MLP':
+        if len(train_set) * labels.samples_per_image > 50000:
+            hls, lr = (200, 100), 1e-4
+        else:
+            hls, lr = (100,), 1e-3
+        clf = MLPClassifier(hidden_layer_sizes=hls, learning_rate_init=lr)
+    else:
+        clf = SGDClassifier(loss='log', average=True, random_state=0)
     ref_acc = []
     for epoch in range(nbr_epochs):
         np.random.shuffle(train_set)

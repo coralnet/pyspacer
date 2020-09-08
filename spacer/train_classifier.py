@@ -22,7 +22,8 @@ class ClassifierTrainer(abc.ABC):  # pragma: no cover
                  val_labels: ImageLabels,
                  nbr_epochs: int,
                  pc_models: List[CalibratedClassifierCV],
-                 feature_loc: DataLocation) \
+                 feature_loc: DataLocation,
+                 clf_type: str) \
             -> Tuple[CalibratedClassifierCV,
                      ValResults,
                      TrainClassifierReturnMsg]:
@@ -40,11 +41,13 @@ class MiniBatchTrainer(ClassifierTrainer):
                  val_labels,
                  nbr_epochs,
                  pc_models,
-                 feature_loc):
+                 feature_loc,
+                 clf_type):
 
+        assert clf_type in config.CLASSIFIER_TYPES
         # Train.
         t0 = time.time()
-        clf, ref_accs = train(train_labels, feature_loc, nbr_epochs)
+        clf, ref_accs = train(train_labels, feature_loc, nbr_epochs, clf_type)
         classes = clf.classes_.tolist()
 
         # Evaluate new classifier on validation set.

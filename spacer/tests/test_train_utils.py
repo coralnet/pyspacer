@@ -55,9 +55,11 @@ class TestTrain(unittest.TestCase):
                                   feature_dim,
                                   feature_loc)
 
-        clf_calibrated, ref_acc = train(labels, feature_loc, num_epochs)
+        for clf_type in ['LR', 'MLP']:
+            clf_calibrated, ref_acc = train(labels, feature_loc, num_epochs,
+                                            clf_type)
 
-        self.assertEqual(len(ref_acc), num_epochs)
+            self.assertEqual(len(ref_acc), num_epochs)
 
     def test_too_few_images(self):
         n_traindata = config.MIN_TRAINIMAGES - 1
@@ -73,7 +75,9 @@ class TestTrain(unittest.TestCase):
                                   feature_dim,
                                   feature_loc)
 
-        self.assertRaises(ValueError, train, labels, feature_loc, num_epochs)
+        for clf_type in ['LR', 'MLP']:
+            self.assertRaises(ValueError, train, labels, feature_loc,
+                              num_epochs, clf_type)
 
     def test_too_few_classes(self):
         """ Can't train with only 1 class! """
@@ -90,7 +94,9 @@ class TestTrain(unittest.TestCase):
                                   feature_dim,
                                   feature_loc)
 
-        self.assertRaises(ValueError, train, labels, feature_loc, num_epochs)
+        for clf_type in ['LR', 'MLP']:
+            self.assertRaises(ValueError, train, labels, feature_loc,
+                              num_epochs, clf_type)
 
 
 class TestEvaluateClassifier(unittest.TestCase):
@@ -98,26 +104,28 @@ class TestEvaluateClassifier(unittest.TestCase):
     def test_simple(self):
         feature_loc = DataLocation(storage_type='memory', key='')
         train_data = make_random_data(10, [1, 2], 4, 5, feature_loc)
-        clf, _ = train(train_data, feature_loc, 1)
+        for clf_type in ['LR', 'MLP']:
+            clf, _ = train(train_data, feature_loc, 1, clf_type)
 
-        val_data = make_random_data(3, [1, 2], 4, 5, feature_loc)
-        gts, ests, scores = evaluate_classifier(clf, val_data, [1, 2],
-                                                feature_loc)
-        self.assertTrue(1 in gts)
-        self.assertTrue(2 in gts)
+            val_data = make_random_data(3, [1, 2], 4, 5, feature_loc)
+            gts, ests, scores = evaluate_classifier(clf, val_data, [1, 2],
+                                                    feature_loc)
+            self.assertTrue(1 in gts)
+            self.assertTrue(2 in gts)
 
     def test_no_gt(self):
 
         feature_loc = DataLocation(storage_type='memory', key='')
         train_data = make_random_data(10, [1, 2], 4, 5, feature_loc)
-        clf, _ = train(train_data, feature_loc, 1)
+        for clf_type in ['LR', 'MLP']:
+            clf, _ = train(train_data, feature_loc, 1, clf_type)
 
-        # Note here that class_list for the val_data doesn't include
-        # any samples from classes [1, 2] so the gt will be empty,
-        # which will raise an exception.
-        val_data = make_random_data(3, [3], 4, 5, feature_loc)
-        self.assertRaises(ValueError, evaluate_classifier,
-                          clf, val_data, [1, 2], feature_loc)
+            # Note here that class_list for the val_data doesn't include
+            # any samples from classes [1, 2] so the gt will be empty,
+            # which will raise an exception.
+            val_data = make_random_data(3, [3], 4, 5, feature_loc)
+            self.assertRaises(ValueError, evaluate_classifier,
+                              clf, val_data, [1, 2], feature_loc)
 
 
 class TestCalcBatchSize(unittest.TestCase):

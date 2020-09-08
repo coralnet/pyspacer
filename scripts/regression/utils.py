@@ -39,12 +39,13 @@ def build_traindata(image_root: str) -> Tuple[ImageLabels, ImageLabels]:
 def start_training(source_root: str,
                    train_labels: ImageLabels,
                    val_labels: ImageLabels,
-                   n_epochs: int) -> None:
+                   n_epochs: int,
+                   clf_type: str) -> None:
     feature_loc = DataLocation(storage_type='filesystem', key='')
 
     trainer = trainer_factory('minibatch')
     clf, val_results, return_message = trainer(
-        train_labels, val_labels, n_epochs, [], feature_loc)
+        train_labels, val_labels, n_epochs, [], feature_loc, clf_type)
     with open(os.path.join(source_root, 'meta.json')) as fp:
         source_meta = json.load(fp)
 
