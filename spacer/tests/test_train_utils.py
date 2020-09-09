@@ -61,6 +61,29 @@ class TestTrain(unittest.TestCase):
 
             self.assertEqual(len(ref_acc), num_epochs)
 
+    def test_mlp_hybrid_mode(self):
+
+        for (ntd, ppi, hls, lr) in [(11, 20, (100,), 1e-3),
+                                    (1000, 100, (200, 100), 1e-4)]:
+            n_traindata = ntd
+            points_per_image = ppi
+            feature_dim = 5
+            class_list = [1, 2]
+            num_epochs = 4
+            feature_loc = DataLocation(storage_type='memory', key='')
+
+            labels = make_random_data(n_traindata,
+                                      class_list,
+                                      points_per_image,
+                                      feature_dim,
+                                      feature_loc)
+
+            clf_calibrated, ref_acc = train(labels, feature_loc, num_epochs,
+                                            'MLP')
+            clf_param = clf_calibrated.get_params()['base_estimator']
+            self.assertEqual(clf_param.hidden_layer_sizes, hls)
+            self.assertEqual(clf_param.learning_rate_init, lr)
+
     def test_too_few_images(self):
         n_traindata = config.MIN_TRAINIMAGES - 1
         points_per_image = 20
