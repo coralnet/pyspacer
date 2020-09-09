@@ -62,7 +62,7 @@ def train(labels: ImageLabels,
     refx, refy = load_batch_data(labels, ref_set, classes, feature_loc)
 
     # Initialize classifier and ref set accuracy list
-    logging.info("-> Online training...")
+    logging.info("-> Online training using {}...".format(clf_type))
     if clf_type == 'MLP':
         if len(train_set) * labels.samples_per_image > 50000:
             hls, lr = (200, 100), 1e-4
