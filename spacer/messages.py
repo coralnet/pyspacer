@@ -120,6 +120,7 @@ class TrainClassifierMsg(DataClass):
                  job_token: str,  # Job token, for caller reference.
                  trainer_name: str,  # Name of trainer to use.
                  nbr_epochs: int,  # Number of epochs to do training.
+                 clf_type: str,  # Name of classifier to use.
                  traindata_loc: DataLocation,  # Traindata
                  valdata_loc: DataLocation,  # Valdata
                  features_loc: DataLocation,  # Location of features. Key is set from traindata and valdata during training.
@@ -133,6 +134,7 @@ class TrainClassifierMsg(DataClass):
         self.job_token = job_token
         self.trainer_name = trainer_name
         self.nbr_epochs = nbr_epochs
+        self.clf_type = clf_type
         self.traindata_loc = traindata_loc
         self.valdata_loc = valdata_loc
         self.features_loc = features_loc
@@ -146,6 +148,7 @@ class TrainClassifierMsg(DataClass):
             job_token='123_abc',
             trainer_name='minibatch',
             nbr_epochs=2,
+            clf_type='MLP',
             traindata_loc=DataLocation('memory', 'my_traindata.json'),
             valdata_loc=DataLocation('memory', 'my_valdata.json'),
             features_loc=DataLocation('memory', ''),
@@ -162,6 +165,7 @@ class TrainClassifierMsg(DataClass):
             'job_token': self.job_token,
             'trainer_name': self.trainer_name,
             'nbr_epochs': self.nbr_epochs,
+            'clf_type': self.clf_type,
             'traindata_loc': self.traindata_loc.serialize(),
             'valdata_loc': self.valdata_loc.serialize(),
             'features_loc': self.features_loc.serialize(),
@@ -178,6 +182,7 @@ class TrainClassifierMsg(DataClass):
             job_token=data['job_token'],
             trainer_name=data['trainer_name'],
             nbr_epochs=data['nbr_epochs'],
+            clf_type=data['clf_type'],
             traindata_loc=DataLocation.deserialize(data['traindata_loc']),
             valdata_loc=DataLocation.deserialize(data['valdata_loc']),
             features_loc=DataLocation.deserialize(data['features_loc']),

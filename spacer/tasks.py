@@ -53,7 +53,8 @@ def train_classifier(msg: TrainClassifierMsg) -> TrainClassifierReturnMsg:
         ImageLabels.load(msg.valdata_loc),
         msg.nbr_epochs,
         [load_classifier(loc) for loc in msg.previous_model_locs],
-        msg.features_loc
+        msg.features_loc,
+        msg.clf_type
     )
 
     # Store

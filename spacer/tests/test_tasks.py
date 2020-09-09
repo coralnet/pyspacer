@@ -156,37 +156,39 @@ class TestTrainClassifier(unittest.TestCase):
         valdata.store(valdata_loc)
 
         # Train once by calling directly so that we have a previous classifier.
-        clf, _ = train(traindata, features_loc_template, 1)
+        for clf_type in ['LR', 'MLP']:
+            clf, _ = train(traindata, features_loc_template, 1, clf_type)
 
-        previous_classifier_loc = DataLocation(storage_type='memory',
-                                               key='pc')
-        store_classifier(previous_classifier_loc, clf)
+            previous_classifier_loc = DataLocation(storage_type='memory',
+                                                   key='pc')
+            store_classifier(previous_classifier_loc, clf)
 
-        valresult_loc = DataLocation(storage_type='memory', key='val_res')
+            valresult_loc = DataLocation(storage_type='memory', key='val_res')
 
-        msg = TrainClassifierMsg(
-            job_token='test',
-            trainer_name='minibatch',
-            nbr_epochs=1,
-            traindata_loc=traindata_loc,
-            valdata_loc=valdata_loc,
-            features_loc=features_loc_template,
-            previous_model_locs=[previous_classifier_loc],
-            model_loc=DataLocation(storage_type='memory', key='model'),
-            valresult_loc=valresult_loc
-        )
-        return_msg = train_classifier(msg)
-        self.assertTrue(type(return_msg) == TrainClassifierReturnMsg)
+            msg = TrainClassifierMsg(
+                job_token='test',
+                trainer_name='minibatch',
+                nbr_epochs=1,
+                clf_type=clf_type,
+                traindata_loc=traindata_loc,
+                valdata_loc=valdata_loc,
+                features_loc=features_loc_template,
+                previous_model_locs=[previous_classifier_loc],
+                model_loc=DataLocation(storage_type='memory', key='model'),
+                valresult_loc=valresult_loc
+            )
+            return_msg = train_classifier(msg)
+            self.assertTrue(type(return_msg) == TrainClassifierReturnMsg)
 
-        # Do some checks on ValResults
-        val_res = ValResults.load(valresult_loc)
-        self.assertTrue(type(val_res) == ValResults)
-        self.assertEqual(len(val_res.gt),  len(val_res.est))
-        self.assertEqual(len(val_res.gt),  len(val_res.scores))
+            # Do some checks on ValResults
+            val_res = ValResults.load(valresult_loc)
+            self.assertTrue(type(val_res) == ValResults)
+            self.assertEqual(len(val_res.gt),  len(val_res.est))
+            self.assertEqual(len(val_res.gt),  len(val_res.scores))
 
-        # Check that the amount of labels corresponds to the given val_data.
-        self.assertEqual(len(val_res.gt),
-                         len(valdata) * valdata.samples_per_image)
+            # Check that the amount of labels corresponds to the given val_data.
+            self.assertEqual(len(val_res.gt),
+                             len(valdata) * valdata.samples_per_image)
 
 
 class TestClassifyFeatures(unittest.TestCase):
