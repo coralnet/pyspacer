@@ -6,8 +6,8 @@ on the exported spacer training data and confirms that
 it get similar (or higher) performance than production.
 
 To use do:
-python scripts/features_extracting_training.py \
-    efficientnet_b0_ver1 294 10 /path/to/features
+python scripts/regression/efficientnet_extractor.py \
+    efficientnet_b0_ver1 294 10 MLP /path/to/features
 """
 
 import os
@@ -132,7 +132,8 @@ class TrainClassifier:
     def __call__(self,
                  source_id: int,
                  n_epochs: int = 5,
-                 export_name: str = 'beta_export') -> None:
+                 export_name: str = 'beta_export',
+                 clf_type: str = 'MLP') -> None:
 
         print('-> Downloading data for source id: {}.'.format(source_id))
         source_root = os.path.join(self.local_path, 's{}'.format(source_id))
@@ -148,17 +149,19 @@ class TrainClassifier:
 
         # Perform training
         print("-> Training...")
-        start_training(source_root, train_labels, val_labels, n_epochs)
+        start_training(source_root, train_labels, val_labels, n_epochs,
+                       clf_type)
 
 
 def main(extractor_name: str,
          source_id: int,
          n_epochs: int,
+         clf_type: str,
          local_path: str) -> None:
     extractor = ExtractFeatures(extractor_name, local_path)
     extractor(source_id)
     classifier = TrainClassifier(local_path)
-    classifier(source_id, n_epochs)
+    classifier(source_id, n_epochs, clf_type=clf_type)
 
 
 if __name__ == '__main__':
