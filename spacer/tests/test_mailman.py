@@ -122,11 +122,11 @@ class TestProcessJobErrorHandling(unittest.TestCase):
                              valresult_loc=DataLocation(storage_type='memory',
                                                         key='val_res'))])
 
-        return_msg = process_job(msg)
-        self.assertFalse(return_msg.ok)
-        self.assertIn("KeyError", return_msg.error_message)
-        self.assertIn("my_traindata", return_msg.error_message)
-        self.assertTrue(type(return_msg), JobReturnMsg)
+            return_msg = process_job(msg)
+            self.assertFalse(return_msg.ok)
+            self.assertIn("KeyError", return_msg.error_message)
+            self.assertIn("my_traindata", return_msg.error_message)
+            self.assertTrue(type(return_msg), JobReturnMsg)
 
 
 class TestProcessJobMultiple(unittest.TestCase):
