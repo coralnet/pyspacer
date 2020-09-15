@@ -55,7 +55,7 @@ class TestTrain(unittest.TestCase):
                                   feature_dim,
                                   feature_loc)
 
-        for clf_type in ['LR', 'MLP']:
+        for clf_type in config.CLASSIFIER_TYPES:
             clf_calibrated, ref_acc = train(labels, feature_loc, num_epochs,
                                             clf_type)
 
@@ -98,7 +98,7 @@ class TestTrain(unittest.TestCase):
                                   feature_dim,
                                   feature_loc)
 
-        for clf_type in ['LR', 'MLP']:
+        for clf_type in config.CLASSIFIER_TYPES:
             self.assertRaises(ValueError, train, labels, feature_loc,
                               num_epochs, clf_type)
 
@@ -117,7 +117,7 @@ class TestTrain(unittest.TestCase):
                                   feature_dim,
                                   feature_loc)
 
-        for clf_type in ['LR', 'MLP']:
+        for clf_type in config.CLASSIFIER_TYPES:
             self.assertRaises(ValueError, train, labels, feature_loc,
                               num_epochs, clf_type)
 
@@ -127,7 +127,7 @@ class TestEvaluateClassifier(unittest.TestCase):
     def test_simple(self):
         feature_loc = DataLocation(storage_type='memory', key='')
         train_data = make_random_data(10, [1, 2], 4, 5, feature_loc)
-        for clf_type in ['LR', 'MLP']:
+        for clf_type in config.CLASSIFIER_TYPES:
             clf, _ = train(train_data, feature_loc, 1, clf_type)
 
             val_data = make_random_data(3, [1, 2], 4, 5, feature_loc)
@@ -140,7 +140,7 @@ class TestEvaluateClassifier(unittest.TestCase):
 
         feature_loc = DataLocation(storage_type='memory', key='')
         train_data = make_random_data(10, [1, 2], 4, 5, feature_loc)
-        for clf_type in ['LR', 'MLP']:
+        for clf_type in config.CLASSIFIER_TYPES:
             clf, _ = train(train_data, feature_loc, 1, clf_type)
 
             # Note here that class_list for the val_data doesn't include

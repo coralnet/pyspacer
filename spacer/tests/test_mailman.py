@@ -100,7 +100,7 @@ class TestProcessJobErrorHandling(unittest.TestCase):
 
     def test_train_classifier(self):
 
-        for clf_type in ['LR', 'MLP']:
+        for clf_type in config.CLASSIFIER_TYPES:
             msg = JobMsg(task_name='train_classifier',
                          tasks=[TrainClassifierMsg(
                              job_token='my_job',

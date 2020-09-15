@@ -40,7 +40,7 @@ class TestDefaultTrainerDummyData(unittest.TestCase):
                                     feature_loc)
 
         trainer = trainer_factory('minibatch')
-        for clf_type in ['LR', 'MLP']:
+        for clf_type in config.CLASSIFIER_TYPES:
             pc_clf1, _ = train(train_data, feature_loc, 1, clf_type)
             pc_clf2, _ = train(train_data, feature_loc, 1, clf_type)
 

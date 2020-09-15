@@ -156,7 +156,7 @@ class TestTrainClassifier(unittest.TestCase):
         valdata.store(valdata_loc)
 
         # Train once by calling directly so that we have a previous classifier.
-        for clf_type in ['LR', 'MLP']:
+        for clf_type in config.CLASSIFIER_TYPES:
             clf, _ = train(traindata, features_loc_template, 1, clf_type)
 
             previous_classifier_loc = DataLocation(storage_type='memory',
