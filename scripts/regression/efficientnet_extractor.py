@@ -20,7 +20,9 @@ from spacer import config
 from spacer.tasks import extract_features
 from spacer.messages import DataLocation, ExtractFeaturesMsg
 
-from scripts.regression.utils import build_traindata, start_training
+from scripts.regression.utils import build_traindata, \
+    start_training, \
+    cache_local
 
 
 class ExtractFeatures:
@@ -92,43 +94,6 @@ class TrainClassifier:
                  local_path: str) -> None:
         self.local_path = local_path
 
-    @staticmethod
-    def _cache(source_id: int,
-               source_root: str,
-               feats_root: str,
-               export_name: str = 'beta_export') -> None:
-        conn = config.get_s3_conn()
-        bucket = conn.get_bucket('spacer-trainingdata', validate=True)
-
-        if not os.path.isdir(source_root):
-            os.system('mkdir -p ' + source_root)
-        if not os.path.isdir(feats_root):
-            os.system('mkdir -p ' + feats_root)
-
-        mdkey = bucket.get_key('{}/s{}/meta.json'.format(
-            export_name, source_id
-        ))
-        all_keys = bucket.list(prefix='{}/s{}/images'.format(
-            export_name, source_id
-        ))
-        anns_keys = [key for key in all_keys
-                     if key.name.endswith('.anns.json')]
-        meta_keys = [key for key in all_keys
-                     if key.name.endswith('.meta.json')]
-        assert len(anns_keys) == len(meta_keys)
-
-        print("-> Downloading {} metadata...".format(len(anns_keys)))
-        mdkey.get_contents_to_filename(os.path.join(source_root, 'meta.json'))
-        for idx in range(len(anns_keys)):
-            _, anns_filename = anns_keys[idx].name.split('images/')
-            _, meta_filename = meta_keys[idx].name.split('images/')
-            anns_local = os.path.join(feats_root, anns_filename)
-            meta_local = os.path.join(feats_root, meta_filename)
-            if not os.path.exists(anns_local):
-                anns_keys[idx].get_contents_to_filename(anns_local)
-            if not os.path.exists(meta_local):
-                meta_keys[idx].get_contents_to_filename(meta_local)
-
     def __call__(self,
                  source_id: int,
                  n_epochs: int = 5,
@@ -137,15 +102,16 @@ class TrainClassifier:
 
         print('-> Downloading data for source id: {}.'.format(source_id))
         source_root = os.path.join(self.local_path, 's{}'.format(source_id))
-        feats_root = os.path.join(source_root, 'images')
-        self._cache(
-            source_id, source_root, feats_root, export_name
-        )
+        image_root = os.path.join(source_root, 'images')
+
+        # Download all data to local.
+        # Train and eval will run much faster that way...
+        cache_local(source_root, image_root, export_name, source_id)
 
         # Create the train and val ImageLabels data structures.
         print('-> Assembling train and val data for source id: {}'.format(
             source_id))
-        train_labels, val_labels = build_traindata(feats_root)
+        train_labels, val_labels = build_traindata(image_root)
 
         # Perform training
         print("-> Training...")

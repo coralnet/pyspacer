@@ -17,12 +17,13 @@ import json
 import os
 
 import fire
-import tqdm
 
 import warnings
 
 from spacer import config
-from scripts.regression.utils import build_traindata, start_training
+from scripts.regression.utils import build_traindata, \
+    start_training, \
+    cache_local
 
 
 class ClassifierRegressionTest:
@@ -35,38 +36,7 @@ class ClassifierRegressionTest:
     ...
     """
     @staticmethod
-    def _cache_local(source_root: str,
-                     image_root: str,
-                     export_name: str,
-                     source_id: int) -> None:
-
-        """ Download source data to local """
-        conn = config.get_s3_conn()
-        bucket = conn.get_bucket('spacer-trainingdata', validate=True)
-        if not os.path.exists(source_root):
-            os.mkdir(source_root)
-        if not os.path.exists(image_root):
-            os.mkdir(image_root)
-
-        mdkey = bucket.get_key('{}/s{}/meta.json'.format(export_name,
-                                                         source_id))
-        mdkey.get_contents_to_filename(os.path.join(source_root, 'meta.json'))
-
-        img_keys = bucket.list(prefix='{}/s{}/images'.format(export_name,
-                                                             source_id))
-
-        img_keys = [key for key in img_keys if key.name.endswith('json')]
-
-        print("-> Downloading {} metadata and feature files...".
-              format(len(img_keys)))
-        for key in tqdm.tqdm(img_keys):
-            _, filename = key.name.split('images')
-            local_path = os.path.join(image_root, filename.lstrip('/'))
-            if not os.path.exists(local_path):
-                key.get_contents_to_filename(local_path)
-
-    def train(self,
-              source_id: int,
+    def train(source_id: int,
               local_path: str,
               n_epochs: int = 5,
               export_name: str = 'beta_export',
@@ -83,7 +53,7 @@ class ClassifierRegressionTest:
         # Download all data to local.
         # Train and eval will run much faster that way...
         print('-> Downloading data for source id: {}.'.format(source_id))
-        self._cache_local(source_root, image_root, export_name, source_id)
+        cache_local(source_root, image_root, export_name, source_id)
 
         # Build traindata
         print('-> Assembling train and val data for source id: {}'.format(

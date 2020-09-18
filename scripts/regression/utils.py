@@ -1,11 +1,40 @@
 import glob
 import json
+import tqdm
 import os
 from typing import Tuple
 
+from spacer import config
 from spacer.data_classes import ImageLabels
 from spacer.messages import DataLocation
 from spacer.train_classifier import trainer_factory
+
+
+def cache_local(source_root: str,
+                image_root: str,
+                export_name: str,
+                source_id: int) -> None:
+    # Download data to the local to speed up training
+    conn = config.get_s3_conn()
+    bucket = conn.get_bucket('spacer-trainingdata', validate=True)
+    if not os.path.exists(source_root):
+        os.system('mkdir -p ' + source_root)
+    if not os.path.exists(image_root):
+        os.system('mkdir -p ' + image_root)
+
+    mdkey = bucket.get_key('{}/s{}/meta.json'.format(export_name, source_id))
+    mdkey.get_contents_to_filename(os.path.join(source_root, 'meta.json'))
+    img_keys = bucket.list(prefix='{}/s{}/images'.format(export_name,
+                                                         source_id))
+    img_keys = [key for key in img_keys if key.name.endswith('json')]
+
+    print("-> Downloading {} metadata and feature files...".
+          format(len(img_keys)))
+    for key in tqdm.tqdm(img_keys):
+        _, filename = key.name.split('images')
+        local_path = os.path.join(image_root, filename.lstrip('/'))
+        if not os.path.exists(local_path):
+            key.get_contents_to_filename(local_path)
 
 
 def build_traindata(image_root: str) -> Tuple[ImageLabels, ImageLabels]:
