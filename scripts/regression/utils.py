@@ -1,12 +1,15 @@
 import glob
 import json
-import tqdm
 import os
+import random
 from typing import Tuple
+
+import tqdm
 
 from spacer import config
 from spacer.data_classes import ImageLabels
-from spacer.messages import DataLocation
+from spacer.messages import DataLocation, ExtractFeaturesMsg
+from spacer.tasks import extract_features
 from spacer.train_classifier import trainer_factory
 
 
@@ -28,16 +31,19 @@ def cache_local(source_root: str,
     mdkey.get_contents_to_filename(os.path.join(source_root, 'meta.json'))
     all_keys = bucket.list(prefix='{}/s{}/images'.format(export_name,
                                                          source_id))
-    img_keys = [key for key in all_keys if key.name.endswith(('anns.json',
-                                                              'meta.json'))]
+    selected_keys = [key for key in all_keys if key.name.endswith(
+        ('anns.json', 'meta.json'))]
     if cache_image:
-        img_keys += [key for key in all_keys if key.name.endswith('jpg')]
+        selected_keys += [key for key in all_keys if
+                          key.name.endswith('jpg')]
     if cache_feats:
-        img_keys += [key for key in all_keys if key.name.endswith('features.json')]
+        selected_keys += [key for key in all_keys if
+                          key.name.endswith('features.json')]
 
     print("-> Downloading {} metadata and image/feature files...".
-          format(len(img_keys)))
-    for key in tqdm.tqdm(img_keys):
+          format(len(selected_keys)))
+    random.shuffle(selected_keys)
+    for key in tqdm.tqdm(selected_keys):
         _, filename = key.name.split('images')
         local_path = os.path.join(image_root, filename.lstrip('/'))
         if not os.path.exists(local_path):
@@ -45,6 +51,8 @@ def cache_local(source_root: str,
 
 
 def build_traindata(image_root: str) -> Tuple[ImageLabels, ImageLabels]:
+
+    print('-> Assembling data in {}...'.format(image_root))
     # Create the train and val ImageLabels data structures.
     ann_files = glob.glob(os.path.join(image_root, "*.anns.json"))
     train_labels = ImageLabels(data={})
@@ -72,11 +80,13 @@ def build_traindata(image_root: str) -> Tuple[ImageLabels, ImageLabels]:
     return train_labels, val_labels
 
 
-def start_training(source_root: str,
-                   train_labels: ImageLabels,
-                   val_labels: ImageLabels,
-                   n_epochs: int,
-                   clf_type: str) -> None:
+def do_training(source_root: str,
+                train_labels: ImageLabels,
+                val_labels: ImageLabels,
+                n_epochs: int,
+                clf_type: str) -> None:
+    print("-> Training classifier for source {}...".format(source_root))
+
     feature_loc = DataLocation(storage_type='filesystem', key='')
 
     trainer = trainer_factory('minibatch')
@@ -91,3 +101,31 @@ def start_training(source_root: str,
         100 * float(source_meta['best_robot_accuracy']),
         100 * return_message.acc)
     )
+
+
+def do_extract_features(extractor_name, image_root):
+
+    img_keys = [os.path.join(image_root, key) for key in
+                os.listdir(image_root) if key.endswith('jpg')]
+
+    print("-> Extracting features for images in {}".format(image_root))
+    for idx, im_key in enumerate(img_keys):
+        feature_path = im_key.replace('jpg', 'features.json')
+        anns_path = im_key.replace('jpg', 'anns.json')
+        if not os.path.exists(feature_path):
+            with open(anns_path, 'r') as f:
+                anns = json.load(f)
+
+            msg = ExtractFeaturesMsg(
+                job_token='extract_job',
+                feature_extractor_name=extractor_name,
+                rowcols=[(ann['row']-1, ann['col']-1) for ann in anns],
+                image_loc=DataLocation(
+                    storage_type='filesystem',
+                    key=im_key),
+                feature_loc=DataLocation(
+                    storage_type='filesystem',
+                    key=feature_path
+                )
+            )
+            _ = extract_features(msg)

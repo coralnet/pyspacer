@@ -5,9 +5,9 @@ This file provides scripts for
 
 To use do:
 
-python classifier_training_regression.py list
+python train_classifier.py list
 
-python classifier_training_regression.py source_id ~/tmp_folder
+python train_classifier.py train source_id ~/tmp_folder
 
 where source_id is an integer defining which source to train.
 """
@@ -22,7 +22,7 @@ import warnings
 
 from spacer import config
 from scripts.regression.utils import build_traindata, \
-    start_training, \
+    do_training, \
     cache_local
 
 
@@ -52,18 +52,14 @@ class ClassifierRegressionTest:
 
         # Download all data to local.
         # Train and eval will run much faster that way...
-        print('-> Downloading data for source id: {}.'.format(source_id))
         cache_local(source_root, image_root, export_name, source_id,
                     cache_image=False, cache_feats=True)
 
         # Build traindata
-        print('-> Assembling train and val data for source id: {}'.format(
-            source_id))
         train_labels, val_labels = build_traindata(image_root)
 
         # Perform training
-        print("-> Training...")
-        start_training(source_root, train_labels, val_labels, n_epochs, clf_type)
+        do_training(source_root, train_labels, val_labels, n_epochs, clf_type)
 
     @staticmethod
     def list(export_name: str = 'beta_export') -> None:
