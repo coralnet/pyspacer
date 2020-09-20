@@ -40,37 +40,28 @@ class ExtractFeatures:
     def __call__(self,
                  source_id: int,
                  export_name: str = 'beta_export') -> None:
-        conn = config.get_s3_conn()
-        bucket = conn.get_bucket('spacer-trainingdata', validate=True)
+        source_root = os.path.join(self.local_path, 's{}'.format(source_id))
+        image_root = os.path.join(source_root, 'images')
 
-        print("-> Fetching {} image and annotation meta files...".format(
-            source_id))
-        all_keys = bucket.list(prefix='{}/s{}/images'.format(
-            export_name, source_id))
-        img_keys = [key.name for key in all_keys if key.name.endswith('jpg')]
-        ann_keys = [Key(bucket=bucket, name=img.replace('jpg', 'anns.json'))
-                    for img in img_keys]
+        # Download image, metadata and labels for local feature extraction
+        cache_local(source_root, image_root, export_name, source_id,
+                    cache_image=True, cache_feats=False)
 
-        feats_local_path = os.path.join(self.local_path, 's{}'.format(
-            source_id), 'images')
-        if not os.path.isdir(feats_local_path):
-            os.system('mkdir -p ' + feats_local_path)
+        img_keys = [os.path.join(image_root, key) for key in
+                    os.listdir(image_root) if key.endswith('jpg')]
 
         print("-> Extracting features...")
         for idx, im_key in enumerate(img_keys):
-            feature_path = os.path.join(
-                feats_local_path,
-                im_key.split('/')[-1].replace('jpg', 'features.json')
-            )
+            feature_path = im_key.replace('jpg', 'features.json')
+            anns_path = im_key.replace('jpg', 'anns.json')
             if not os.path.exists(feature_path):
-                anns = json.load(BytesIO(
-                    ann_keys[idx].get_contents_as_string()
-                ))
+                with open(anns_path, 'r') as f:
+                    anns = json.load(f)
                 rowcols = [(ann['row']-1, ann['col']-1) for ann in anns]
 
-                img_loc = DataLocation(storage_type='s3',
-                                       key=im_key,
-                                       bucket_name='spacer-trainingdata')
+                img_loc = DataLocation(
+                    storage_type='filesystem',
+                    key=im_key)
                 feature_loc = DataLocation(
                     storage_type='filesystem',
                     key=feature_path
@@ -100,13 +91,8 @@ class TrainClassifier:
                  export_name: str = 'beta_export',
                  clf_type: str = 'MLP') -> None:
 
-        print('-> Downloading data for source id: {}.'.format(source_id))
         source_root = os.path.join(self.local_path, 's{}'.format(source_id))
         image_root = os.path.join(source_root, 'images')
-
-        # Download all data to local.
-        # Train and eval will run much faster that way...
-        cache_local(source_root, image_root, export_name, source_id)
 
         # Create the train and val ImageLabels data structures.
         print('-> Assembling train and val data for source id: {}'.format(

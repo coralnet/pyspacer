@@ -53,7 +53,8 @@ class ClassifierRegressionTest:
         # Download all data to local.
         # Train and eval will run much faster that way...
         print('-> Downloading data for source id: {}.'.format(source_id))
-        cache_local(source_root, image_root, export_name, source_id)
+        cache_local(source_root, image_root, export_name, source_id,
+                    cache_image=False, cache_feats=True)
 
         # Build traindata
         print('-> Assembling train and val data for source id: {}'.format(

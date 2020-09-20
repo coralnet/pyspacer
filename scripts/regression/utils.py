@@ -13,7 +13,9 @@ from spacer.train_classifier import trainer_factory
 def cache_local(source_root: str,
                 image_root: str,
                 export_name: str,
-                source_id: int) -> None:
+                source_id: int,
+                cache_image: bool,
+                cache_feats: bool) -> None:
     # Download data to the local to speed up training
     conn = config.get_s3_conn()
     bucket = conn.get_bucket('spacer-trainingdata', validate=True)
@@ -24,11 +26,16 @@ def cache_local(source_root: str,
 
     mdkey = bucket.get_key('{}/s{}/meta.json'.format(export_name, source_id))
     mdkey.get_contents_to_filename(os.path.join(source_root, 'meta.json'))
-    img_keys = bucket.list(prefix='{}/s{}/images'.format(export_name,
+    all_keys = bucket.list(prefix='{}/s{}/images'.format(export_name,
                                                          source_id))
-    img_keys = [key for key in img_keys if key.name.endswith('json')]
+    img_keys = [key for key in all_keys if key.name.endswith(('anns.json',
+                                                              'meta.json'))]
+    if cache_image:
+        img_keys += [key for key in all_keys if key.name.endswith('jpg')]
+    if cache_feats:
+        img_keys += [key for key in all_keys if key.name.endswith('features.json')]
 
-    print("-> Downloading {} metadata and feature files...".
+    print("-> Downloading {} metadata and image/feature files...".
           format(len(img_keys)))
     for key in tqdm.tqdm(img_keys):
         _, filename = key.name.split('images')
