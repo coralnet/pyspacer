@@ -113,6 +113,11 @@ MODEL_WEIGHTS_SHA = {
         'c3dc6d304179c6729c0a0b3d4e60c728bdcf0d82687deeba54af71827467204c',
 }
 
+CLASSIFIER_TYPES = [
+    'LR',
+    'MLP'
+]
+
 TRAINER_NAMES = [
     'minibatch'
 ]

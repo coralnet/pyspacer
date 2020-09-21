@@ -100,31 +100,33 @@ class TestProcessJobErrorHandling(unittest.TestCase):
 
     def test_train_classifier(self):
 
-        msg = JobMsg(task_name='train_classifier',
-                     tasks=[TrainClassifierMsg(
-                         job_token='my_job',
-                         trainer_name='minibatch',
-                         nbr_epochs=1,
-                         traindata_loc=DataLocation(storage_type='memory',
-                                                    key='my_traindata'),
-                         valdata_loc=DataLocation(storage_type='memory',
-                                                  key='my_valdata'),
-                         features_loc=DataLocation(storage_type='memory',
-                                                   key='my_feats'),
-                         previous_model_locs=[
-                             DataLocation(storage_type='memory',
-                                          key='my_previous_model')
-                         ],
-                         model_loc=DataLocation(storage_type='memory',
-                                                key='model'),
-                         valresult_loc=DataLocation(storage_type='memory',
-                                                    key='val_res'))])
+        for clf_type in config.CLASSIFIER_TYPES:
+            msg = JobMsg(task_name='train_classifier',
+                         tasks=[TrainClassifierMsg(
+                             job_token='my_job',
+                             trainer_name='minibatch',
+                             nbr_epochs=1,
+                             clf_type=clf_type,
+                             traindata_loc=DataLocation(storage_type='memory',
+                                                        key='my_traindata'),
+                             valdata_loc=DataLocation(storage_type='memory',
+                                                      key='my_valdata'),
+                             features_loc=DataLocation(storage_type='memory',
+                                                       key='my_feats'),
+                             previous_model_locs=[
+                                 DataLocation(storage_type='memory',
+                                              key='my_previous_model')
+                             ],
+                             model_loc=DataLocation(storage_type='memory',
+                                                    key='model'),
+                             valresult_loc=DataLocation(storage_type='memory',
+                                                        key='val_res'))])
 
-        return_msg = process_job(msg)
-        self.assertFalse(return_msg.ok)
-        self.assertIn("KeyError", return_msg.error_message)
-        self.assertIn("my_traindata", return_msg.error_message)
-        self.assertTrue(type(return_msg), JobReturnMsg)
+            return_msg = process_job(msg)
+            self.assertFalse(return_msg.ok)
+            self.assertIn("KeyError", return_msg.error_message)
+            self.assertIn("my_traindata", return_msg.error_message)
+            self.assertTrue(type(return_msg), JobReturnMsg)
 
 
 class TestProcessJobMultiple(unittest.TestCase):
