@@ -5,6 +5,7 @@ import random
 from typing import Tuple
 
 import tqdm
+import logging
 
 from spacer import config
 from spacer.data_classes import ImageLabels
@@ -35,7 +36,7 @@ def cache_local(source_root: str,
         ('anns.json', 'meta.json'))]
     if cache_image:
         selected_keys += [key for key in all_keys if
-                          key.name.endswith('jpg')]
+                          key.name.endswith(('jpg', 'png'))]
     if cache_feats:
         selected_keys += [key for key in all_keys if
                           key.name.endswith('features.json')]
@@ -109,7 +110,7 @@ def do_extract_features(extractor_name, image_root):
                 os.listdir(image_root) if key.endswith('jpg')]
 
     print("-> Extracting features for images in {}".format(image_root))
-    for idx, im_key in enumerate(img_keys):
+    for im_key in tqdm.tqdm(img_keys):
         feature_path = im_key.replace('jpg', 'features.json')
         anns_path = im_key.replace('jpg', 'anns.json')
         if not os.path.exists(feature_path):
@@ -117,7 +118,7 @@ def do_extract_features(extractor_name, image_root):
                 anns = json.load(f)
 
             msg = ExtractFeaturesMsg(
-                job_token='extract_job',
+                job_token=im_key,
                 feature_extractor_name=extractor_name,
                 rowcols=[(ann['row']-1, ann['col']-1) for ann in anns],
                 image_loc=DataLocation(

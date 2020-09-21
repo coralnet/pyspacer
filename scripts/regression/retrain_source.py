@@ -9,7 +9,7 @@ import json
 import os
 
 import fire
-
+import logging
 import warnings
 
 from spacer import config
@@ -39,6 +39,12 @@ def train(source_id: int,
 
     source_root = os.path.join(local_path, 's{}'.format(source_id))
     image_root = os.path.join(source_root, 'images')
+    if not os.path.exists(image_root):
+        os.makedirs(image_root)
+
+    logging.basicConfig(format='%(asctime)s %(message)s',
+                        filename=os.path.join(source_root, 'retrain.log'),
+                        level=logging.INFO)
 
     # Download all data to local.
     if extractor_name is None:
