@@ -4,7 +4,7 @@ This file contains a set of pytorch utility functions
 
 from collections import OrderedDict
 from typing import Any, List
-
+import logging
 import numpy as np
 import torch
 import hashlib
@@ -61,6 +61,7 @@ def extract_feature(patch_list: List,
     :param pyparams: parameter dict
     :return: a list of features
     """
+    logging.info("-> Extracting features...")
     # Model setup and load pretrained weight
     net = models.get_model(model_type=pyparams['model_type'],
                            model_name=pyparams['model_name'],
@@ -81,4 +82,5 @@ def extract_feature(patch_list: List,
             features = net.extract_features(batch)
         feats_list.extend(features.tolist())
 
+    logging.info("-> Done extracting features.")
     return feats_list

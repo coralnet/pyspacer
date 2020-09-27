@@ -1,4 +1,8 @@
+import json
+import logging
+
 from spacer import config
+from spacer.messages import JobReturnMsg
 
 
 def sqs_status(queue_name):
@@ -38,3 +42,24 @@ def purge(queue_name):
         m = queue.read()
         count += 1
     print('-> Purged {} messages from {}'.format(count, queue_name))
+
+
+def fetch_jobs(queue_name):
+
+    conn = config.get_sqs_conn()
+    queue = conn.get_queue(queue_name)
+    m = queue.read()
+    job_cnt = 0
+    while m is not None:
+        return_msg = JobReturnMsg.deserialize(json.loads(m.get_body()))
+        job_token = return_msg.original_job.tasks[0].job_token
+        if return_msg.ok:
+            logging.info('{} done in {:.2f} s.'.format(
+                job_token, return_msg.results[0].runtime))
+        else:
+            logging.info('{} failed with: {}.'.format(
+                job_token, return_msg.error_message))
+        queue.delete_message(m)
+        m = queue.read()
+        job_cnt += 1
+    return job_cnt

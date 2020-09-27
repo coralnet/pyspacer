@@ -6,11 +6,52 @@ import json
 import logging
 
 import fire
+import os
 
 from spacer import config
 from spacer.messages import JobMsg
 from spacer.tasks import \
     process_job
+
+
+def env_job():
+
+    out_queue_name = os.getenv('OUT_QUEUE')
+    if out_queue_name is None:
+        out_queue_name = 'spacer_test_results'
+
+    job_json = os.getenv('JOB_MSG')
+    logging.info("-> Received boto job for ENV {}.".format(job_json))
+
+    try:
+        logging.info("-> Deserializing job_json ...")
+        job_msg_dict = json.loads(job_json)
+        logging.info("-> Done deserializing job.")
+        logging.info("-> Instantiating job message...")
+        job_msg = JobMsg.deserialize(job_msg_dict)
+        logging.info("-> Done instantiating job message.")
+        logging.info("-> Processing job...")
+        job_return_msg = process_job(job_msg)
+        logging.info("-> Done processing job.")
+        job_return_msg_dict = job_return_msg.serialize()
+
+    except Exception as e:
+        # Handle deserialization errors directly in mailman.
+        # All other errors are handled in "handle_message" function.
+        job_return_msg_dict = {
+            'original_job': job_json,
+            'ok': False,
+            'results': None,
+            'error_message': 'Error deserializing message: ' + repr(e)
+        }
+
+    # Return
+    logging.info("-> Writing results message to {}.".format(out_queue_name))
+    conn = config.get_sqs_conn()
+    out_queue = conn.get_queue(out_queue_name)
+    m_out = out_queue.new_message(body=json.dumps(job_return_msg_dict))
+    out_queue.write(m_out)
+    return True
 
 
 def sqs_fetch(in_queue: str = 'spacer_test_jobs',  # pragma: no cover
@@ -32,7 +73,7 @@ def sqs_fetch(in_queue: str = 'spacer_test_jobs',  # pragma: no cover
     m = in_queue.read()
     if m is None:
         logging.info("-> No messages in inqueue.")
-        return False
+        return True
     job_msg_dict = json.loads(m.get_body())
     # Try to deserialize message
     try:

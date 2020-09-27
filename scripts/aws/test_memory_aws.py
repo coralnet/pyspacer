@@ -13,10 +13,9 @@ from datetime import datetime
 import fire
 from PIL import Image
 
-from scripts.aws.utils import sqs_status, purge
+from scripts.aws.utils import sqs_status, purge, fetch_jobs
 from spacer import config
-from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg, \
-    JobReturnMsg
+from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg
 from spacer.storage import store_image
 
 IMAGE_SIZES = [
@@ -74,27 +73,6 @@ def log(msg):
     with open('memory_test.log', 'a') as f:
         f.write(msg + '\n')
         print(msg)
-
-
-def fetch_jobs(queue_name):
-
-    conn = config.get_sqs_conn()
-    queue = conn.get_queue(queue_name)
-    m = queue.read()
-    job_cnt = 0
-    while m is not None:
-        return_msg = JobReturnMsg.deserialize(json.loads(m.get_body()))
-        job_token = return_msg.original_job.tasks[0].job_token
-        if return_msg.ok:
-            log('{} done in {:.2f} s.'.format(job_token,
-                                              return_msg.results[0].runtime))
-        else:
-            log('{} failed with: {}.'.format(job_token,
-                                             return_msg.error_message))
-        queue.delete_message(m)
-        m = queue.read()
-        job_cnt += 1
-    return job_cnt
 
 
 def main(jobs_queue='spacer_test_jobs',
