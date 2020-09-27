@@ -1,19 +1,19 @@
-import boto3
-import json
+import time
 from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg
-from scripts.aws.utils import purge, fetch_jobs
+from scripts.aws.utils import \
+    purge, batch_queue_status, fetch_jobs, submit_to_batch
 import logging
 
 
-def submit_to_batch(results_queue):
+def submit(job_queue, results_queue):
 
     extract_task = ExtractFeaturesMsg(
         job_token='regression_job',
         feature_extractor_name='efficientnet_b0_ver1',
         rowcols=[(20, 265),
-               (76, 295),
-               (59, 274),
-               (151, 62)],
+                 (76, 295),
+                 (59, 274),
+                 (151, 62)],
         image_loc=DataLocation(storage_type='s3',
                                key='08bfc10v7t.png',
                                bucket_name='spacer-test'),
@@ -26,33 +26,27 @@ def submit_to_batch(results_queue):
         tasks=[extract_task]
     )
 
-    client = boto3.client('batch')
-    client.submit_job(
-        jobQueue='production',
-        jobName='test_job_from_spacer',
-        jobDefinition='spacer-job',
-        containerOverrides={
-            'environment': [
-                {
-                    'name': 'JOB_MSG',
-                    'value': json.dumps(msg.serialize()),
-                },
-                {
-                    'name': 'OUT_QUEUE',
-                    'value': results_queue,
-                },
-            ],
-        }
+    job_msg_loc = DataLocation(
+        storage_type='s3',
+        key='tmp_job.json',
+        bucket_name='spacer-test'
     )
+    msg.store(job_msg_loc)
+
+    submit_to_batch(job_queue, results_queue, job_msg_loc)
 
 
-def main(results_queue='spacer_test_results'):
+def main(job_queue='shakeout24', results_queue='spacer_test_results'):
 
     logging.info("Starting batch job shakeout.")
     purge(results_queue)
 
-    submit_to_batch(results_queue)
-    fetch_jobs(results_queue)
+    submit(job_queue, results_queue)
+    res_cnt = 0
+    while res_cnt == 0:
+        print(batch_queue_status(job_queue))
+        res_cnt = fetch_jobs(results_queue)
+        time.sleep(3)
 
 
 if __name__ == '__main__':

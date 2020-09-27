@@ -8,12 +8,14 @@ min across the extractors, and then get encoded in the config file.
 
 import json
 import time
+import boto3
 from datetime import datetime
 
 import fire
 from PIL import Image
 
-from scripts.aws.utils import sqs_status, purge, fetch_jobs
+from scripts.aws.utils import sqs_status, purge, fetch_jobs, submit_to_batch, \
+    batch_queue_status
 from spacer import config
 from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg
 from spacer.storage import store_image
@@ -21,32 +23,33 @@ from spacer.storage import store_image
 IMAGE_SIZES = [
     (5000, 5000),  # 10 mega pixel
     (10000, 10000),  # 100 mega pixel
-    (15000, 15000),  # 225 mega pixel
+    # (15000, 15000),  # 225 mega pixel
 ]
 
-NBR_ROWCOLS = [100, 1000, 3000, 5000]
+NBR_ROWCOLS = [10, 100, 200, 1000]
 
 
-def submit_jobs(queue_name):
+def submit_jobs(job_queue, results_queue):
 
-    log('Submitting memory test jobs to {}.'.format(queue_name))
+    log('Submitting memory test jobs to {}.'.format(job_queue))
 
     targets = []
-    for extractor_name in ['vgg16_coralnet_ver1', 'efficientnet_b0_ver1']:
+    for (nrows, ncols) in IMAGE_SIZES:
 
-        for (nrows, ncols) in IMAGE_SIZES:
+        # Create a image and upload to s3.
+        img = Image.new('RGB', (nrows, ncols))
+        img_loc = DataLocation(storage_type='s3',
+                               key='tmp/{}_{}.jpg'.format(nrows, ncols),
+                               bucket_name='spacer-test')
+        store_image(img_loc, img)
 
-            # Create a image and upload to s3.
-            img = Image.new('RGB', (nrows, ncols))
-            img_loc = DataLocation(storage_type='s3',
-                                   key='tmp/{}_{}.jpg'.format(nrows, ncols),
-                                   bucket_name='spacer-test')
-            store_image(img_loc, img)
+        for extractor_name in config.FEATURE_EXTRACTOR_NAMES:
 
             for npts in NBR_ROWCOLS:
-
+                feat_key = img_loc.key + '.{}{}.feats.json'.\
+                    format(npts, extractor_name)
                 feat_loc = DataLocation(storage_type='s3',
-                                        key=img_loc.key + '.{}feats'.format(npts),
+                                        key=feat_key,
                                         bucket_name='spacer-test')
                 msg = JobMsg(
                     task_name='extract_features',
@@ -58,10 +61,15 @@ def submit_jobs(queue_name):
                         image_loc=img_loc,
                         feature_loc=feat_loc
                     )])
-                conn = config.get_sqs_conn()
-                in_queue = conn.get_queue(queue_name)
-                msg = in_queue.new_message(body=json.dumps(msg.serialize()))
-                in_queue.write(msg)
+
+                job_msg_loc = DataLocation(
+                    storage_type='s3',
+                    key=feat_key + '.job_msg.json',
+                    bucket_name='spacer-test'
+                )
+                msg.store(job_msg_loc)
+
+                submit_to_batch(job_queue, results_queue, job_msg_loc)
                 targets.append(feat_loc)
 
     log('{} jobs submitted.'.format(len(targets)))
@@ -75,23 +83,21 @@ def log(msg):
         print(msg)
 
 
-def main(jobs_queue='spacer_test_jobs',
+def main(job_queue='shakeout',
          results_queue='spacer_test_results'):
 
     log("Starting ECS feature extraction.")
-    purge(jobs_queue)
     purge(results_queue)
-
-    _ = submit_jobs(jobs_queue)
+    base = batch_queue_status(job_queue)
+    print(base)
+    _ = submit_jobs(job_queue, results_queue)
     complete_count = 0
     while True:
-        jobs_todo, jobs_ongoing = sqs_status(jobs_queue)
-        results_todo, _ = sqs_status(results_queue)
+        print(batch_queue_status(job_queue, base))
         complete_count += fetch_jobs(results_queue)
-        log("Status: {} todo, {} ongoing, {} in results queue {} done".format(
-            jobs_todo, jobs_ongoing, results_todo, complete_count))
-        time.sleep(60)
+        log("{} complete".format(complete_count))
+        time.sleep(5)
 
 
 if __name__ == '__main__':
-    fire.Fire()
+    main()

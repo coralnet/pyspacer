@@ -1,8 +1,33 @@
 import json
 import logging
-
+import boto3
 from spacer import config
-from spacer.messages import JobReturnMsg
+from spacer.messages import JobReturnMsg, JobMsg, DataLocation
+
+BATCH_STATUS_NAMES = [
+        'SUBMITTED',
+        'PENDING',
+        'RUNNABLE',
+        'STARTING',
+        'RUNNING',
+        'SUCCEEDED',
+        'FAILED'
+    ]
+
+
+def batch_queue_status(queue_name, base=None):
+
+    client = boto3.client('batch')
+    report = {
+        status: len(client.list_jobs(
+            jobQueue=queue_name,
+            jobStatus=status
+        )['jobSummaryList']) for status in BATCH_STATUS_NAMES
+    }
+    if base is not None:
+        for status in BATCH_STATUS_NAMES:
+            report[status] -= base[status]
+    return report
 
 
 def sqs_status(queue_name):
@@ -51,6 +76,8 @@ def fetch_jobs(queue_name):
     m = queue.read()
     job_cnt = 0
     while m is not None:
+        body = m.get_body()
+        print("return message body:", body)
         return_msg = JobReturnMsg.deserialize(json.loads(m.get_body()))
         job_token = return_msg.original_job.tasks[0].job_token
         if return_msg.ok:
@@ -63,3 +90,25 @@ def fetch_jobs(queue_name):
         m = queue.read()
         job_cnt += 1
     return job_cnt
+
+
+def submit_to_batch(job_queue, results_queue, job_msg_loc: DataLocation):
+
+    client = boto3.client('batch')
+    client.submit_job(
+        jobQueue=job_queue,
+        jobName='test_job_from_spacer',
+        jobDefinition='spacer-job',
+        containerOverrides={
+            'environment': [
+                {
+                    'name': 'JOB_MSG_LOC',
+                    'value': json.dumps(job_msg_loc.serialize()),
+                },
+                {
+                    'name': 'OUT_QUEUE',
+                    'value': results_queue,
+                },
+            ],
+        }
+    )

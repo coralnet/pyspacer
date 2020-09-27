@@ -9,7 +9,7 @@ import fire
 import os
 
 from spacer import config
-from spacer.messages import JobMsg
+from spacer.messages import JobMsg, DataLocation
 from spacer.tasks import \
     process_job
 
@@ -20,17 +20,20 @@ def env_job():
     if out_queue_name is None:
         out_queue_name = 'spacer_test_results'
 
-    job_json = os.getenv('JOB_MSG')
-    logging.info("-> Received boto job for ENV {}.".format(job_json))
+    job_msg_loc = os.getenv('JOB_MSG_LOC')
+
+    logging.info("-> Received boto job for ENV {}.".format(job_msg_loc))
 
     try:
         logging.info("-> Deserializing job_json ...")
-        job_msg_dict = json.loads(job_json)
+        job_msg_loc_dict = json.loads(job_msg_loc)
         logging.info("-> Done deserializing job.")
+        job_location = DataLocation.deserialize(job_msg_loc_dict)
         logging.info("-> Instantiating job message...")
-        job_msg = JobMsg.deserialize(job_msg_dict)
+        job_msg = JobMsg.load(job_location)
         logging.info("-> Done instantiating job message.")
-        logging.info("-> Processing job...")
+        logging.info("-> Processing job message: {}".format(
+            job_msg.serialize()))
         job_return_msg = process_job(job_msg)
         logging.info("-> Done processing job.")
         job_return_msg_dict = job_return_msg.serialize()
@@ -39,7 +42,7 @@ def env_job():
         # Handle deserialization errors directly in mailman.
         # All other errors are handled in "handle_message" function.
         job_return_msg_dict = {
-            'original_job': job_json,
+            'original_job': job_msg_loc,
             'ok': False,
             'results': None,
             'error_message': 'Error deserializing message: ' + repr(e)
