@@ -82,6 +82,7 @@ def main(job_queue='shakeout',
     sqs_purge(results_queue)
 
     targets = submit_jobs(100, job_queue, results_queue, extractor_name)
+    time.sleep(30)
     complete_count = 0
     base = aws_batch_queue_status(job_queue)
     while complete_count < len(targets):

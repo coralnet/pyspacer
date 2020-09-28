@@ -15,7 +15,7 @@ from spacer.tasks import \
 
 
 def run_job_verbose(job_msg_loc) -> JobReturnMsg:
-    """ Deserializes ane executes job message. """
+    """ Deserializes and executes job message. """
 
     logging.info("-> Deserializing job message location...")
     job_msg_loc_dict = json.loads(job_msg_loc)
