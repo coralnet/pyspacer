@@ -6,16 +6,13 @@ If there is a difference across feature extractors, this needs to be set to the
 min across the extractors, and then get encoded in the config file.
 """
 
-import json
+import logging
 import time
-import boto3
-from datetime import datetime
 
-import fire
 from PIL import Image
 
-from scripts.aws.utils import sqs_status, purge, fetch_jobs, submit_to_batch, \
-    batch_queue_status
+from scripts.aws.utils import sqs_purge, sqs_fetch, aws_batch_submit, \
+    aws_batch_queue_status
 from spacer import config
 from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg
 from spacer.storage import store_image
@@ -23,7 +20,6 @@ from spacer.storage import store_image
 IMAGE_SIZES = [
     (5000, 5000),  # 10 mega pixel
     (10000, 10000),  # 100 mega pixel
-    # (15000, 15000),  # 225 mega pixel
 ]
 
 NBR_ROWCOLS = [10, 100, 200, 1000]
@@ -31,7 +27,7 @@ NBR_ROWCOLS = [10, 100, 200, 1000]
 
 def submit_jobs(job_queue, results_queue):
 
-    log('Submitting memory test jobs to {}.'.format(job_queue))
+    logging.info('Submitting memory test jobs to {}.'.format(job_queue))
 
     targets = []
     for (nrows, ncols) in IMAGE_SIZES:
@@ -46,7 +42,7 @@ def submit_jobs(job_queue, results_queue):
         for extractor_name in config.FEATURE_EXTRACTOR_NAMES:
 
             for npts in NBR_ROWCOLS:
-                feat_key = img_loc.key + '.{}{}.feats.json'.\
+                feat_key = img_loc.key + '.{}{}.feats.json'. \
                     format(npts, extractor_name)
                 feat_loc = DataLocation(storage_type='s3',
                                         key=feat_key,
@@ -68,35 +64,28 @@ def submit_jobs(job_queue, results_queue):
                     bucket_name='spacer-test'
                 )
                 msg.store(job_msg_loc)
-
-                submit_to_batch(job_queue, results_queue, job_msg_loc)
+                aws_batch_submit(job_queue, results_queue, job_msg_loc)
                 targets.append(feat_loc)
 
-    log('{} jobs submitted.'.format(len(targets)))
+    logging.info('{} jobs submitted.'.format(len(targets)))
     return targets
 
 
-def log(msg):
-    msg = '['+datetime.now().strftime("%H:%M:%S") + '] ' + msg
-    with open('memory_test.log', 'a') as f:
-        f.write(msg + '\n')
-        print(msg)
-
-
 def main(job_queue='shakeout',
-         results_queue='spacer_test_results'):
+         results_queue='spacer_shakeout_results'):
 
-    log("Starting ECS feature extraction.")
-    purge(results_queue)
-    base = batch_queue_status(job_queue)
-    print(base)
-    _ = submit_jobs(job_queue, results_queue)
+    logging.info("Starting ECS feature extraction.")
+    sqs_purge(results_queue)
+    base = aws_batch_queue_status(job_queue)
+    logging.info(base)
+    targets = submit_jobs(job_queue, results_queue)
     complete_count = 0
-    while True:
-        print(batch_queue_status(job_queue, base))
-        complete_count += fetch_jobs(results_queue)
-        log("{} complete".format(complete_count))
+    while complete_count < len(targets):
+        logging.info(aws_batch_queue_status(job_queue, base))
+        complete_count += sqs_fetch(results_queue)
+        logging.info("{} complete".format(complete_count))
         time.sleep(5)
+    logging.info("All jobs done.")
 
 
 if __name__ == '__main__':

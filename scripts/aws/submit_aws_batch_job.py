@@ -1,8 +1,9 @@
-import time
-from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg
-from scripts.aws.utils import \
-    purge, batch_queue_status, fetch_jobs, submit_to_batch
 import logging
+import time
+
+from scripts.aws.utils import \
+    sqs_purge, aws_batch_queue_status, sqs_fetch, aws_batch_submit
+from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg
 
 
 def submit(job_queue, results_queue):
@@ -33,19 +34,19 @@ def submit(job_queue, results_queue):
     )
     msg.store(job_msg_loc)
 
-    submit_to_batch(job_queue, results_queue, job_msg_loc)
+    aws_batch_submit(job_queue, results_queue, job_msg_loc)
 
 
-def main(job_queue='shakeout24', results_queue='spacer_test_results'):
+def main(job_queue='shakeout', results_queue='spacer_shakeout_results'):
 
     logging.info("Starting batch job shakeout.")
-    purge(results_queue)
+    sqs_purge(results_queue)
 
     submit(job_queue, results_queue)
     res_cnt = 0
     while res_cnt == 0:
-        print(batch_queue_status(job_queue))
-        res_cnt = fetch_jobs(results_queue)
+        print(aws_batch_queue_status(job_queue))
+        res_cnt = sqs_fetch(results_queue)
         time.sleep(3)
 
 

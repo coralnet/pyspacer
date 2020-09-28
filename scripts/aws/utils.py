@@ -2,7 +2,7 @@ import json
 import logging
 import boto3
 from spacer import config
-from spacer.messages import JobReturnMsg, JobMsg, DataLocation
+from spacer.messages import JobReturnMsg, DataLocation
 
 BATCH_STATUS_NAMES = [
         'SUBMITTED',
@@ -15,7 +15,7 @@ BATCH_STATUS_NAMES = [
     ]
 
 
-def batch_queue_status(queue_name, base=None):
+def aws_batch_queue_status(queue_name, base=None):
 
     client = boto3.client('batch')
     report = {
@@ -30,15 +30,26 @@ def batch_queue_status(queue_name, base=None):
     return report
 
 
-def sqs_status(queue_name):
-    """
-    Returns number of pending and ongoing jobs in the queue.
-    """
-    conn = config.get_sqs_conn()
-    queue = conn.get_queue(queue_name)
-    attr = queue.get_attributes()
-    return int(attr['ApproximateNumberOfMessages']), int(
-        attr['ApproximateNumberOfMessagesNotVisible'])
+def aws_batch_submit(job_queue, results_queue, job_msg_loc: DataLocation):
+
+    client = boto3.client('batch')
+    client.submit_job(
+        jobQueue=job_queue,
+        jobName='test_job_from_spacer',
+        jobDefinition='spacer-job',
+        containerOverrides={
+            'environment': [
+                {
+                    'name': 'JOB_MSG_LOC',
+                    'value': json.dumps(job_msg_loc.serialize()),
+                },
+                {
+                    'name': 'OUT_QUEUE',
+                    'value': results_queue,
+                },
+            ],
+        }
+    )
 
 
 def count_jobs_complete(targets):
@@ -56,7 +67,7 @@ def count_jobs_complete(targets):
     return complete_count
 
 
-def purge(queue_name):
+def sqs_purge(queue_name):
     """ Deletes all messages in queue. """
 
     conn = config.get_sqs_conn()
@@ -69,7 +80,7 @@ def purge(queue_name):
     print('-> Purged {} messages from {}'.format(count, queue_name))
 
 
-def fetch_jobs(queue_name):
+def sqs_fetch(queue_name):
 
     conn = config.get_sqs_conn()
     queue = conn.get_queue(queue_name)
@@ -90,25 +101,3 @@ def fetch_jobs(queue_name):
         m = queue.read()
         job_cnt += 1
     return job_cnt
-
-
-def submit_to_batch(job_queue, results_queue, job_msg_loc: DataLocation):
-
-    client = boto3.client('batch')
-    client.submit_job(
-        jobQueue=job_queue,
-        jobName='test_job_from_spacer',
-        jobDefinition='spacer-job',
-        containerOverrides={
-            'environment': [
-                {
-                    'name': 'JOB_MSG_LOC',
-                    'value': json.dumps(job_msg_loc.serialize()),
-                },
-                {
-                    'name': 'OUT_QUEUE',
-                    'value': results_queue,
-                },
-            ],
-        }
-    )
