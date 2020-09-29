@@ -173,12 +173,13 @@ def download_model(keyname: str) -> Tuple[str, bool]:
     assert config.HAS_LOCAL_MODEL_PATH, "Model path not set or is invalid."
     destination = os.path.join(config.LOCAL_MODEL_PATH, keyname)
     if not os.path.isfile(destination):
-        logging.info("-> Downloading {}".format(keyname))
+        logging.info("-> Downloading {}...".format(keyname))
         conn = config.get_s3_conn()
         bucket = conn.get_bucket(config.MODELS_BUCKET, validate=True)
         key = bucket.get_key(keyname)
         key.get_contents_to_filename(destination)
         was_cashed = False
+        logging.info("-> Done downloading {}.".format(keyname))
     else:
         # Already cached, no need to download
         was_cashed = True

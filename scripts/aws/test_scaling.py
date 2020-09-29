@@ -5,19 +5,18 @@ are jobs in the test_queue, so the 100 jobs are be completed quickly.
 """
 
 import json
+import logging
 import time
 from datetime import datetime
 
-import fire
-
-from scripts.aws.utils import purge
-from scripts.aws.utils import sqs_status, count_jobs_complete
+from scripts.aws.utils import count_jobs_complete, aws_batch_submit, \
+    aws_batch_queue_status, sqs_purge, aws_batch_job_status
 from spacer import config
 from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg, \
     JobReturnMsg
 
 
-def submit_jobs(job_cnt, queue_name, extractor_name):
+def submit_jobs(job_cnt, job_queue, results_queue, extractor_name):
     """ Submits job_cnt jobs. """
 
     print('-> Submitting {} jobs... '.format(job_cnt))
@@ -41,13 +40,17 @@ def submit_jobs(job_cnt, queue_name, extractor_name):
                                        bucket_name='spacer-test'),
                 feature_loc=feat_loc
             )])
-        conn = config.get_sqs_conn()
-        in_queue = conn.get_queue(queue_name)
-        msg = in_queue.new_message(body=json.dumps(msg.serialize()))
-        in_queue.write(msg)
-        targets.append(feat_loc)
 
-    print('-> {} jobs submitted.'.format(job_cnt))
+        job_msg_loc = DataLocation(
+            storage_type='s3',
+            key=feat_loc.key + '.job_msg.json',
+            bucket_name='spacer-test'
+        )
+        msg.store(job_msg_loc)
+        job_id = aws_batch_submit(job_queue, results_queue, job_msg_loc)
+        targets.append((feat_loc, job_id))
+
+    logging.info('{} jobs submitted.'.format(len(targets)))
     return targets
 
 
@@ -71,30 +74,26 @@ def purge_and_calc_runtime(queue_name):
         return 0
 
 
-def main(jobs_queue='spacer_test_jobs',
-         results_queue='spacer_test_results',
+def main(job_queue='shakeout',
+         results_queue='spacer_shakeout_results',
          extractor_name='efficientnet_b0_ver1'):
 
-    print("-> Starting memory test for {}.".format(extractor_name))
-    purge(jobs_queue)
-    purge(results_queue)
-
-    targets = submit_jobs(100, jobs_queue, extractor_name)
+    logging.info("-> Starting scaling test for {}.".format(extractor_name))
+    sqs_purge(results_queue)
+    targets = submit_jobs(100, job_queue, results_queue, extractor_name)
+    time.sleep(10)
     complete_count = 0
-    while complete_count < len(targets):
-        jobs_todo, jobs_ongoing = sqs_status(jobs_queue)
-        results_todo, _ = sqs_status(results_queue)
-        complete_count = count_jobs_complete(targets)
-        print("-> [{}] Status: {} todo, {} ongoing, {} in results queue, "
-              "{} done".format(datetime.now().strftime("%H:%M:%S"),
-                               jobs_todo, jobs_ongoing, results_todo,
-                               complete_count))
-        time.sleep(10)
 
-    print("-> All jobs done.")
+    while complete_count < len(targets):
+        logging.info(aws_batch_job_status([t[1] for t in targets]))
+        complete_count = count_jobs_complete(targets)
+        logging.info('Jobs complete: {}'.format(complete_count))
+        time.sleep(3)
+
+    logging.info("-> All jobs done.")
     runtime = purge_and_calc_runtime(results_queue)
-    print("-> Average runtime: {}".format(runtime))
+    logging.info("-> Average runtime: {}".format(runtime))
 
 
 if __name__ == '__main__':
-    fire.Fire()
+    main()

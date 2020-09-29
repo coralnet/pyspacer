@@ -6,48 +6,46 @@ If there is a difference across feature extractors, this needs to be set to the
 min across the extractors, and then get encoded in the config file.
 """
 
-import json
+import logging
 import time
-from datetime import datetime
 
-import fire
 from PIL import Image
 
-from scripts.aws.utils import sqs_status, purge
+from scripts.aws.utils import sqs_purge, sqs_fetch, aws_batch_submit, \
+    aws_batch_queue_status
 from spacer import config
-from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg, \
-    JobReturnMsg
+from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg
 from spacer.storage import store_image
 
 IMAGE_SIZES = [
     (5000, 5000),  # 10 mega pixel
     (10000, 10000),  # 100 mega pixel
-    (15000, 15000),  # 225 mega pixel
 ]
 
-NBR_ROWCOLS = [100, 1000, 3000, 5000]
+NBR_ROWCOLS = [10, 100, 200, 1000]
 
 
-def submit_jobs(queue_name):
+def submit_jobs(job_queue, results_queue):
 
-    log('Submitting memory test jobs to {}.'.format(queue_name))
+    logging.info('Submitting memory test jobs to {}.'.format(job_queue))
 
     targets = []
-    for extractor_name in ['vgg16_coralnet_ver1', 'efficientnet_b0_ver1']:
+    for (nrows, ncols) in IMAGE_SIZES:
 
-        for (nrows, ncols) in IMAGE_SIZES:
+        # Create a image and upload to s3.
+        img = Image.new('RGB', (nrows, ncols))
+        img_loc = DataLocation(storage_type='s3',
+                               key='tmp/{}_{}.jpg'.format(nrows, ncols),
+                               bucket_name='spacer-test')
+        store_image(img_loc, img)
 
-            # Create a image and upload to s3.
-            img = Image.new('RGB', (nrows, ncols))
-            img_loc = DataLocation(storage_type='s3',
-                                   key='tmp/{}_{}.jpg'.format(nrows, ncols),
-                                   bucket_name='spacer-test')
-            store_image(img_loc, img)
+        for extractor_name in config.FEATURE_EXTRACTOR_NAMES:
 
             for npts in NBR_ROWCOLS:
-
+                feat_key = img_loc.key + '.{}{}.feats.json'. \
+                    format(npts, extractor_name)
                 feat_loc = DataLocation(storage_type='s3',
-                                        key=img_loc.key + '.{}feats'.format(npts),
+                                        key=feat_key,
                                         bucket_name='spacer-test')
                 msg = JobMsg(
                     task_name='extract_features',
@@ -59,61 +57,36 @@ def submit_jobs(queue_name):
                         image_loc=img_loc,
                         feature_loc=feat_loc
                     )])
-                conn = config.get_sqs_conn()
-                in_queue = conn.get_queue(queue_name)
-                msg = in_queue.new_message(body=json.dumps(msg.serialize()))
-                in_queue.write(msg)
+
+                job_msg_loc = DataLocation(
+                    storage_type='s3',
+                    key=feat_key + '.job_msg.json',
+                    bucket_name='spacer-test'
+                )
+                msg.store(job_msg_loc)
+                aws_batch_submit(job_queue, results_queue, job_msg_loc)
                 targets.append(feat_loc)
 
-    log('{} jobs submitted.'.format(len(targets)))
+    logging.info('{} jobs submitted.'.format(len(targets)))
     return targets
 
 
-def log(msg):
-    msg = '['+datetime.now().strftime("%H:%M:%S") + '] ' + msg
-    with open('memory_test.log', 'a') as f:
-        f.write(msg + '\n')
-        print(msg)
+def main(job_queue='shakeout',
+         results_queue='spacer_shakeout_results'):
 
-
-def fetch_jobs(queue_name):
-
-    conn = config.get_sqs_conn()
-    queue = conn.get_queue(queue_name)
-    m = queue.read()
-    job_cnt = 0
-    while m is not None:
-        return_msg = JobReturnMsg.deserialize(json.loads(m.get_body()))
-        job_token = return_msg.original_job.tasks[0].job_token
-        if return_msg.ok:
-            log('{} done in {:.2f} s.'.format(job_token,
-                                              return_msg.results[0].runtime))
-        else:
-            log('{} failed with: {}.'.format(job_token,
-                                             return_msg.error_message))
-        queue.delete_message(m)
-        m = queue.read()
-        job_cnt += 1
-    return job_cnt
-
-
-def main(jobs_queue='spacer_test_jobs',
-         results_queue='spacer_test_results'):
-
-    log("Starting ECS feature extraction.")
-    purge(jobs_queue)
-    purge(results_queue)
-
-    _ = submit_jobs(jobs_queue)
+    logging.info("Starting ECS feature extraction.")
+    sqs_purge(results_queue)
+    base = aws_batch_queue_status(job_queue)
+    logging.info(base)
+    targets = submit_jobs(job_queue, results_queue)
     complete_count = 0
-    while True:
-        jobs_todo, jobs_ongoing = sqs_status(jobs_queue)
-        results_todo, _ = sqs_status(results_queue)
-        complete_count += fetch_jobs(results_queue)
-        log("Status: {} todo, {} ongoing, {} in results queue {} done".format(
-            jobs_todo, jobs_ongoing, results_todo, complete_count))
-        time.sleep(60)
+    while complete_count < len(targets):
+        logging.info(aws_batch_queue_status(job_queue, base))
+        complete_count += sqs_fetch(results_queue)
+        logging.info("{} complete".format(complete_count))
+        time.sleep(5)
+    logging.info("All jobs done.")
 
 
 if __name__ == '__main__':
-    fire.Fire()
+    main()

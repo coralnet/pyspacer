@@ -6,22 +6,20 @@ If there is a difference across feature extractors, this needs to be set to the
 min across the extractors, and then get encoded in the config file.
 """
 
-from datetime import datetime
+import logging
 
-import fire
 from PIL import Image
 
-from spacer.tasks import process_job
 from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg
 from spacer.storage import store_image
+from spacer.tasks import process_job
 
 IMAGE_SIZES = [
     (3000, 3000),  # 10 mega pixel
     (10000, 10000),  # 100 mega pixel
-    (20000, 20000),  # 400 mega pixel
 ]
 
-NBR_ROWCOLS = [100, 1000, 3000]
+NBR_ROWCOLS = [100, 1000]
 
 
 def run_jobs(extractor_name):
@@ -48,25 +46,18 @@ def run_jobs(extractor_name):
                 )])
 
             return_msg = process_job(msg)
-            log(str(return_msg.ok))
+            logging.info(str(return_msg.ok))
             if return_msg.ok:
-                log(str(return_msg.results[0].runtime))
+                logging.info(str(return_msg.results[0].runtime))
             else:
-                log(str(return_msg.error_message))
-
-
-def log(msg):
-    msg = '['+datetime.now().strftime("%H:%M:%S") + '] ' + msg
-    with open('memory_test.log', 'a') as f:
-        f.write(msg + '\n')
-        print(msg)
+                logging.info(str(return_msg.error_message))
 
 
 def main(extractor_name='efficientnet_b0_ver1'):
 
-    log("Testing memory local {}.".format(extractor_name))
+    logging.info("Testing memory local {}.".format(extractor_name))
     run_jobs(extractor_name)
 
 
 if __name__ == '__main__':
-    fire.Fire()
+    main()
