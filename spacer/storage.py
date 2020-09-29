@@ -7,6 +7,7 @@ import os
 import pickle
 import warnings
 import logging
+import boto3
 
 from functools import lru_cache
 from io import BytesIO
@@ -74,10 +75,13 @@ class S3Storage(Storage):
     def __init__(self, bucketname: str):
         conn = config.get_s3_conn()
         self.bucket = conn.get_bucket(bucketname)
+        self.bucketname = bucketname
 
     def store(self, key: str, stream: BytesIO):
-        key = self.bucket.new_key(key)
-        key.set_contents_from_file(stream)
+        client = boto3.client('s3')
+        client.put_object(Body=stream, Bucket=self.bucketname, Key=key)
+        # key = self.bucket.new_key(key)
+        # key.set_contents_from_file(stream)
 
     def load(self, key: str):
         key = self.bucket.get_key(key)

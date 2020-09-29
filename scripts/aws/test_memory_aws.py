@@ -11,8 +11,7 @@ import time
 
 from PIL import Image
 
-from scripts.aws.utils import sqs_purge, sqs_fetch, aws_batch_submit, \
-    aws_batch_queue_status
+from scripts.aws.utils import sqs_purge, aws_batch_job_status, aws_batch_submit
 from spacer import config
 from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg
 from spacer.storage import store_image
@@ -64,8 +63,8 @@ def submit_jobs(job_queue, results_queue):
                     bucket_name='spacer-test'
                 )
                 msg.store(job_msg_loc)
-                aws_batch_submit(job_queue, results_queue, job_msg_loc)
-                targets.append(feat_loc)
+                job_id = aws_batch_submit(job_queue, results_queue, job_msg_loc)
+                targets.append((job_id, feat_loc.key))
 
     logging.info('{} jobs submitted.'.format(len(targets)))
     return targets
@@ -76,16 +75,13 @@ def main(job_queue='shakeout',
 
     logging.info("Starting ECS feature extraction.")
     sqs_purge(results_queue)
-    base = aws_batch_queue_status(job_queue)
-    logging.info(base)
     targets = submit_jobs(job_queue, results_queue)
-    complete_count = 0
-    while complete_count < len(targets):
-        logging.info(aws_batch_queue_status(job_queue, base))
-        complete_count += sqs_fetch(results_queue)
-        logging.info("{} complete".format(complete_count))
-        time.sleep(5)
-    logging.info("All jobs done.")
+    status = {'SUCCEEDED': 0}
+    while status['SUCCEEDED'] < len(targets):
+        status = aws_batch_job_status(targets)
+        logging.info(status)
+        time.sleep(3)
+    logging.info("-> All jobs done.")
 
 
 if __name__ == '__main__':

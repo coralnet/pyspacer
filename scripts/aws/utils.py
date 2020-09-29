@@ -1,34 +1,11 @@
 import json
 import logging
 import boto3
+from botocore.errorfactory import ClientError
+from typing import List, Tuple
 from collections import defaultdict
 from spacer import config
 from spacer.messages import JobReturnMsg, DataLocation
-
-BATCH_STATUS_NAMES = [
-        'SUBMITTED',
-        'PENDING',
-        'RUNNABLE',
-        'STARTING',
-        'RUNNING',
-        'SUCCEEDED',
-        'FAILED'
-    ]
-
-
-def aws_batch_queue_status(queue_name, base=None):
-
-    client = boto3.client('batch')
-    report = {
-        status: len(client.list_jobs(
-            jobQueue=queue_name,
-            jobStatus=status
-        )['jobSummaryList']) for status in BATCH_STATUS_NAMES
-    }
-    if base is not None:
-        for status in BATCH_STATUS_NAMES:
-            report[status] -= base[status]
-    return report
 
 
 def aws_batch_submit(job_queue, results_queue, job_msg_loc: DataLocation):
@@ -54,32 +31,43 @@ def aws_batch_submit(job_queue, results_queue, job_msg_loc: DataLocation):
     return resp['jobId']
 
 
-def aws_batch_job_status(job_ids):
+def aws_batch_job_status(jobs: List[Tuple[str, str]]):
+    """ Input should be tuple of
+    (AWE Batch job_id,
+     a key to s3 where we expect some output to be written)
+     The second entry is used as a sanity check and is ignored if None. """
     state = defaultdict(int)
 
-    for job_id in job_ids:
+    for job_id, out_key in jobs:
         client = boto3.client('batch')
         resp = client.describe_jobs(jobs=[job_id])
         assert len(resp['jobs']) == 1
-        state[resp['jobs'][0]['status']] += 1
+        job_status = resp['jobs'][0]['status']
+        state[job_status] += 1
+
+        if job_status == 'SUCCEEDED' and out_key is not None:
+            # Double check that the out_key is actually there.
+            s3 = boto3.resource('s3')
+            try:
+                s3.Object('spacer-test', out_key).load()
+            except ClientError as e:
+                if e.response['Error']['Code'] == "404":
+                    logging.info(
+                        "JOB: {} marked as SUCCEEDED, but missing key at {}".
+                        format(job_id, out_key)
+                    )
+                else:
+                    logging.error(
+                        "Something else is wrong: {} {}".format(job_id,
+                                                                str(e))
+                    )
+
+
+
+        if job_status == 'FAILED':
+            logging.info('JOB: {} failed!'.format(job_id))
+
     return state
-
-
-def count_jobs_complete(targets):
-    """ Check the target locations and counts how many are complete. """
-
-    conn = config.get_s3_conn()
-    bucket = conn.get_bucket('spacer-test', validate=True)
-
-    complete_count = 0
-    for target, job_id in targets:
-        key = bucket.get_key(target.key)
-        if key is not None:
-            complete_count += 1
-        else:
-            logging.info("job id: {} not complete".format(job_id))
-
-    return complete_count
 
 
 def sqs_purge(queue_name):

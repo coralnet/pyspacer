@@ -24,11 +24,9 @@ class DataClass(ABC):  # pragma: no cover
             storage.load(loc.key).getvalue().decode('utf-8')))
 
     def store(self, loc: 'DataLocation'):
-        logging.info('Storing to {}'.format(loc.serialize()))
         storage = storage_factory(loc.storage_type, loc.bucket_name)
         storage.store(loc.key, BytesIO(
             json.dumps(self.serialize()).encode('utf-8')))
-        logging.info('Done storing to {}'.format(loc.serialize()))
 
     @classmethod
     @abstractmethod

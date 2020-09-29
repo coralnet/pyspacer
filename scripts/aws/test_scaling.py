@@ -9,8 +9,8 @@ import logging
 import time
 from datetime import datetime
 
-from scripts.aws.utils import count_jobs_complete, aws_batch_submit, \
-    aws_batch_queue_status, sqs_purge, aws_batch_job_status
+from scripts.aws.utils import aws_batch_submit, \
+    sqs_purge, aws_batch_job_status
 from spacer import config
 from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg, \
     JobReturnMsg
@@ -48,30 +48,10 @@ def submit_jobs(job_cnt, job_queue, results_queue, extractor_name):
         )
         msg.store(job_msg_loc)
         job_id = aws_batch_submit(job_queue, results_queue, job_msg_loc)
-        targets.append((feat_loc, job_id))
+        targets.append((job_id, feat_loc.key))
 
     logging.info('{} jobs submitted.'.format(len(targets)))
     return targets
-
-
-def purge_and_calc_runtime(queue_name):
-
-    conn = config.get_sqs_conn()
-    queue = conn.get_queue(queue_name)
-    m = queue.read()
-    runtimes = []
-    while m is not None:
-        return_msg = JobReturnMsg.deserialize(json.loads(m.get_body()))
-        assert return_msg.ok
-        runtimes.append(return_msg.results[0].runtime)
-        queue.delete_message(m)
-        m = queue.read()
-
-    print('-> Purged {} messages from {}'.format(len(runtimes), queue_name))
-    if len(runtimes) > 0:
-        return sum(runtimes) / len(runtimes)
-    else:
-        return 0
 
 
 def main(job_queue='shakeout',
@@ -81,18 +61,13 @@ def main(job_queue='shakeout',
     logging.info("-> Starting scaling test for {}.".format(extractor_name))
     sqs_purge(results_queue)
     targets = submit_jobs(100, job_queue, results_queue, extractor_name)
-    time.sleep(10)
-    complete_count = 0
 
-    while complete_count < len(targets):
-        logging.info(aws_batch_job_status([t[1] for t in targets]))
-        complete_count = count_jobs_complete(targets)
-        logging.info('Jobs complete: {}'.format(complete_count))
+    status = {'SUCCEEDED': 0}
+    while status['SUCCEEDED'] < len(targets):
+        status = aws_batch_job_status(targets)
+        logging.info(status)
         time.sleep(3)
-
     logging.info("-> All jobs done.")
-    runtime = purge_and_calc_runtime(results_queue)
-    logging.info("-> Average runtime: {}".format(runtime))
 
 
 if __name__ == '__main__':

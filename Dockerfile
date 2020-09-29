@@ -82,6 +82,8 @@ RUN pip3 install scikit-learn==0.22.1
 RUN pip3 install scikit-image==0.15.0
 RUN pip3 install torch==1.4.0
 RUN pip3 install torchvision==0.5.0
+RUN pip3 install boto3
+RUN pip3 install botocore
 
 ENV SPACER_LOCAL_MODEL_PATH=/workspace/models
 ENV PYTHONPATH="/workspace/spacer:${PYTHONPATH}"

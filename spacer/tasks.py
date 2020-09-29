@@ -37,8 +37,13 @@ def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
         )
 
     check_rowcols(msg.rowcols, img)
+    logging.info('-> Extracting features for {}...'.format(msg.job_token))
     features, return_msg = extractor(img, msg.rowcols)
+    logging.info('-> Done extracting features for {}.'.format(msg.job_token))
+
+    logging.info('-> Storing features to {}...'.format(msg.feature_loc.key))
     features.store(msg.feature_loc)
+    logging.info('-> Done storing features to {}.'.format(msg.feature_loc.key))
     return return_msg
 
 
@@ -56,10 +61,12 @@ def train_classifier(msg: TrainClassifierMsg) -> TrainClassifierReturnMsg:
         msg.features_loc,
         msg.clf_type
     )
+    logging.info("-> Done training classifier pk:{}.".format(msg.job_token))
 
-    # Store
+    logging.info("-> Storing classifier and val res...")
     store_classifier(msg.model_loc, clf)
     val_results.store(msg.valresult_loc)
+    logging.info("-> Done storing classifier and val res...")
 
     return return_message
 
@@ -119,19 +126,26 @@ def process_job(job_msg: JobMsg) -> JobReturnMsg:
     assert isinstance(job_msg, JobMsg)
     assert job_msg.task_name in config.TASKS
 
-    try:
-        results = [run[job_msg.task_name](task) for task in job_msg.tasks]
-        return_msg = JobReturnMsg(
-            original_job=job_msg,
-            ok=True,
-            results=results,
-            error_message=None
-        )
-    except Exception as e:
-        return_msg = JobReturnMsg(
-            original_job=job_msg,
-            ok=False,
-            results=None,
-            error_message=traceback.format_exc()
-        )
+    results = []
+    for task in job_msg.tasks:
+        try:
+            results.append(run[job_msg.task_name](task))
+        except Exception as e:
+            logging.error('Error executing job {}: {}'.format(
+                task.job_token, traceback.format_exc()))
+            return_msg = JobReturnMsg(
+                original_job=job_msg,
+                ok=False,
+                results=None,
+                error_message=traceback.format_exc()
+            )
+            return return_msg
+
+    return_msg = JobReturnMsg(
+        original_job=job_msg,
+        ok=True,
+        results=results,
+        error_message=None
+    )
+
     return return_msg

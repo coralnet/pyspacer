@@ -23,8 +23,7 @@ def run_job_verbose(job_msg_loc) -> JobReturnMsg:
     logging.info("-> Done deserializing job message location.")
     logging.info("-> Instantiating job message...")
     job_msg = JobMsg.load(job_location)
-    logging.info("-> Done instantiating job message: {}.".format(
-        job_msg.serialize()))
+    logging.info("-> Done instantiating job message: {}.")
     job_return_msg = process_job(job_msg)
     logging.info("-> Done processing job.")
     return job_return_msg
