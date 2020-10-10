@@ -17,10 +17,10 @@ def submit(job_queue, results_queue):
                  (151, 62)],
         image_loc=DataLocation(storage_type='s3',
                                key='08bfc10v7t.png',
-                               bucket_name='spacer-test'),
+                               bucket_name='config.TEST_BUCKET'),
         feature_loc=DataLocation(storage_type='s3',
                                  key='tmp/08bfc10v7t.feats.json',
-                                 bucket_name='spacer-test'))
+                                 bucket_name='config.TEST_BUCKET'))
 
     msg = JobMsg(
         task_name='extract_features',
@@ -30,7 +30,7 @@ def submit(job_queue, results_queue):
     job_msg_loc = DataLocation(
         storage_type='s3',
         key='tmp_job.json',
-        bucket_name='spacer-test'
+        bucket_name='config.TEST_BUCKET'
     )
     msg.store(job_msg_loc)
 

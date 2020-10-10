@@ -54,7 +54,7 @@ def aws_batch_job_status(jobs: List[Tuple[str, DataLocation, DataLocation]]):
             # Double check that the out_key is actually there.
             s3 = config.get_s3_conn()
             try:
-                s3.Object('spacer-test', feat_loc.key).load()
+                s3.Object('config.TEST_BUCKET', feat_loc.key).load()
             except ClientError as e:
                 if e.response['Error']['Code'] == "404":
                     logging.info(

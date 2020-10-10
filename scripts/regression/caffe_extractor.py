@@ -121,7 +121,7 @@ def run():
 
     assert config.HAS_CAFFE, "Must have caffe installed to run the reg tests."
 
-    storage = storage_factory('s3', 'spacer-test')
+    storage = storage_factory('s3', 'config.TEST_BUCKET')
 
     all_score_diffs = []
 

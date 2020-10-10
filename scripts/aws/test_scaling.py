@@ -28,7 +28,7 @@ def submit_jobs(job_cnt, job_queue, extractor_name):
         feat_loc = DataLocation(storage_type='s3',
                                 key='tmp/08bfc10v7t.png.{}.feats.json'.
                                 format(str(datetime.now()).replace(' ', '_')),
-                                bucket_name='spacer-test')
+                                bucket_name='config.TEST_BUCKET')
         msg = JobMsg(
             task_name='extract_features',
             tasks=[ExtractFeaturesMsg(
@@ -37,19 +37,19 @@ def submit_jobs(job_cnt, job_queue, extractor_name):
                 rowcols=[(10, 10)],
                 image_loc=DataLocation(storage_type='s3',
                                        key='08bfc10v7t.png',
-                                       bucket_name='spacer-test'),
+                                       bucket_name='config.TEST_BUCKET'),
                 feature_loc=feat_loc
             )])
 
         job_msg_loc = DataLocation(
             storage_type='s3',
             key=feat_loc.key + '.job_msg.json',
-            bucket_name='spacer-test'
+            bucket_name='config.TEST_BUCKET'
         )
         job_res_loc = DataLocation(
             storage_type='s3',
             key=feat_loc.key + '.job_res.json',
-            bucket_name='spacer-test'
+            bucket_name='config.TEST_BUCKET'
         )
         msg.store(job_msg_loc)
         job_id = aws_batch_submit(job_queue, job_msg_loc, job_res_loc)
