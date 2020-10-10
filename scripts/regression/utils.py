@@ -41,7 +41,7 @@ def cache_local(source_root: str,
         selected_keys += [key for key in all_keys if
                           key.name.endswith('features.json')]
 
-    print("-> Downloading {} metadata and image/feature files...".
+    print("Downloading {} metadata and image/feature files...".
           format(len(selected_keys)))
     random.shuffle(selected_keys)
     for key in tqdm.tqdm(selected_keys):
@@ -53,7 +53,7 @@ def cache_local(source_root: str,
 
 def build_traindata(image_root: str) -> Tuple[ImageLabels, ImageLabels]:
 
-    print('-> Assembling data in {}...'.format(image_root))
+    print('Assembling data in {}...'.format(image_root))
     # Create the train and val ImageLabels data structures.
     ann_files = glob.glob(os.path.join(image_root, "*.anns.json"))
     train_labels = ImageLabels(data={})
@@ -86,7 +86,7 @@ def do_training(source_root: str,
                 val_labels: ImageLabels,
                 n_epochs: int,
                 clf_type: str) -> None:
-    print("-> Training classifier for source {}...".format(source_root))
+    print("Training classifier for source {}...".format(source_root))
 
     feature_loc = DataLocation(storage_type='filesystem', key='')
 
@@ -96,7 +96,7 @@ def do_training(source_root: str,
     with open(os.path.join(source_root, 'meta.json')) as fp:
         source_meta = json.load(fp)
 
-    print('-> Re-trained {} ({}). Old acc: {:.1f}, new acc: {:.1f}'.format(
+    print('Re-trained {} ({}). Old acc: {:.1f}, new acc: {:.1f}'.format(
         source_meta['name'],
         source_meta['pk'],
         100 * float(source_meta['best_robot_accuracy']),
@@ -109,7 +109,7 @@ def do_extract_features(extractor_name, image_root):
     img_keys = [os.path.join(image_root, key) for key in
                 os.listdir(image_root) if key.endswith('jpg')]
 
-    print("-> Extracting features for images in {}".format(image_root))
+    print("Extracting features for images in {}".format(image_root))
     for im_key in tqdm.tqdm(img_keys):
         feature_path = im_key.replace('jpg', 'features.json')
         anns_path = im_key.replace('jpg', 'anns.json')

@@ -81,7 +81,7 @@ def main(job_queue='shakeout',
         status = aws_batch_job_status(targets)
         logging.info(status)
         time.sleep(3)
-    logging.info("-> All jobs done.")
+    logging.info("All jobs done.")
 
 
 if __name__ == '__main__':

@@ -29,7 +29,7 @@ def crop_patches(im: Image,
     :param crop_size: patch size
     :return: patch list
     """
-    logging.info("-> Cropping {} patches...".format(len(rowcols)))
+    logging.info("Cropping {} patches...".format(len(rowcols)))
 
     # Ref: https://github.com/numpy/numpy/issues/11629
     # Looks like it's PIL issue
@@ -46,7 +46,7 @@ def crop_patches(im: Image,
     patches = [crop_simple(im, (row + pad, col + pad), crop_size)
                for row, col in rowcols]
 
-    logging.info("-> Done dropping {} patches.".format(len(rowcols)))
+    logging.info("Done dropping {} patches.".format(len(rowcols)))
     return patches
 
 

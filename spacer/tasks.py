@@ -23,7 +23,7 @@ from spacer.train_classifier import trainer_factory
 
 def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
 
-    logging.info("-> Extracting features for job:{}.".format(msg.job_token))
+    logging.info("Extracting features for job:{}.".format(msg.job_token))
     extractor = feature_extractor_factory(msg.feature_extractor_name)
     img = load_image(msg.image_loc)
 
@@ -37,19 +37,19 @@ def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
         )
 
     check_rowcols(msg.rowcols, img)
-    logging.info('-> Extracting features for {}...'.format(msg.job_token))
+    logging.info('Extracting features for {}...'.format(msg.job_token))
     features, return_msg = extractor(img, msg.rowcols)
-    logging.info('-> Done extracting features for {}.'.format(msg.job_token))
+    logging.info('Done extracting features for {}.'.format(msg.job_token))
 
-    logging.info('-> Storing features to {}...'.format(msg.feature_loc.key))
+    logging.info('Storing features to {}...'.format(msg.feature_loc.key))
     features.store(msg.feature_loc)
-    logging.info('-> Done storing features to {}.'.format(msg.feature_loc.key))
+    logging.info('Done storing features to {}.'.format(msg.feature_loc.key))
     return return_msg
 
 
 def train_classifier(msg: TrainClassifierMsg) -> TrainClassifierReturnMsg:
 
-    logging.info("-> Training classifier pk:{}.".format(msg.job_token))
+    logging.info("Training classifier pk:{}.".format(msg.job_token))
     trainer = trainer_factory(msg.trainer_name)
 
     # Do the actual training
@@ -61,12 +61,12 @@ def train_classifier(msg: TrainClassifierMsg) -> TrainClassifierReturnMsg:
         msg.features_loc,
         msg.clf_type
     )
-    logging.info("-> Done training classifier pk:{}.".format(msg.job_token))
+    logging.info("Done training classifier pk:{}.".format(msg.job_token))
 
-    logging.info("-> Storing classifier and val res...")
+    logging.info("Storing classifier and val res...")
     store_classifier(msg.model_loc, clf)
     val_results.store(msg.valresult_loc)
-    logging.info("-> Done storing classifier and val res...")
+    logging.info("Done storing classifier and val res...")
 
     return return_message
 

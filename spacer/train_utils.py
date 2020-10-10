@@ -38,13 +38,13 @@ def train(labels: ImageLabels,
     np.random.shuffle(ref_set)
     ref_set = ref_set[:max_imgs_in_memory]  # Enforce memory limit.
     train_set = list(set(labels.image_keys) - set(ref_set))
-    logging.info("-> Trainset: {}, valset: {} images".
+    logging.info("Trainset: {}, valset: {} images".
                  format(len(train_set), len(ref_set)))
 
     # Figure out # images per batch and batches per epoch.
     images_per_batch, batches_per_epoch = \
         calc_batch_size(max_imgs_in_memory, len(train_set))
-    logging.info("-> Using {} images per mini-batch and {} mini-batches per "
+    logging.info("Using {} images per mini-batch and {} mini-batches per "
                  "epoch".format(images_per_batch, batches_per_epoch))
 
     # Identify classes common to both train and val.
@@ -52,17 +52,17 @@ def train(labels: ImageLabels,
     trainclasses = labels.unique_classes(train_set)
     refclasses = labels.unique_classes(ref_set)
     classes = list(trainclasses.intersection(refclasses))
-    logging.info("-> Trainset: {}, valset: {}, common: {} labels".format(
+    logging.info("Trainset: {}, valset: {}, common: {} labels".format(
         len(trainclasses), len(refclasses), len(classes)))
     if len(classes) == 1:
         raise ValueError('Not enough classes to do training (only 1)')
 
     # Load reference data (must hold in memory for the calibration)
-    logging.info("-> Loading reference data.")
+    logging.info("Loading reference data.")
     refx, refy = load_batch_data(labels, ref_set, classes, feature_loc)
 
     # Initialize classifier and ref set accuracy list
-    logging.info("-> Online training using {}...".format(clf_type))
+    logging.info("Online training using {}...".format(clf_type))
     if clf_type == 'MLP':
         if len(train_set) * labels.samples_per_image >= 50000:
             hls, lr = (200, 100), 1e-4
@@ -79,9 +79,9 @@ def train(labels: ImageLabels,
             x, y = load_batch_data(labels, mb, classes, feature_loc)
             clf.partial_fit(x, y, classes=classes)
         ref_acc.append(calc_acc(refy, clf.predict(refx)))
-        logging.info("-> Epoch {}, acc: {}".format(epoch, ref_acc[-1]))
+        logging.info("Epoch {}, acc: {}".format(epoch, ref_acc[-1]))
 
-    logging.info("-> Calibrating.")
+    logging.info("Calibrating.")
     clf_calibrated = CalibratedClassifierCV(clf, cv="prefit")
     clf_calibrated.fit(refx, refy)
 

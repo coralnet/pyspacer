@@ -119,13 +119,14 @@ class TestS3Storage(unittest.TestCase):
             bucket_name='spacer-test'
         )
         self.storage = storage_factory('s3', 'spacer-test')
-        conn = config.get_s3_conn()
-        self.bucket = conn.get_bucket('spacer-test')
+        s3 = config.get_s3_conn()
+        self.bucket = s3.Bucket('spacer-test')
 
     def tearDown(self):
-        self.bucket.delete_key(self.tmp_image_loc.key)
-        self.bucket.delete_key(self.tmp_json_loc.key)
-        self.bucket.delete_key(self.tmp_model_loc.key)
+        s3 = config.get_s3_conn()
+        s3.Object(config.TEST_BUCKET, self.tmp_image_loc.key).delete()
+        s3.Object(config.TEST_BUCKET, self.tmp_json_loc.key).delete()
+        s3.Object(config.TEST_BUCKET, self.tmp_model_loc.key).delete()
 
     def test_load_store_image(self):
         img = Image.new('RGB', (100, 200))
@@ -147,7 +148,7 @@ class TestS3Storage(unittest.TestCase):
     def test_delete(self):
         store_image(self.tmp_image_loc, Image.new('RGB', (100, 100)))
         self.storage.delete(self.tmp_json_loc.key)
-        self.assertIsNone(self.bucket.get_key(self.tmp_json_loc.key))
+        self.assertFalse(self.storage.exists(self.tmp_json_loc.key))
 
     def test_load_legacy_model(self):
         clf = load_classifier(DataLocation(

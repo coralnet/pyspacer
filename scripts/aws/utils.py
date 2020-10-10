@@ -31,43 +31,60 @@ def aws_batch_submit(job_queue, results_queue, job_msg_loc: DataLocation):
     return resp['jobId']
 
 
-def aws_batch_job_status(jobs: List[Tuple[str, str]]):
+def aws_batch_job_status(jobs: List[Tuple[str, DataLocation, DataLocation]]):
     """ Input should be tuple of
     (AWE Batch job_id,
-     a key to s3 where we expect some output to be written)
-     The second entry is used as a sanity check and is ignored if None. """
+     a DataLocation to where we expect something to be written,
+     a DataLocation with serialized JobRes message)
+     The second entry is used as a sanity check and is ignored if None.
+     The third entry is not used in this function
+    """
     state = defaultdict(int)
+    runtimes = []
 
-    for job_id, out_key in jobs:
+    for job_id, feat_loc, res_loc in jobs:
         client = boto3.client('batch')
         resp = client.describe_jobs(jobs=[job_id])
         assert len(resp['jobs']) == 1
         job_status = resp['jobs'][0]['status']
         state[job_status] += 1
 
-        if job_status == 'SUCCEEDED' and out_key is not None:
+        if job_status == 'SUCCEEDED' and feat_loc is not None:
+
             # Double check that the out_key is actually there.
-            s3 = boto3.resource('s3')
+            s3 = config.get_s3_conn()
             try:
-                s3.Object('spacer-test', out_key).load()
+                s3.Object('spacer-test', feat_loc.key).load()
             except ClientError as e:
                 if e.response['Error']['Code'] == "404":
                     logging.info(
                         "JOB: {} marked as SUCCEEDED, but missing key at {}".
-                        format(job_id, out_key)
+                        format(job_id, feat_loc.key)
                     )
                 else:
                     logging.error(
-                        "Something else is wrong: {} {}".format(job_id,
-                                                                str(e))
+                        "Something else is wrong: {} {}".format(job_id, str(e))
                     )
 
-
+            # Load results and read out the runtime.
+            try:
+                job_res = JobReturnMsg.load(res_loc)
+                runtimes.append(job_res.results[0].runtime)
+            except ClientError as e:
+                if e.response['Error']['Code'] == "404":
+                    logging.info(
+                        "JOB: {} marked as SUCCEEDED, but missing key at {}".
+                        format(job_id, job_res.key)
+                    )
+                else:
+                    logging.error(
+                        "Something else is wrong: {} {}".format(job_id, str(e))
+                    )
 
         if job_status == 'FAILED':
             logging.info('JOB: {} failed!'.format(job_id))
 
-    return state
+    return state, runtimes
 
 
 def sqs_purge(queue_name):
@@ -81,7 +98,7 @@ def sqs_purge(queue_name):
         queue.delete_message(m)
         m = queue.read()
         count += 1
-    print('-> Purged {} messages from {}'.format(count, queue_name))
+    print('Purged {} messages from {}'.format(count, queue_name))
 
 
 def sqs_fetch(queue_name):

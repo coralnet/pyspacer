@@ -4,22 +4,22 @@ jobs are completed. The cluster is setup to add 20 instances as soon as there
 are jobs in the test_queue, so the 100 jobs are be completed quickly.
 """
 
-import json
+
 import logging
 import time
 from datetime import datetime
 
+import numpy as np
+
 from scripts.aws.utils import aws_batch_submit, \
-    sqs_purge, aws_batch_job_status
-from spacer import config
-from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg, \
-    JobReturnMsg
+    aws_batch_job_status
+from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg
 
 
-def submit_jobs(job_cnt, job_queue, results_queue, extractor_name):
+def submit_jobs(job_cnt, job_queue, extractor_name):
     """ Submits job_cnt jobs. """
 
-    print('-> Submitting {} jobs... '.format(job_cnt))
+    logging.info('Submitting {} jobs... '.format(job_cnt))
     targets = []
     for _ in range(job_cnt):
 
@@ -46,28 +46,32 @@ def submit_jobs(job_cnt, job_queue, results_queue, extractor_name):
             key=feat_loc.key + '.job_msg.json',
             bucket_name='spacer-test'
         )
+        job_res_loc = DataLocation(
+            storage_type='s3',
+            key=feat_loc.key + '.job_res.json',
+            bucket_name='spacer-test'
+        )
         msg.store(job_msg_loc)
-        job_id = aws_batch_submit(job_queue, results_queue, job_msg_loc)
-        targets.append((job_id, feat_loc.key))
+        job_id = aws_batch_submit(job_queue, job_msg_loc, job_res_loc)
+        targets.append((job_id, feat_loc, job_res_loc))
 
     logging.info('{} jobs submitted.'.format(len(targets)))
     return targets
 
 
 def main(job_queue='shakeout',
-         results_queue='spacer_shakeout_results',
          extractor_name='efficientnet_b0_ver1'):
 
-    logging.info("-> Starting scaling test for {}.".format(extractor_name))
-    sqs_purge(results_queue)
-    targets = submit_jobs(100, job_queue, results_queue, extractor_name)
+    logging.info("Starting scaling test for {}.".format(extractor_name))
+    targets = submit_jobs(100, job_queue, extractor_name)
 
     status = {'SUCCEEDED': 0}
     while status['SUCCEEDED'] < len(targets):
-        status = aws_batch_job_status(targets)
+        status, runtimes = aws_batch_job_status(targets)
         logging.info(status)
+        logging.info("Avg runtime: {.2f)".format(np.mean(runtimes)))
         time.sleep(3)
-    logging.info("-> All jobs done.")
+    logging.info("All jobs done.")
 
 
 if __name__ == '__main__':

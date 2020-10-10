@@ -106,7 +106,7 @@ def load_net(modeldef_path: str,
     with open(modelweighs_path, 'rb') as fp:
         sha256 = hashlib.sha256(fp.read()).hexdigest()
     assert sha256 == config.MODEL_WEIGHTS_SHA['vgg16']
-    logging.debug("-> Time spent on checking SHA: {}".format(
+    logging.debug("Time spent on checking SHA: {}".format(
         time.time() - start
     ))
     return caffe.Net(modeldef_path, modelweighs_path, caffe.TEST)

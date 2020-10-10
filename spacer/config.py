@@ -9,8 +9,8 @@ import warnings
 import logging
 from typing import Tuple, Optional
 
-import boto
-from boto import sqs
+import botocore
+import boto3
 
 from PIL import Image
 
@@ -22,7 +22,7 @@ if len(logging.getLogger().handlers) > 0:
     # `.basicConfig` does not execute. Thus we set the level directly.
     logging.getLogger().setLevel(logging.INFO)
 else:
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
 
 
 def filter_warnings():
@@ -74,7 +74,11 @@ def get_s3_conn():
     - If not found there it will default to credentials in ~/.aws/credentials
     """
     aws_key_id, aws_key_secret = get_aws_credentials()
-    return boto.connect_s3(aws_key_id, aws_key_secret)
+
+    return boto3.resource('s3',
+                          region_name="us-west-2",
+                          aws_access_key_id=aws_key_id,
+                          aws_secret_access_key=aws_key_secret)
 
 
 def get_sqs_conn():
@@ -85,10 +89,10 @@ def get_sqs_conn():
     - If not found there it will default to credentials in ~/.aws/credentials
     """
     aws_key_id, aws_key_secret = get_aws_credentials()
-    return sqs.connect_to_region(
-        "us-west-2",
-        aws_access_key_id=aws_key_id,
-        aws_secret_access_key=aws_key_secret)
+    return boto3.resource('sqs',
+                          region_name="us-west-2",
+                          aws_access_key_id=aws_key_id,
+                          aws_secret_access_key=aws_key_secret)
 
 
 def get_local_model_path():
@@ -133,6 +137,7 @@ TRAINER_NAMES = [
 ]
 
 MODELS_BUCKET = 'spacer-tools'
+TEST_BUCKET = 'spacer-test'
 
 STORAGE_TYPES = [
     's3',
@@ -153,32 +158,24 @@ MIN_TRAINIMAGES = 10
 # Check access to select which tests to run.
 HAS_CAFFE = importlib.util.find_spec("caffe") is not None
 
+
 try:
-    conn = get_s3_conn()
+    s3 = get_s3_conn()
+    s3.meta.client.head_bucket(Bucket=TEST_BUCKET)
     HAS_S3_TEST_ACCESS = True
-    HAS_S3_MODEL_ACCESS = True
-except boto.exception.NoAuthHandlerFound:
-    conn = None
+except botocore.exceptions.ClientError:  # pragma: no cover
+    logging.info("No connection to spacer-test bucket, "
+                 "can't run remote tests")
     HAS_S3_TEST_ACCESS = False
+
+try:
+    s3 = get_s3_conn()
+    s3.meta.client.head_bucket(Bucket=MODELS_BUCKET)
+    HAS_S3_MODEL_ACCESS = True
+except botocore.exceptions.ClientError:  # pragma: no cover
+    logging.info("No connection to spacer-tools bucket, "
+                 "can't run remote tests")
     HAS_S3_MODEL_ACCESS = False
-    logging.info("-> No s3 connection.")
-
-
-if HAS_S3_TEST_ACCESS:
-    try:
-        bucket = conn.get_bucket('spacer-test', validate=True)
-    except boto.exception.S3ResponseError:  # pragma: no cover
-        logging.info("-> No connection to spacer-test bucket, "
-                     "can't run remote tests")
-        HAS_S3_TEST_ACCESS = False
-
-if HAS_S3_MODEL_ACCESS:
-    try:
-        bucket = conn.get_bucket('spacer-tools', validate=True)
-    except boto.exception.S3ResponseError:  # pragma: no cover
-        logging.info("-> No connection to spacer-tools bucket, "
-                     "can't download models")
-        HAS_S3_MODEL_ACCESS = False
 
 # Add margin to avoid warnings when running unit-test.
 Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS + 20000

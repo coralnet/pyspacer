@@ -118,8 +118,9 @@ class EfficientNetExtractor(FeatureExtractor):
     def __init__(self):
 
         # Cache models locally.
-        self.modelweighs_path, self.model_was_cashed = download_model(
-            'efficientnet_b0_ver1.pt')
+        # self.modelweighs_path, self.model_was_cashed = download_model(
+        #    'efficientnet_b0_ver1.pt')
+        self.model_was_cashed = False
 
     def __call__(self, im, rowcols):
 
@@ -128,7 +129,7 @@ class EfficientNetExtractor(FeatureExtractor):
         # Set torch parameters
         torch_params = {'model_type': 'efficientnet',
                         'model_name': 'efficientnet-b0',
-                        'weights_path': self.modelweighs_path,
+                        'weights_path': 'efficientnet_b0_ver1.pt',
                         'num_class': 1275,
                         'crop_size': 224,
                         'batch_size': 10}
@@ -163,11 +164,11 @@ def feature_extractor_factory(modelname,
     if modelname == 'vgg16_coralnet_ver1':
         assert config.HAS_CAFFE, \
             "Need Caffe installed to instantiate {}".format(modelname)
-        logging.info("-> Initializing VGG16CaffeExtractor")
+        logging.info("Initializing VGG16CaffeExtractor")
         return VGG16CaffeExtractor()
     if modelname == 'efficientnet_b0_ver1':
-        logging.info("-> Initializing EfficientNetExtractor")
+        logging.info("Initializing EfficientNetExtractor")
         return EfficientNetExtractor()
     if modelname == 'dummy':
-        logging.info("-> Initializing DummyExtractor")
+        logging.info("Initializing DummyExtractor")
         return DummyExtractor(dummy_featuredim)

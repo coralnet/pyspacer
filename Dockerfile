@@ -92,4 +92,5 @@ RUN mkdir models
 RUN mkdir spacer
 COPY ./spacer spacer/spacer
 WORKDIR spacer
+
 CMD coverage run --source=spacer --omit=spacer/tests/* -m unittest; coverage report -m
