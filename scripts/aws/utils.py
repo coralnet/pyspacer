@@ -5,7 +5,7 @@ from botocore.errorfactory import ClientError
 from typing import List, Tuple
 from collections import defaultdict
 from spacer import config
-from spacer.storage import store_image
+from spacer.storage import store_image, load_image
 from spacer.messages import JobReturnMsg, DataLocation, JobMsg
 from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg
 
@@ -110,10 +110,18 @@ def submit_jobs(nbr_rowcols: List[int],
 
     logging.info('Submitting {} jobs... '.format(nbr_rowcols))
     targets = []
-    img = Image.new('RGB', (image_size, image_size))
+
+    # Load up an old image and resize it to desired size.
+    org_img_loc = DataLocation(storage_type='s3',
+                               key='08bfc10v7t.png',
+                               bucket_name=config.TEST_BUCKET)
+    org_img = load_image(org_img_loc)
+
+    img = org_img.resize((image_size, image_size)).convert("RGB")
+
     img_loc = DataLocation(storage_type='s3',
-                           key='tmp/{}_{}.jpg'.format(image_size,
-                                                      image_size),
+                           key='tmp/{}.jpg'.
+                           format(str(datetime.now()).replace(' ', '_')),
                            bucket_name=config.TEST_BUCKET)
     store_image(img_loc, img)
     for npts in nbr_rowcols:
@@ -121,7 +129,7 @@ def submit_jobs(nbr_rowcols: List[int],
         # Assign each job a unique feature target location, so we can monitor
         # as the jobs are completed. Use timestamp to get a unique name.
         feat_loc = DataLocation(storage_type='s3',
-                                key='tmp/08bfc10v7t.png.{}.feats.json'.
+                                key='tmp/{}.feats.json'.
                                 format(str(datetime.now()).replace(' ', '_')),
                                 bucket_name=config.TEST_BUCKET)
         job_msg = JobMsg(
@@ -130,9 +138,7 @@ def submit_jobs(nbr_rowcols: List[int],
                 job_token='regression_job',
                 feature_extractor_name=extractor_name,
                 rowcols=[(i, i) for i in list(range(npts))],
-                image_loc=DataLocation(storage_type='s3',
-                                       key='08bfc10v7t.png',
-                                       bucket_name=config.TEST_BUCKET),
+                image_loc=img_loc,
                 feature_loc=feat_loc
             )])
 

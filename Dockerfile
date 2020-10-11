@@ -82,7 +82,7 @@ RUN pip3 install scikit-image==0.15.0
 RUN pip3 install torch==1.4.0
 RUN pip3 install torchvision==0.5.0
 RUN pip3 install boto3==1.15.8
-RUN pip3 install botocore====1.18.8
+RUN pip3 install botocore==1.18.8
 
 ENV SPACER_LOCAL_MODEL_PATH=/workspace/models
 ENV PYTHONPATH="/workspace/spacer:${PYTHONPATH}"
