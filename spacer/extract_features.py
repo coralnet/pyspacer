@@ -136,8 +136,7 @@ class EfficientNetExtractor(FeatureExtractor):
                         'batch_size': 10}
 
         # Crop patches
-        with config.log_entry_and_exit('cropping of {} patches'.format(
-                len(rowcols))):
+        with config.log_entry_and_exit('cropping %s patches' % len(rowcols)):
             patch_list = crop_patches(im, rowcols, torch_params['crop_size'])
         del im
 
