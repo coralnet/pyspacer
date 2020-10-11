@@ -128,7 +128,7 @@ def process_job(job_msg: JobMsg) -> JobReturnMsg:
             with config.log_entry_and_exit('{} [{}]'.format(
                     job_msg.task_name, task.job_token)):
                 results.append(run[job_msg.task_name](task))
-        except Exception as e:
+        except Exception:
             logging.error('Error executing job {}: {}'.format(
                 task.job_token, traceback.format_exc()))
             return_msg = JobReturnMsg(

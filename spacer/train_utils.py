@@ -58,8 +58,8 @@ def train(labels: ImageLabels,
         raise ValueError('Not enough classes to do training (only 1)')
 
     # Load reference data (must hold in memory for the calibration)
-    logging.info("Loading reference data.")
-    refx, refy = load_batch_data(labels, ref_set, classes, feature_loc)
+    with config.log_entry_and_exit("loading of reference data"):
+        refx, refy = load_batch_data(labels, ref_set, classes, feature_loc)
 
     # Initialize classifier and ref set accuracy list
     with config.log_entry_and_exit("training using " + clf_type):
@@ -92,10 +92,7 @@ def evaluate_classifier(clf: CalibratedClassifierCV,
                         labels: ImageLabels,
                         classes: List[int],
                         feature_loc: DataLocation) -> Tuple[List, List, List]:
-    """
-    Return the accuracy of classifier "clf" evaluated on "imkeys"
-    with ground truth given in "gtdict". Features are fetched from S3 "bucket".
-    """
+    """ Evaluates classifier on data """
     scores, gts, ests = [], [], []
     for imkey in labels.image_keys:
         x, y = load_image_data(labels, imkey, classes, feature_loc)

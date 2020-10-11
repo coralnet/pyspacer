@@ -26,6 +26,3 @@ def check_rowcols(rowcols: List[Tuple[int, int]],
 
         assert col < im_width, \
             "Column {} outside image with ncols: {}".format(col, im_width)
-
-
-

@@ -4,7 +4,6 @@ Each data-class can serialize itself to a structure of JSON-friendly
 python-native data-structures such that it can be stored.
 """
 import json
-import logging
 from abc import ABC, abstractmethod
 from io import BytesIO
 from pprint import pformat

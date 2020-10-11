@@ -93,7 +93,7 @@ class S3Storage(Storage):
         try:
             s3.Object(self.bucketname, key).load()
             return True
-        except botocore.exceptions.ClientError as e:
+        except botocore.exceptions.ClientError:
             return False
 
 
@@ -246,5 +246,3 @@ def load_classifier(loc: 'DataLocation'):
         patch_legacy()
 
     return clf
-
-

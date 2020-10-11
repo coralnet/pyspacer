@@ -3,7 +3,6 @@ This file contains a set of pytorch utility functions
 """
 
 import hashlib
-import logging
 from collections import OrderedDict
 from io import BytesIO
 from typing import Any, List
@@ -44,7 +43,8 @@ def load_weights(model: Any,
             sha256 = hashlib.sha256(buffer).hexdigest()
         assert sha256 == config.MODEL_WEIGHTS_SHA[pyparams['model_name']]
 
-        state_dicts = torch.load(BytesIO(buffer), map_location=torch.device('cpu'))
+        state_dicts = torch.load(BytesIO(buffer),
+                                 map_location=torch.device('cpu'))
 
     with config.log_entry_and_exit('model initialization'):
         new_state_dicts = OrderedDict()
