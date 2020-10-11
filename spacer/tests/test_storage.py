@@ -106,21 +106,19 @@ class TestS3Storage(unittest.TestCase):
         self.tmp_image_loc = DataLocation(
             storage_type='s3',
             key='tmp_image.jpg',
-            bucket_name='config.TEST_BUCKET'
+            bucket_name=config.TEST_BUCKET
         )
         self.tmp_json_loc = DataLocation(
             storage_type='s3',
             key='tmp_data.json',
-            bucket_name='config.TEST_BUCKET'
+            bucket_name=config.TEST_BUCKET
         )
         self.tmp_model_loc = DataLocation(
             storage_type='s3',
             key='tmp_model.pkl',
-            bucket_name='config.TEST_BUCKET'
+            bucket_name=config.TEST_BUCKET
         )
-        self.storage = storage_factory('s3', 'config.TEST_BUCKET')
-        s3 = config.get_s3_conn()
-        self.bucket = s3.Bucket('config.TEST_BUCKET')
+        self.storage = storage_factory('s3', config.TEST_BUCKET)
 
     def tearDown(self):
         s3 = config.get_s3_conn()
@@ -140,7 +138,7 @@ class TestS3Storage(unittest.TestCase):
         feats = ImageFeatures.load(DataLocation(
             storage_type='s3',
             key='legacy.jpg.feats',
-            bucket_name='config.TEST_BUCKET'
+            bucket_name=config.TEST_BUCKET
         ))
         self.assertTrue(isinstance(feats, ImageFeatures))
         self.assertFalse(feats.valid_rowcol)
@@ -154,7 +152,7 @@ class TestS3Storage(unittest.TestCase):
         clf = load_classifier(DataLocation(
             storage_type='s3',
             key='legacy.model',
-            bucket_name='config.TEST_BUCKET'
+            bucket_name=config.TEST_BUCKET
         ))
         self.assertTrue(isinstance(clf, CalibratedClassifierCV))
 
@@ -345,3 +343,6 @@ class TestLRUCache(unittest.TestCase):
         load_classifier(loc)
         t2 = time.time() - t0
         self.assertLess(t2, t1)
+
+if __name__ == '__main__':
+    unittest.main()

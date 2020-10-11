@@ -13,7 +13,8 @@ from spacer.messages import JobMsg, DataLocation
 from spacer.tasks import \
     process_job
 
-def env_job():
+
+def env_job(): # pragma: no cover
     """ Runs a job defined in environmental variables. Setup to play
     nicely with AWS Batch.
     Expects JOB_MSG_LOC to contain the json-serialized DataLocation of JobMgs.
@@ -49,7 +50,7 @@ def env_job():
         }
 
     # Return
-    out_queue_name = os.getenv('OUT_QUEUE')
+    out_queue_name = os.getenv('RES_SQS_QUEUE')
     if out_queue_name is not None:
         logging.info("Writing results to {}.".format(out_queue_name))
         conn = config.get_sqs_conn()
@@ -58,7 +59,7 @@ def env_job():
         out_queue.write(m_out)
         logging.info("Done writing results to {}.".format(out_queue_name))
 
-    out_msg_loc = os.getenv('OUT_MSG_LOC')
+    out_msg_loc = os.getenv('RES_MSG_LOC')
     if out_msg_loc is not None:
         logging.info("Deserializing job message location...")
         out_msg_loc = DataLocation.deserialize(json.loads(out_msg_loc))
@@ -98,6 +99,7 @@ def sqs_fetch(in_queue: str = 'spacer_test_jobs',  # pragma: no cover
 
     # Try to deserialize message
     try:
+        pass
         # job_return_msg_dict = run_job_verbose(job_msg_loc).serialize()
     except Exception as e:
         # Handle deserialization errors directly in mailman.

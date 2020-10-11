@@ -62,7 +62,7 @@ class TestCaffeExtractor(unittest.TestCase):
             rowcols=[(100, 100)],
             image_loc=DataLocation(storage_type='s3',
                                    key='edinburgh3.jpg',
-                                   bucket_name='config.TEST_BUCKET'),
+                                   bucket_name=config.TEST_BUCKET),
             feature_loc=DataLocation(storage_type='memory',
                                      key='dummy')
         )
@@ -94,7 +94,7 @@ class TestCaffeExtractor(unittest.TestCase):
             rowcols=[(148, 50), (60, 425)],
             image_loc=DataLocation(storage_type='s3',
                                    key='kh6dydiix0.jpeg',
-                                   bucket_name='config.TEST_BUCKET'),
+                                   bucket_name=config.TEST_BUCKET),
             feature_loc=DataLocation(storage_type='memory',
                                      key='dummy')
         )
@@ -122,7 +122,7 @@ class TestCaffeExtractor(unittest.TestCase):
             rowcols=[(190, 226), (25, 359)],
             image_loc=DataLocation(storage_type='s3',
                                    key='sfq2mr5qbs.jpeg',
-                                   bucket_name='config.TEST_BUCKET'),
+                                   bucket_name=config.TEST_BUCKET),
             feature_loc=DataLocation(storage_type='memory',
                                      key='dummy')
         )
@@ -156,14 +156,14 @@ class TestCaffeExtractor(unittest.TestCase):
             rowcols=rowcols,
             image_loc=DataLocation(storage_type='s3',
                                    key='08bfc10v7t.png',
-                                   bucket_name='config.TEST_BUCKET'),
+                                   bucket_name=config.TEST_BUCKET),
             feature_loc=DataLocation(storage_type='memory',
                                      key='dummy')
         )
 
         legacy_feat_loc = DataLocation(storage_type='s3',
                                        key='08bfc10v7t.png.featurevector',
-                                       bucket_name='config.TEST_BUCKET')
+                                       bucket_name=config.TEST_BUCKET)
 
         ext = feature_extractor_factory(msg.feature_extractor_name)
 
@@ -195,7 +195,7 @@ class TestEfficientNetExtractor(unittest.TestCase):
             rowcols=[(100, 100)],
             image_loc=DataLocation(storage_type='s3',
                                    key='edinburgh3.jpg',
-                                   bucket_name='config.TEST_BUCKET'),
+                                   bucket_name=config.TEST_BUCKET),
             feature_loc=DataLocation(storage_type='memory',
                                      key='dummy')
         )
@@ -227,7 +227,7 @@ class TestEfficientNetExtractor(unittest.TestCase):
             rowcols=[(148, 50), (60, 425)],
             image_loc=DataLocation(storage_type='s3',
                                    key='kh6dydiix0.jpeg',
-                                   bucket_name='config.TEST_BUCKET'),
+                                   bucket_name=config.TEST_BUCKET),
             feature_loc=DataLocation(storage_type='memory',
                                      key='dummy')
         )
@@ -250,7 +250,7 @@ class TestEfficientNetExtractor(unittest.TestCase):
             rowcols=[(190, 226), (25, 359)],
             image_loc=DataLocation(storage_type='s3',
                                    key='sfq2mr5qbs.jpeg',
-                                   bucket_name='config.TEST_BUCKET'),
+                                   bucket_name=config.TEST_BUCKET),
             feature_loc=DataLocation(storage_type='memory',
                                      key='dummy')
         )
@@ -280,7 +280,7 @@ class TestEfficientNetExtractor(unittest.TestCase):
             rowcols=rowcols,
             image_loc=DataLocation(storage_type='s3',
                                    key='08bfc10v7t.png',
-                                   bucket_name='config.TEST_BUCKET'),
+                                   bucket_name=config.TEST_BUCKET),
             feature_loc=DataLocation(storage_type='memory',
                                      key='dummy')
         )
@@ -288,7 +288,7 @@ class TestEfficientNetExtractor(unittest.TestCase):
         legacy_feat_loc = DataLocation(storage_type='s3',
                                        key='08bfc10v7t.png.effnet.'
                                            'ver1.featurevector',
-                                       bucket_name='config.TEST_BUCKET')
+                                       bucket_name=config.TEST_BUCKET)
 
         ext = feature_extractor_factory(msg.feature_extractor_name)
 

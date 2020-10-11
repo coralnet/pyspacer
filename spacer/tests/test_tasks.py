@@ -201,11 +201,11 @@ class TestClassifyFeatures(unittest.TestCase):
         msg = ClassifyFeaturesMsg(
             job_token='my_job',
             feature_loc=DataLocation(storage_type='s3',
-                                     bucket_name='config.TEST_BUCKET',
+                                     bucket_name=config.TEST_BUCKET,
                                      key='legacy.jpg.feats'),
             classifier_loc=DataLocation(storage_type='s3',
                                         key='legacy.model',
-                                        bucket_name='config.TEST_BUCKET')
+                                        bucket_name=config.TEST_BUCKET)
         )
 
         return_msg = classify_features(msg)
@@ -231,7 +231,7 @@ class TestClassifyFeatures(unittest.TestCase):
 
         model_loc = DataLocation(storage_type='s3',
                                  key='legacy.model',
-                                 bucket_name='config.TEST_BUCKET')
+                                 bucket_name=config.TEST_BUCKET)
 
         msg = ClassifyFeaturesMsg(
             job_token='my_job',
@@ -273,7 +273,7 @@ class TestClassifyImage(unittest.TestCase):
             rowcols=[(100, 100), (200, 200)],
             classifier_loc=DataLocation(storage_type='s3',
                                         key='legacy.model',
-                                        bucket_name='config.TEST_BUCKET')
+                                        bucket_name=config.TEST_BUCKET)
         )
 
         return_msg = classify_image(msg)
@@ -315,7 +315,7 @@ class TestClassifyImageCache(unittest.TestCase):
             rowcols=[(100, 100), (200, 200)],
             classifier_loc=DataLocation(storage_type='s3',
                                         key='legacy.model',
-                                        bucket_name='config.TEST_BUCKET')
+                                        bucket_name=config.TEST_BUCKET)
         )
 
         msg2 = ClassifyImageMsg(
@@ -327,7 +327,7 @@ class TestClassifyImageCache(unittest.TestCase):
             rowcols=[(100, 100), (200, 200)],
             classifier_loc=DataLocation(storage_type='s3',
                                         key='legacy_model2.pkl',
-                                        bucket_name='config.TEST_BUCKET')
+                                        bucket_name=config.TEST_BUCKET)
         )
 
         return_msg1 = classify_image(msg)
@@ -349,7 +349,7 @@ class TestBadRowcols(unittest.TestCase):
             rowcols=[(-1, -1)],
             classifier_loc=DataLocation(storage_type='s3',
                                         key='legacy.model',
-                                        bucket_name='config.TEST_BUCKET')
+                                        bucket_name=config.TEST_BUCKET)
         )
 
         try:

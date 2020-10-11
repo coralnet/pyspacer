@@ -8,7 +8,9 @@ from spacer import config
 from spacer.messages import JobReturnMsg, DataLocation
 
 
-def aws_batch_submit(job_queue, results_queue, job_msg_loc: DataLocation):
+def aws_batch_submit(job_queue: str,
+                     job_msg_loc: DataLocation,
+                     job_res_loc: DataLocation):
 
     client = boto3.client('batch')
     resp = client.submit_job(
@@ -22,8 +24,8 @@ def aws_batch_submit(job_queue, results_queue, job_msg_loc: DataLocation):
                     'value': json.dumps(job_msg_loc.serialize()),
                 },
                 {
-                    'name': 'OUT_QUEUE',
-                    'value': results_queue,
+                    'name': 'RES_MSG_LOC',
+                    'value': json.dumps(job_res_loc.serialize()),
                 },
             ],
         }
@@ -54,7 +56,7 @@ def aws_batch_job_status(jobs: List[Tuple[str, DataLocation, DataLocation]]):
             # Double check that the out_key is actually there.
             s3 = config.get_s3_conn()
             try:
-                s3.Object('config.TEST_BUCKET', feat_loc.key).load()
+                s3.Object(config.TEST_BUCKET, feat_loc.key).load()
             except ClientError as e:
                 if e.response['Error']['Code'] == "404":
                     logging.info(
@@ -74,7 +76,7 @@ def aws_batch_job_status(jobs: List[Tuple[str, DataLocation, DataLocation]]):
                 if e.response['Error']['Code'] == "404":
                     logging.info(
                         "JOB: {} marked as SUCCEEDED, but missing key at {}".
-                        format(job_id, job_res.key)
+                        format(job_id, res_loc.key)
                     )
                 else:
                     logging.error(
@@ -85,40 +87,3 @@ def aws_batch_job_status(jobs: List[Tuple[str, DataLocation, DataLocation]]):
             logging.info('JOB: {} failed!'.format(job_id))
 
     return state, runtimes
-
-
-def sqs_purge(queue_name):
-    """ Deletes all messages in queue. """
-
-    conn = config.get_sqs_conn()
-    queue = conn.get_queue(queue_name)
-    m = queue.read()
-    count = 0
-    while m is not None:
-        queue.delete_message(m)
-        m = queue.read()
-        count += 1
-    print('Purged {} messages from {}'.format(count, queue_name))
-
-
-def sqs_fetch(queue_name):
-
-    conn = config.get_sqs_conn()
-    queue = conn.get_queue(queue_name)
-    m = queue.read()
-    job_cnt = 0
-    while m is not None:
-        body = m.get_body()
-        print("return message body:", body)
-        return_msg = JobReturnMsg.deserialize(json.loads(m.get_body()))
-        job_token = return_msg.original_job.tasks[0].job_token
-        if return_msg.ok:
-            logging.info('{} done in {:.2f} s.'.format(
-                job_token, return_msg.results[0].runtime))
-        else:
-            logging.info('{} failed with: {}.'.format(
-                job_token, return_msg.error_message))
-        queue.delete_message(m)
-        m = queue.read()
-        job_cnt += 1
-    return job_cnt

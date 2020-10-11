@@ -12,8 +12,7 @@ from io import BytesIO
 from typing import Union, Tuple
 from urllib.error import URLError
 
-import boto3
-import botocore
+import botocore.exceptions
 import wget
 from PIL import Image
 from sklearn.calibration import CalibratedClassifierCV
@@ -76,8 +75,8 @@ class S3Storage(Storage):
         self.bucketname = bucketname
 
     def store(self, key: str, stream: BytesIO):
-        client = boto3.client('s3')
-        client.put_object(Body=stream, Bucket=self.bucketname, Key=key)
+        s3 = config.get_s3_conn()
+        s3.Bucket(self.bucketname).put_object(Body=stream, Key=key)
 
     def load(self, key: str):
         s3 = config.get_s3_conn()
