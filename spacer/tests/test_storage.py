@@ -344,5 +344,6 @@ class TestLRUCache(unittest.TestCase):
         t2 = time.time() - t0
         self.assertLess(t2, t1)
 
+
 if __name__ == '__main__':
     unittest.main()

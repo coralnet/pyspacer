@@ -4,16 +4,16 @@ Contains config and settings for the repo.
 
 import importlib
 import json
-import os
-import warnings
 import logging
+import os
+import time
+import warnings
+from contextlib import ContextDecorator
 from typing import Tuple, Optional
 
-import botocore
 import boto3
-
+import botocore
 from PIL import Image
-
 
 # Configure a simple logger that works with AWS cloudwatch
 if len(logging.getLogger().handlers) > 0:
@@ -100,6 +100,20 @@ def get_local_model_path():
     if local_model_path is None:
         return get_secret('SPACER_LOCAL_MODEL_PATH')  # pragma: no cover
     return local_model_path
+
+
+class log_entry_and_exit(ContextDecorator):
+    def __init__(self, name):
+        self.name = name
+        self.start_time = None
+
+    def __enter__(self):
+        self.start_time = time.time()
+        logging.info('Entering: %s', self.name)
+
+    def __exit__(self, exc_type, exc, exc_tb):
+        logging.info('Exiting: %s after %f seconds.', self.name,
+                     time.time() - self.start_time)
 
 
 LOCAL_MODEL_PATH = get_local_model_path()

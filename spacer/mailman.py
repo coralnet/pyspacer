@@ -28,13 +28,11 @@ def env_job(): # pragma: no cover
 
     logging.info(" Received job for ENV {}.".format(job_msg_loc))
 
-    logging.info("Deserializing job message location...")
-    job_msg_loc = DataLocation.deserialize(json.loads(job_msg_loc))
-    logging.info("Done deserializing job message location.")
+    with config.log_entry_and_exit('job message location deserialization'):
+        job_msg_loc = DataLocation.deserialize(json.loads(job_msg_loc))
 
-    logging.info("Instantiating job message...")
-    job_msg = JobMsg.load(job_msg_loc)
-    logging.info("Done instantiating job message: {}.")
+    with config.log_entry_and_exit('job message initialization'):
+        job_msg = JobMsg.load(job_msg_loc)
 
     try:
         job_return_msg = process_job(job_msg)
@@ -52,26 +50,24 @@ def env_job(): # pragma: no cover
     # Return
     out_queue_name = os.getenv('RES_SQS_QUEUE')
     if out_queue_name is not None:
-        logging.info("Writing results to {}.".format(out_queue_name))
-        conn = config.get_sqs_conn()
-        out_queue = conn.get_queue(out_queue_name)
-        m_out = out_queue.new_message(body=json.dumps(job_return_msg_dict))
-        out_queue.write(m_out)
-        logging.info("Done writing results to {}.".format(out_queue_name))
+        with config.log_entry_and_exit('writing results to {}'.format(
+                out_queue_name)):
+            conn = config.get_sqs_conn()
+            out_queue = conn.get_queue(out_queue_name)
+            m_out = out_queue.new_message(body=json.dumps(job_return_msg_dict))
+            out_queue.write(m_out)
 
     out_msg_loc = os.getenv('RES_MSG_LOC')
     if out_msg_loc is not None:
-        logging.info("Deserializing job message location...")
-        out_msg_loc = DataLocation.deserialize(json.loads(out_msg_loc))
-        logging.info("Done deserializing job message location.")
+        with config.log_entry_and_exit('out message location deserialization'):
+            out_msg_loc = DataLocation.deserialize(json.loads(out_msg_loc))
 
-        logging.info("Writing res. to {}.".format(out_msg_loc.serialize()))
-        s3 = config.get_s3_conn()
-        s3.Bucket(out_msg_loc.bucket_name).put_object(
-            Key=out_msg_loc.key,
-            Body=bytes(json.dumps(job_return_msg_dict).encode('UTF-8')))
-
-        logging.info("Done writing to {}.".format(out_msg_loc.serialize()))
+        with config.log_entry_and_exit('writing res to {}'.format(
+                out_msg_loc.key)):
+            s3 = config.get_s3_conn()
+            s3.Bucket(out_msg_loc.bucket_name).put_object(
+                Key=out_msg_loc.key,
+                Body=bytes(json.dumps(job_return_msg_dict).encode('UTF-8')))
     return 1
 
 

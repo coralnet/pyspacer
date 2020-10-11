@@ -1,26 +1,25 @@
 import json
 import logging
-import boto3
-from botocore.errorfactory import ClientError
-from typing import List, Tuple
-from collections import defaultdict
-from spacer import config
-from spacer.storage import store_image, load_image
-from spacer.messages import JobReturnMsg, DataLocation, JobMsg
-from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg
-
-import logging
 import time
+from collections import defaultdict
 from datetime import datetime
 from typing import List
-import numpy as np
+from typing import Tuple
 
-from PIL import Image
+import boto3
+import numpy as np
+from botocore.errorfactory import ClientError
+
+from spacer import config
+from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg
+from spacer.messages import JobReturnMsg
+from spacer.storage import store_image, load_image
 
 
 def aws_batch_submit(job_queue: str,
                      job_msg_loc: DataLocation,
                      job_res_loc: DataLocation):
+    """ Submits job to AWS batch """
 
     client = boto3.client('batch')
     resp = client.submit_job(
@@ -45,17 +44,14 @@ def aws_batch_submit(job_queue: str,
 
 def aws_batch_job_status(jobs: List[Tuple[str, DataLocation, JobMsg,
                                           DataLocation, DataLocation, int]]):
-    """ Input should be tuple of
-    (AWE Batch job_id,
-     a DataLocation to where we expect something to be written,
-     a DataLocation with serialized JobRes message)
-     The second entry is used as a sanity check and is ignored if None.
-     The third entry is not used in this function
+    """ Monitor AWS batch status.
+    Input should be tuple same as the output of submit_jobs
+    :type jobs: object
     """
     state = defaultdict(int)
     runtimes = defaultdict(float)
 
-    for job_id, feat_loc, job_msg, job_msg_loc, job_res_loc, _ in jobs:
+    for job_id, feat_loc, _, _, job_res_loc, _ in jobs:
         client = boto3.client('batch')
         resp = client.describe_jobs(jobs=[job_id])
         assert len(resp['jobs']) == 1
@@ -72,7 +68,7 @@ def aws_batch_job_status(jobs: List[Tuple[str, DataLocation, JobMsg,
                 if e.response['Error']['Code'] == "404":
                     logging.info(
                         "JOB: {} marked as SUCCEEDED, but missing key at {}".
-                        format(job_id, feat_loc.key)
+                            format(job_id, feat_loc.key)
                     )
                 else:
                     logging.error(
@@ -87,7 +83,7 @@ def aws_batch_job_status(jobs: List[Tuple[str, DataLocation, JobMsg,
                 if e.response['Error']['Code'] == "404":
                     logging.info(
                         "JOB: {} marked as SUCCEEDED, but missing key at {}".
-                        format(job_id, job_res_loc.key)
+                            format(job_id, job_res_loc.key)
                     )
                 else:
                     logging.error(
@@ -104,7 +100,7 @@ def submit_jobs(nbr_rowcols: List[int],
                 job_queue: str = 'shakeout',
                 image_size: int = 1000,
                 extractor_name: str = 'efficientnet_b0_ver1'):
-    """ Submits job_cnt jobs. """
+    """ Creates and submits jobs to AWS Batch. """
     assert max(nbr_rowcols) <= 1000
     assert max(nbr_rowcols) <= image_size
 
@@ -164,6 +160,7 @@ def submit_jobs(nbr_rowcols: List[int],
 
 
 def monitor_jobs(targets):
+    """ Monitor jobs. Input should be same as output of submit_jobs. """
     status = {'SUCCEEDED': 0}
     while status['SUCCEEDED'] < len(targets):
         status, runtimes = aws_batch_job_status(targets)

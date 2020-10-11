@@ -84,7 +84,9 @@ class VGG16CaffeExtractor(FeatureExtractor):
                         'batch_size': 10}
 
         # Crop patches
-        patch_list = crop_patches(im, rowcols, caffe_params['crop_size'])
+        with config.log_entry_and_exit('cropping of {} patches'.format(
+                len(rowcols))):
+            patch_list = crop_patches(im, rowcols, caffe_params['crop_size'])
         del im
 
         # Extract features
@@ -134,7 +136,9 @@ class EfficientNetExtractor(FeatureExtractor):
                         'batch_size': 10}
 
         # Crop patches
-        patch_list = crop_patches(im, rowcols, torch_params['crop_size'])
+        with config.log_entry_and_exit('cropping of {} patches'.format(
+                len(rowcols))):
+            patch_list = crop_patches(im, rowcols, torch_params['crop_size'])
         del im
 
         # Extract features

@@ -38,20 +38,21 @@ def load_weights(model: Any,
     :return: well trained model
     """
     # Load weights from io.BytesIO object
-    logging.info('Loading state dict.')
-    with open(pyparams['weights_path'], 'rb') as fp:
-        buffer = fp.read()
-        sha256 = hashlib.sha256(buffer).hexdigest()
-    assert sha256 == config.MODEL_WEIGHTS_SHA[pyparams['model_name']]
+    with config.log_entry_and_exit('loading of state dict'):
+        with open(pyparams['weights_path'], 'rb') as fp:
+            buffer = fp.read()
+            sha256 = hashlib.sha256(buffer).hexdigest()
+        assert sha256 == config.MODEL_WEIGHTS_SHA[pyparams['model_name']]
 
-    state_dicts = torch.load(BytesIO(buffer), map_location=torch.device('cpu'))
-    logging.info('Done loading state dict.')
-    new_state_dicts = OrderedDict()
-    for k, v in state_dicts['net'].items():
-        name = k[7:]
-        new_state_dicts[name] = v
-    model.load_state_dict(new_state_dicts)
-    logging.info('Done initializing model.')
+        state_dicts = torch.load(BytesIO(buffer), map_location=torch.device('cpu'))
+
+    with config.log_entry_and_exit('model initialization'):
+        new_state_dicts = OrderedDict()
+        for k, v in state_dicts['net'].items():
+            name = k[7:]
+            new_state_dicts[name] = v
+        model.load_state_dict(new_state_dicts)
+
     for param in model.parameters():
         param.requires_grad = False
     return model
@@ -65,7 +66,6 @@ def extract_feature(patch_list: List,
     :param pyparams: parameter dict
     :return: a list of features
     """
-    logging.info("Extracting features...")
     # Model setup and load pretrained weight
     net = models.get_model(model_type=pyparams['model_type'],
                            model_name=pyparams['model_name'],
@@ -86,5 +86,4 @@ def extract_feature(patch_list: List,
             features = net.extract_features(batch)
         feats_list.extend(features.tolist())
 
-    logging.info("Done extracting features.")
     return feats_list

@@ -62,28 +62,28 @@ def train(labels: ImageLabels,
     refx, refy = load_batch_data(labels, ref_set, classes, feature_loc)
 
     # Initialize classifier and ref set accuracy list
-    logging.info("Online training using {}...".format(clf_type))
-    if clf_type == 'MLP':
-        if len(train_set) * labels.samples_per_image >= 50000:
-            hls, lr = (200, 100), 1e-4
+    with config.log_entry_and_exit("training using " + clf_type):
+        if clf_type == 'MLP':
+            if len(train_set) * labels.samples_per_image >= 50000:
+                hls, lr = (200, 100), 1e-4
+            else:
+                hls, lr = (100,), 1e-3
+            clf = MLPClassifier(hidden_layer_sizes=hls, learning_rate_init=lr)
         else:
-            hls, lr = (100,), 1e-3
-        clf = MLPClassifier(hidden_layer_sizes=hls, learning_rate_init=lr)
-    else:
-        clf = SGDClassifier(loss='log', average=True, random_state=0)
-    ref_acc = []
-    for epoch in range(nbr_epochs):
-        np.random.shuffle(train_set)
-        mini_batches = chunkify(train_set, batches_per_epoch)
-        for mb in mini_batches:
-            x, y = load_batch_data(labels, mb, classes, feature_loc)
-            clf.partial_fit(x, y, classes=classes)
-        ref_acc.append(calc_acc(refy, clf.predict(refx)))
-        logging.info("Epoch {}, acc: {}".format(epoch, ref_acc[-1]))
+            clf = SGDClassifier(loss='log', average=True, random_state=0)
+        ref_acc = []
+        for epoch in range(nbr_epochs):
+            np.random.shuffle(train_set)
+            mini_batches = chunkify(train_set, batches_per_epoch)
+            for mb in mini_batches:
+                x, y = load_batch_data(labels, mb, classes, feature_loc)
+                clf.partial_fit(x, y, classes=classes)
+            ref_acc.append(calc_acc(refy, clf.predict(refx)))
+            logging.info("Epoch {}, acc: {}".format(epoch, ref_acc[-1]))
 
-    logging.info("Calibrating.")
-    clf_calibrated = CalibratedClassifierCV(clf, cv="prefit")
-    clf_calibrated.fit(refx, refy)
+    with config.log_entry_and_exit("calibration"):
+        clf_calibrated = CalibratedClassifierCV(clf, cv="prefit")
+        clf_calibrated.fit(refx, refy)
 
     return clf_calibrated, ref_acc
 

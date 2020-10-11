@@ -155,3 +155,6 @@ class TestValResults(unittest.TestCase):
         res = ValResults.load(legacy_loc)
         self.assertEqual(res, ValResults.deserialize(json.loads(
             json.dumps(res.serialize()))))
+
+if __name__ == '__main__':
+    unittest.main()
