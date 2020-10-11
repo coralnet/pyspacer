@@ -63,6 +63,11 @@ def render(filename='runtimes_shakeout.json'):
     ax3.set_xlabel('Feature extractor')
     ax3.set_ylabel('Runtime (s)')
 
+    linestyles = {
+        'vgg16_coralnet_ver1': '-',
+        'efficientnet_b0_ver1': '-.',
+    }
+
     fig, ax1 = plt.subplots(1, 1, figsize=(8, 8))
     for name in names:
         for im_size in im_sizes:
@@ -72,7 +77,10 @@ def render(filename='runtimes_shakeout.json'):
                                    d[1] == nbr_rowcol and
                                    d[2] == name and
                                    d[3] == im_size]))
-            ax1.plot(nbr_rowcols, rt, label='{}: {}'.format(name, im_size))
+            ax1.plot(nbr_rowcols,
+                     rt,
+                     linestyle=linestyles[name],
+                     label='{}: {}'.format(name, im_size))
     ax1.set_xlabel('Number of point locations')
     ax1.set_ylabel('Runtime (s)')
     ax1.legend()
@@ -81,4 +89,4 @@ def render(filename='runtimes_shakeout.json'):
 
 
 if __name__ == '__main__':
-    run()
+    render()
