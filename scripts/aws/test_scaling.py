@@ -69,8 +69,8 @@ def main(job_queue='shakeout',
     status = {'SUCCEEDED': 0}
     while status['SUCCEEDED'] < len(targets):
         status, runtimes = aws_batch_job_status(targets)
-        logging.info('Job status: {}, mean runtime: {:.2f}'.format(
-            status, np.mean(runtimes)))
+        logging.info('Job status: {}, mean runtime: {:.2f} seconds.'.format(
+            dict(status), np.mean(runtimes)))
         time.sleep(3)
     logging.info("All jobs done.")
 

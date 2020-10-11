@@ -71,7 +71,6 @@ RUN echo "$CAFFE_ROOT/build/lib" >> /etc/ld.so.conf.d/caffe.conf && ldconfig
 # Starting from here are spacer-specific commands.
 # These could be run from requirements.txt after the COPY below
 # But by doing it explicitly the docker build can cache them for faster builds.
-RUN pip3 install boto==2.49.0
 RUN pip3 install wget==3.2
 RUN pip3 install coverage==5.0.3
 RUN pip3 install tqdm==4.43.0
@@ -82,8 +81,8 @@ RUN pip3 install scikit-learn==0.22.1
 RUN pip3 install scikit-image==0.15.0
 RUN pip3 install torch==1.4.0
 RUN pip3 install torchvision==0.5.0
-RUN pip3 install boto3
-RUN pip3 install botocore
+RUN pip3 install boto3==1.15.8
+RUN pip3 install botocore====1.18.8
 
 ENV SPACER_LOCAL_MODEL_PATH=/workspace/models
 ENV PYTHONPATH="/workspace/spacer:${PYTHONPATH}"

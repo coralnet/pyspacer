@@ -25,7 +25,6 @@ setuptools.setup(
     ],
     python_requires='>=3.5',
     install_requires=[
-        'boto>=2.40.0',
         'wget==3.2',
         'tqdm==4.43.0',
         'Pillow>=4.2.0',
@@ -33,6 +32,8 @@ setuptools.setup(
         'scikit-learn==0.22.1',
         'scikit-image==0.15.0',
         'torch==1.4.0',
-        'torchvision==0.5.0'
+        'torchvision==0.5.0',
+        'boto3',
+        'botocore'
     ]
 )
