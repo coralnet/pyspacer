@@ -166,11 +166,12 @@ def feature_extractor_factory(modelname,
     if modelname == 'vgg16_coralnet_ver1':
         assert config.HAS_CAFFE, \
             "Need Caffe installed to instantiate {}".format(modelname)
-        logging.info("Initializing VGG16CaffeExtractor")
-        return VGG16CaffeExtractor()
+        with config.log_entry_and_exit("initializing VGG16CaffeExtractor"):
+            extractor = VGG16CaffeExtractor()
     if modelname == 'efficientnet_b0_ver1':
-        logging.info("Initializing EfficientNetExtractor")
-        return EfficientNetExtractor()
+        with config.log_entry_and_exit("initializing EfficientNetExtractor"):
+            extractor = EfficientNetExtractor()
     if modelname == 'dummy':
-        logging.info("Initializing DummyExtractor")
-        return DummyExtractor(dummy_featuredim)
+        with config.log_entry_and_exit("initializing DummyExtractor"):
+            extractor = DummyExtractor(dummy_featuredim)
+    return extractor

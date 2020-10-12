@@ -9,7 +9,8 @@ from spacer.messages import \
     ExtractFeaturesMsg, \
     TrainClassifierMsg, \
     ClassifyImageMsg, \
-    DataLocation
+    DataLocation, \
+    ImageLabels
 
 
 class TestProcessJobErrorHandling(unittest.TestCase):
@@ -107,10 +108,12 @@ class TestProcessJobErrorHandling(unittest.TestCase):
                              trainer_name='minibatch',
                              nbr_epochs=1,
                              clf_type=clf_type,
-                             traindata_loc=DataLocation(storage_type='memory',
-                                                        key='my_traindata'),
-                             valdata_loc=DataLocation(storage_type='memory',
-                                                      key='my_valdata'),
+                             train_labels=ImageLabels(data={
+                                 'my_feats': [(1, 1, 1), (2, 2, 2)]
+                             }),
+                             val_labels=ImageLabels(data={
+                                 'my_feats': [(1, 1, 1), (2, 2, 2)]
+                             }),
                              features_loc=DataLocation(storage_type='memory',
                                                        key='my_feats'),
                              previous_model_locs=[
@@ -125,7 +128,7 @@ class TestProcessJobErrorHandling(unittest.TestCase):
             return_msg = process_job(msg)
             self.assertFalse(return_msg.ok)
             self.assertIn("KeyError", return_msg.error_message)
-            self.assertIn("my_traindata", return_msg.error_message)
+            self.assertIn("my_previous_model", return_msg.error_message)
             self.assertTrue(type(return_msg), JobReturnMsg)
 
 

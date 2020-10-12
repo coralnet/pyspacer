@@ -139,25 +139,21 @@ class TestTrainClassifier(unittest.TestCase):
         # Create train and val data.
         features_loc_template = DataLocation(storage_type='memory', key='')
 
-        traindata_loc = DataLocation(storage_type='memory', key='traindata')
-        traindata = make_random_data(n_traindata,
-                                     class_list,
-                                     points_per_image,
-                                     feature_dim,
-                                     features_loc_template)
-        traindata.store(traindata_loc)
+        train_labels = make_random_data(n_traindata,
+                                        class_list,
+                                        points_per_image,
+                                        feature_dim,
+                                        features_loc_template)
 
-        valdata = make_random_data(n_valdata,
-                                   class_list,
-                                   points_per_image,
-                                   feature_dim,
-                                   features_loc_template)
-        valdata_loc = DataLocation(storage_type='memory', key='valdata')
-        valdata.store(valdata_loc)
+        val_labels = make_random_data(n_valdata,
+                                      class_list,
+                                      points_per_image,
+                                      feature_dim,
+                                      features_loc_template)
 
         # Train once by calling directly so that we have a previous classifier.
         for clf_type in config.CLASSIFIER_TYPES:
-            clf, _ = train(traindata, features_loc_template, 1, clf_type)
+            clf, _ = train(train_labels, features_loc_template, 1, clf_type)
 
             previous_classifier_loc = DataLocation(storage_type='memory',
                                                    key='pc')
@@ -170,8 +166,8 @@ class TestTrainClassifier(unittest.TestCase):
                 trainer_name='minibatch',
                 nbr_epochs=1,
                 clf_type=clf_type,
-                traindata_loc=traindata_loc,
-                valdata_loc=valdata_loc,
+                train_labels=train_labels,
+                val_labels=val_labels,
                 features_loc=features_loc_template,
                 previous_model_locs=[previous_classifier_loc],
                 model_loc=DataLocation(storage_type='memory', key='model'),
@@ -186,9 +182,9 @@ class TestTrainClassifier(unittest.TestCase):
             self.assertEqual(len(val_res.gt),  len(val_res.est))
             self.assertEqual(len(val_res.gt),  len(val_res.scores))
 
-            # Check that the amount of labels corresponds to the given val_data.
+            # Check that the amount of labels correspond to the val_data.
             self.assertEqual(len(val_res.gt),
-                             len(valdata) * valdata.samples_per_image)
+                             len(val_labels) * val_labels.samples_per_image)
 
 
 class TestClassifyFeatures(unittest.TestCase):
