@@ -68,26 +68,26 @@ def list_sources(export_name: str = 'beta_export') -> None:
     """ Lists sources available in export. """
 
     conn = config.get_s3_conn()
-    bucket = conn.get_bucket('spacer-trainingdata', validate=True)
+    bucket = conn.Bucket('spacer-trainingdata')
 
-    source_keys = bucket.list(prefix='{}/s'.format(export_name),
-                              delimiter='images')
-    meta_keys = [key for key in source_keys if key.name.endswith('json')]
-    meta_keys.sort(key=lambda key: int(key.name.split('/')[1][1:]))
+    obj_list = bucket.objects.filter(Prefix='{}/s'.format(export_name),
+                                     Delimiter='images')
+    obj_list = [obj for obj in obj_list if obj.key.endswith('json')]
+    obj_list.sort(key=lambda obj: int(obj.key.split('/')[1][1:]))
 
     header_format = '{:>30}, {:>4}, {:>6}, {}\n{}'
     print(header_format.format('Name', 'id', 'n_imgs', 'acc (%)', '-'*53))
     entry_format = '{:>30}, {:>4}, {:>6}, {:.1f}%'
 
-    for meta_key in meta_keys:
-        md = json.loads(meta_key.get_contents_as_string().decode('UTF-8'))
+    for obj in obj_list:
+        md = json.loads(obj.get()['Body'].read().decode('utf-8'))
 
         if not'pk' in md:
             # One source "Mestrado" was deleted before we could
             # refresh the export metadata. So get pk from the path.
             print(entry_format.format(
                 md['name'][:20],
-                meta_key.name.split('/')[1][1:],
+                obj.key.split('/')[1][1:],
                 md['nbr_confirmed_images'], 0) + ' Old metadata!!')
         else:
             print(entry_format.format(

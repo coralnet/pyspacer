@@ -5,7 +5,6 @@ import random
 from typing import Tuple
 
 import tqdm
-import logging
 
 from spacer import config
 from spacer.data_classes import ImageLabels
@@ -22,33 +21,33 @@ def cache_local(source_root: str,
                 cache_feats: bool) -> None:
     # Download data to the local to speed up training
     conn = config.get_s3_conn()
-    bucket = conn.get_bucket('spacer-trainingdata', validate=True)
+    bucket = conn.Bucket('spacer-trainingdata')
     if not os.path.exists(source_root):
         os.system('mkdir -p ' + source_root)
     if not os.path.exists(image_root):
         os.system('mkdir -p ' + image_root)
 
-    mdkey = bucket.get_key('{}/s{}/meta.json'.format(export_name, source_id))
-    mdkey.get_contents_to_filename(os.path.join(source_root, 'meta.json'))
-    all_keys = bucket.list(prefix='{}/s{}/images'.format(export_name,
-                                                         source_id))
-    selected_keys = [key for key in all_keys if key.name.endswith(
+    obj = bucket.Object('{}/s{}/meta.json'.format(export_name, source_id))
+    obj.download_file(os.path.join(source_root, 'meta.json'))
+    all_objs = bucket.objects.filter(Prefix='{}/s{}/images'.format(export_name,
+                                                                   source_id))
+    selected_objs = [obj for obj in all_objs if obj.key.endswith(
         ('anns.json', 'meta.json'))]
     if cache_image:
-        selected_keys += [key for key in all_keys if
-                          key.name.endswith(('jpg', 'png'))]
+        selected_objs += [obj for obj in all_objs if
+                          obj.key.endswith(('jpg', 'png'))]
     if cache_feats:
-        selected_keys += [key for key in all_keys if
-                          key.name.endswith('features.json')]
+        selected_objs += [obj for obj in all_objs if
+                          obj.key.endswith('features.json')]
 
     print("Downloading {} metadata and image/feature files...".
-          format(len(selected_keys)))
-    random.shuffle(selected_keys)
-    for key in tqdm.tqdm(selected_keys):
-        _, filename = key.name.split('images')
+          format(len(selected_objs)))
+    random.shuffle(selected_objs)
+    for obj in tqdm.tqdm(selected_objs):
+        _, filename = obj.key.split('images')
         local_path = os.path.join(image_root, filename.lstrip('/'))
         if not os.path.exists(local_path):
-            key.get_contents_to_filename(local_path)
+            bucket.Object(obj.key).download_file(local_path)
 
 
 def build_traindata(image_root: str) -> Tuple[ImageLabels, ImageLabels]:
