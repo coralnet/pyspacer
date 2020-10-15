@@ -5,7 +5,6 @@ Defines feature-extractor ABC; implementations; and factory.
 import abc
 import random
 import time
-import logging
 from typing import List
 from typing import Tuple
 

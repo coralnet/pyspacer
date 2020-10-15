@@ -4,13 +4,11 @@ simplicity. Since support for Caffe will be deprecate,
 these are only lightly cleaned up from their original state.
 """
 
-import logging
 from copy import copy
 from functools import lru_cache
 from typing import List, Any, Tuple
 
 import caffe
-import time
 import hashlib
 import numpy as np
 
@@ -75,19 +73,19 @@ def classify_from_imlist(im_list: List,
     :param startlayer: name of first convolutional layer.
     :return: features list.
     """
+    with config.log_entry_and_exit('forward pass through net'):
+        scorelist = []
+        for b in range(len(im_list) // batch_size + 1):
+            for i in range(batch_size):
+                pos = b * batch_size + i
+                if pos < len(im_list):
+                    net.blobs['data'].data[i, :, :, :] = \
+                        transformer.preprocess(im_list[pos])
+            net.forward(start=startlayer)
+            scorelist.extend(list(copy(net.blobs[scorelayer].data).
+                                  astype(np.float)))
 
-    scorelist = []
-    for b in range(len(im_list) // batch_size + 1):
-        for i in range(batch_size):
-            pos = b * batch_size + i
-            if pos < len(im_list):
-                net.blobs['data'].data[i, :, :, :] = \
-                    transformer.preprocess(im_list[pos])
-        net.forward(start=startlayer)
-        scorelist.extend(list(copy(net.blobs[scorelayer].data).
-                              astype(np.float)))
-
-    scorelist = scorelist[:len(im_list)]
+        scorelist = scorelist[:len(im_list)]
 
     return scorelist
 

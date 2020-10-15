@@ -1,12 +1,12 @@
 """
 Defines the highest level methods for completing tasks.
 """
-import time
 import logging
+import time
 import traceback
 
 from spacer import config
-from spacer.data_classes import ImageLabels, ImageFeatures
+from spacer.data_classes import ImageFeatures
 from spacer.extract_features import feature_extractor_factory
 from spacer.messages import \
     ExtractFeaturesMsg, \
