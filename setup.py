@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="pyspacer",  # Replace with your own username
-    version="0.2.6",
+    version="0.2.7",
     author="Oscar Beijbom",
     author_email="oscar.beijbom@gmail.com",
     description="Spatial image analysis with caffe and pytorch backends.",

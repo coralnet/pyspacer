@@ -79,11 +79,12 @@ def extract_feature(patch_list: List,
     bs = pyparams['batch_size']
     num_batch = int(np.ceil(len(patch_list) / bs))
     feats_list = []
-    for b in range(num_batch):
-        batch = patch_list[b*bs: b*bs + min(len(patch_list[b*bs:]), bs)]
-        batch = torch.stack([transformer(i) for i in batch])
-        with torch.no_grad():
-            features = net.extract_features(batch)
-        feats_list.extend(features.tolist())
+    with config.log_entry_and_exit('forward pass through net'):
+        for b in range(num_batch):
+            batch = patch_list[b*bs: b*bs + min(len(patch_list[b*bs:]), bs)]
+            batch = torch.stack([transformer(i) for i in batch])
+            with torch.no_grad():
+                features = net.extract_features(batch)
+            feats_list.extend(features.tolist())
 
     return feats_list

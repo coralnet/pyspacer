@@ -35,56 +35,48 @@ def run(job_queue: str = 'shakeout'):
 def render(filename='runtimes_shakeout.json'):
 
     data = json.load(open(filename))
-
-    im_sizes = list(set([d[3] for d in data]))
-    im_sizes.sort()
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 4))
-    runtimes = []
-    for im_size in im_sizes:
-        runtimes.append(np.mean([d[4] for d in data if d[3] == im_size]))
+
+    im_sizes = sorted(list(set([d[3] for d in data])))
+    runtimes = [np.mean([d[4] for d in data if d[3] == im_size])
+                for im_size in im_sizes]
     ax1.plot(im_sizes, runtimes, '-.')
     ax1.set_xlabel('Image size (nrows=ncols)')
     ax1.set_ylabel('Runtime (s)')
 
-    nbr_rowcols = list(set([d[1] for d in data]))
-    nbr_rowcols.sort()
-    runtimes = []
-    for nbr_rowcol in nbr_rowcols:
-        runtimes.append(np.mean([d[4] for d in data if d[1] == nbr_rowcol]))
+    nbr_rowcols = sorted(list(set([d[1] for d in data])))
+    runtimes = [np.mean([d[4] for d in data if d[1] == nbr_rowcol])
+                for nbr_rowcol in nbr_rowcols]
     ax2.plot(nbr_rowcols, runtimes, '-.')
     ax2.set_xlabel('Number of point locations')
     ax2.set_ylabel('Runtime (s)')
 
-    names = list(set([d[2] for d in data]))
-    runtimes = []
-    for name in names:
-        runtimes.append(np.mean([d[4] for d in data if d[2] == name]))
+    names = sorted(list(set([d[2] for d in data])))
+    runtimes = [np.mean([d[4] for d in data if d[2] == name])
+                for name in names]
     ax3.bar(names, runtimes)
     ax3.set_xlabel('Feature extractor')
     ax3.set_ylabel('Runtime (s)')
 
+    # Plot a second figure with the raw data.
     linestyles = {
         'vgg16_coralnet_ver1': '-',
         'efficientnet_b0_ver1': '-.',
     }
-
     fig, ax1 = plt.subplots(1, 1, figsize=(8, 8))
     for name in names:
         for im_size in im_sizes:
-            rt = []
-            for nbr_rowcol in nbr_rowcols:
-                rt.append(np.mean([d[4] for d in data if
-                                   d[1] == nbr_rowcol and
-                                   d[2] == name and
-                                   d[3] == im_size]))
-            ax1.plot(nbr_rowcols,
-                     rt,
+            rt = [np.mean([d[4] for d in data if
+                           d[1] == nbr_rowcol and
+                           d[2] == name and
+                           d[3] == im_size])
+                  for nbr_rowcol in nbr_rowcols]
+            ax1.plot(nbr_rowcols, rt,
                      linestyle=linestyles[name],
                      label='{}: {}'.format(name, im_size))
     ax1.set_xlabel('Number of point locations')
     ax1.set_ylabel('Runtime (s)')
     ax1.legend()
-
     plt.show()
 
 

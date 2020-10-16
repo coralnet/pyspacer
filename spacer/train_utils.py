@@ -2,9 +2,9 @@
 Utility methods for training classifiers.
 """
 
+import logging
 import random
 import string
-import logging
 from typing import Tuple, List
 
 import numpy as np

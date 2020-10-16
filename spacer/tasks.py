@@ -1,12 +1,12 @@
 """
 Defines the highest level methods for completing tasks.
 """
-import time
 import logging
+import time
 import traceback
 
 from spacer import config
-from spacer.data_classes import ImageLabels, ImageFeatures
+from spacer.data_classes import ImageFeatures
 from spacer.extract_features import feature_extractor_factory
 from spacer.messages import \
     ExtractFeaturesMsg, \
@@ -52,8 +52,8 @@ def train_classifier(msg: TrainClassifierMsg) -> TrainClassifierReturnMsg:
     # Do the actual training
     with config.log_entry_and_exit('actual training'):
         clf, val_results, return_message = trainer(
-            ImageLabels.load(msg.traindata_loc),
-            ImageLabels.load(msg.valdata_loc),
+            msg.train_labels,
+            msg.val_labels,
             msg.nbr_epochs,
             [load_classifier(loc) for loc in msg.previous_model_locs],
             msg.features_loc,
