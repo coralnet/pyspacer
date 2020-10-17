@@ -106,26 +106,25 @@ class TestS3Storage(unittest.TestCase):
         self.tmp_image_loc = DataLocation(
             storage_type='s3',
             key='tmp_image.jpg',
-            bucket_name='spacer-test'
+            bucket_name=config.TEST_BUCKET
         )
         self.tmp_json_loc = DataLocation(
             storage_type='s3',
             key='tmp_data.json',
-            bucket_name='spacer-test'
+            bucket_name=config.TEST_BUCKET
         )
         self.tmp_model_loc = DataLocation(
             storage_type='s3',
             key='tmp_model.pkl',
-            bucket_name='spacer-test'
+            bucket_name=config.TEST_BUCKET
         )
-        self.storage = storage_factory('s3', 'spacer-test')
-        conn = config.get_s3_conn()
-        self.bucket = conn.get_bucket('spacer-test')
+        self.storage = storage_factory('s3', config.TEST_BUCKET)
 
     def tearDown(self):
-        self.bucket.delete_key(self.tmp_image_loc.key)
-        self.bucket.delete_key(self.tmp_json_loc.key)
-        self.bucket.delete_key(self.tmp_model_loc.key)
+        s3 = config.get_s3_conn()
+        s3.Object(config.TEST_BUCKET, self.tmp_image_loc.key).delete()
+        s3.Object(config.TEST_BUCKET, self.tmp_json_loc.key).delete()
+        s3.Object(config.TEST_BUCKET, self.tmp_model_loc.key).delete()
 
     def test_load_store_image(self):
         img = Image.new('RGB', (100, 200))
@@ -139,7 +138,7 @@ class TestS3Storage(unittest.TestCase):
         feats = ImageFeatures.load(DataLocation(
             storage_type='s3',
             key='legacy.jpg.feats',
-            bucket_name='spacer-test'
+            bucket_name=config.TEST_BUCKET
         ))
         self.assertTrue(isinstance(feats, ImageFeatures))
         self.assertFalse(feats.valid_rowcol)
@@ -147,13 +146,13 @@ class TestS3Storage(unittest.TestCase):
     def test_delete(self):
         store_image(self.tmp_image_loc, Image.new('RGB', (100, 100)))
         self.storage.delete(self.tmp_json_loc.key)
-        self.assertIsNone(self.bucket.get_key(self.tmp_json_loc.key))
+        self.assertFalse(self.storage.exists(self.tmp_json_loc.key))
 
     def test_load_legacy_model(self):
         clf = load_classifier(DataLocation(
             storage_type='s3',
             key='legacy.model',
-            bucket_name='spacer-test'
+            bucket_name=config.TEST_BUCKET
         ))
         self.assertTrue(isinstance(clf, CalibratedClassifierCV))
 
@@ -344,3 +343,7 @@ class TestLRUCache(unittest.TestCase):
         load_classifier(loc)
         t2 = time.time() - t0
         self.assertLess(t2, t1)
+
+
+if __name__ == '__main__':
+    unittest.main()

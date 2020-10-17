@@ -1,37 +1,25 @@
 import json
 import logging
-import boto3
+import time
 from collections import defaultdict
+from datetime import datetime
+from typing import List
+from typing import Tuple
+
+import boto3
+import numpy as np
+from botocore.errorfactory import ClientError
+
 from spacer import config
-from spacer.messages import JobReturnMsg, DataLocation
-
-BATCH_STATUS_NAMES = [
-        'SUBMITTED',
-        'PENDING',
-        'RUNNABLE',
-        'STARTING',
-        'RUNNING',
-        'SUCCEEDED',
-        'FAILED'
-    ]
+from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg
+from spacer.messages import JobReturnMsg
+from spacer.storage import store_image, load_image
 
 
-def aws_batch_queue_status(queue_name, base=None):
-
-    client = boto3.client('batch')
-    report = {
-        status: len(client.list_jobs(
-            jobQueue=queue_name,
-            jobStatus=status
-        )['jobSummaryList']) for status in BATCH_STATUS_NAMES
-    }
-    if base is not None:
-        for status in BATCH_STATUS_NAMES:
-            report[status] -= base[status]
-    return report
-
-
-def aws_batch_submit(job_queue, results_queue, job_msg_loc: DataLocation):
+def aws_batch_submit(job_queue: str,
+                     job_msg_loc: DataLocation,
+                     job_res_loc: DataLocation):
+    """ Submits job to AWS batch """
 
     client = boto3.client('batch')
     resp = client.submit_job(
@@ -45,8 +33,8 @@ def aws_batch_submit(job_queue, results_queue, job_msg_loc: DataLocation):
                     'value': json.dumps(job_msg_loc.serialize()),
                 },
                 {
-                    'name': 'OUT_QUEUE',
-                    'value': results_queue,
+                    'name': 'RES_MSG_LOC',
+                    'value': json.dumps(job_res_loc.serialize()),
                 },
             ],
         }
@@ -54,66 +42,130 @@ def aws_batch_submit(job_queue, results_queue, job_msg_loc: DataLocation):
     return resp['jobId']
 
 
-def aws_batch_job_status(job_ids):
+def aws_batch_job_status(jobs: List[Tuple[str, DataLocation, JobMsg,
+                                          DataLocation, DataLocation, int]]):
+    """ Monitor AWS batch status.
+    Input should be tuple same as the output of submit_jobs
+    :type jobs: object
+    """
     state = defaultdict(int)
+    runtimes = defaultdict(float)
 
-    for job_id in job_ids:
+    for job_id, feat_loc, _, _, job_res_loc, _ in jobs:
         client = boto3.client('batch')
         resp = client.describe_jobs(jobs=[job_id])
         assert len(resp['jobs']) == 1
-        state[resp['jobs'][0]['status']] += 1
-    return state
+        job_status = resp['jobs'][0]['status']
+        state[job_status] += 1
+
+        if job_status == 'SUCCEEDED' and feat_loc is not None:
+
+            # Double check that the out_key is actually there.
+            s3 = config.get_s3_conn()
+            try:
+                s3.Object(config.TEST_BUCKET, feat_loc.key).load()
+            except ClientError as e:
+                if e.response['Error']['Code'] == "404":
+                    logging.info(
+                        "JOB: {} marked as SUCCEEDED, but missing key at {}".
+                            format(job_id, feat_loc.key)
+                    )
+                else:
+                    logging.error(
+                        "Something else is wrong: {} {}".format(job_id, str(e))
+                    )
+
+            # Load results and read out the runtime.
+            try:
+                job_res = JobReturnMsg.load(job_res_loc)
+                runtimes[job_id] = job_res.results[0].runtime
+            except ClientError as e:
+                if e.response['Error']['Code'] == "404":
+                    logging.info(
+                        "JOB: {} marked as SUCCEEDED, but missing key at {}".
+                            format(job_id, job_res_loc.key)
+                    )
+                else:
+                    logging.error(
+                        "Something else is wrong: {} {}".format(job_id, str(e))
+                    )
+
+        if job_status == 'FAILED':
+            logging.info('JOB: {} failed!'.format(job_id))
+
+    return state, runtimes
 
 
-def count_jobs_complete(targets):
-    """ Check the target locations and counts how many are complete. """
+def submit_jobs(nbr_rowcols: List[int],
+                job_queue: str = 'shakeout',
+                image_size: int = 1000,
+                extractor_name: str = 'efficientnet_b0_ver1'):
+    """ Creates and submits jobs to AWS Batch. """
+    assert max(nbr_rowcols) <= 1000
+    assert max(nbr_rowcols) <= image_size
 
-    conn = config.get_s3_conn()
-    bucket = conn.get_bucket('spacer-test', validate=True)
+    logging.info('Submitting {} jobs... '.format(nbr_rowcols))
+    targets = []
 
-    complete_count = 0
-    for target, job_id in targets:
-        key = bucket.get_key(target.key)
-        if key is not None:
-            complete_count += 1
-        else:
-            logging.info("job id: {} not complete".format(job_id))
+    # Load up an old image and resize it to desired size.
+    org_img_loc = DataLocation(storage_type='s3',
+                               key='08bfc10v7t.png',
+                               bucket_name=config.TEST_BUCKET)
+    org_img = load_image(org_img_loc)
 
-    return complete_count
+    img = org_img.resize((image_size, image_size)).convert("RGB")
+
+    img_loc = DataLocation(storage_type='s3',
+                           key='tmp/{}.jpg'.
+                           format(str(datetime.now()).replace(' ', '_')),
+                           bucket_name=config.TEST_BUCKET)
+    store_image(img_loc, img)
+    for npts in nbr_rowcols:
+
+        # Assign each job a unique feature target location, so we can monitor
+        # as the jobs are completed. Use timestamp to get a unique name.
+        feat_loc = DataLocation(storage_type='s3',
+                                key='tmp/{}.feats.json'.
+                                format(str(datetime.now()).replace(' ', '_')),
+                                bucket_name=config.TEST_BUCKET)
+        job_msg = JobMsg(
+            task_name='extract_features',
+            tasks=[ExtractFeaturesMsg(
+                job_token='regression_job',
+                feature_extractor_name=extractor_name,
+                rowcols=[(i, i) for i in list(range(npts))],
+                image_loc=img_loc,
+                feature_loc=feat_loc
+            )])
+
+        job_msg_loc = DataLocation(
+            storage_type='s3',
+            key=feat_loc.key + '.job_msg.json',
+            bucket_name=config.TEST_BUCKET
+        )
+        job_res_loc = DataLocation(
+            storage_type='s3',
+            key=feat_loc.key + '.job_res.json',
+            bucket_name=config.TEST_BUCKET
+        )
+        job_msg.store(job_msg_loc)
+
+        job_id = aws_batch_submit(job_queue, job_msg_loc, job_res_loc)
+
+        targets.append((job_id, feat_loc, job_msg, job_msg_loc, job_res_loc,
+                        image_size))
+
+    logging.info('{} jobs submitted.'.format(len(targets)))
+    return targets
 
 
-def sqs_purge(queue_name):
-    """ Deletes all messages in queue. """
-
-    conn = config.get_sqs_conn()
-    queue = conn.get_queue(queue_name)
-    m = queue.read()
-    count = 0
-    while m is not None:
-        queue.delete_message(m)
-        m = queue.read()
-        count += 1
-    print('-> Purged {} messages from {}'.format(count, queue_name))
-
-
-def sqs_fetch(queue_name):
-
-    conn = config.get_sqs_conn()
-    queue = conn.get_queue(queue_name)
-    m = queue.read()
-    job_cnt = 0
-    while m is not None:
-        body = m.get_body()
-        print("return message body:", body)
-        return_msg = JobReturnMsg.deserialize(json.loads(m.get_body()))
-        job_token = return_msg.original_job.tasks[0].job_token
-        if return_msg.ok:
-            logging.info('{} done in {:.2f} s.'.format(
-                job_token, return_msg.results[0].runtime))
-        else:
-            logging.info('{} failed with: {}.'.format(
-                job_token, return_msg.error_message))
-        queue.delete_message(m)
-        m = queue.read()
-        job_cnt += 1
-    return job_cnt
+def monitor_jobs(targets):
+    """ Monitor jobs. Input should be same as output of submit_jobs. """
+    status = {'SUCCEEDED': 0}
+    while status['SUCCEEDED'] < len(targets):
+        status, runtimes = aws_batch_job_status(targets)
+        logging.info('Job status: {}, mean runtime: {:.2f} seconds.'.format(
+            dict(status), np.mean(list(runtimes.values()))))
+        time.sleep(3)
+    logging.info("All jobs done.")
+    return status, runtimes

@@ -2,17 +2,17 @@
 This file contains a set of pytorch utility functions
 """
 
+import hashlib
 from collections import OrderedDict
+from io import BytesIO
 from typing import Any, List
-import logging
+
 import numpy as np
 import torch
-import hashlib
-from io import BytesIO
 from torchvision import transforms
 
-from spacer import models
 from spacer import config
+from spacer import models
 
 
 def transformation():
@@ -37,17 +37,22 @@ def load_weights(model: Any,
     :return: well trained model
     """
     # Load weights from io.BytesIO object
-    with open(pyparams['weights_path'], 'rb') as fp:
-        buffer = fp.read()
-        sha256 = hashlib.sha256(buffer).hexdigest()
-    assert sha256 == config.MODEL_WEIGHTS_SHA[pyparams['model_name']]
+    with config.log_entry_and_exit('loading of state dict'):
+        with open(pyparams['weights_path'], 'rb') as fp:
+            buffer = fp.read()
+            sha256 = hashlib.sha256(buffer).hexdigest()
+        assert sha256 == config.MODEL_WEIGHTS_SHA[pyparams['model_name']]
 
-    state_dicts = torch.load(BytesIO(buffer), map_location=torch.device('cpu'))
-    new_state_dicts = OrderedDict()
-    for k, v in state_dicts['net'].items():
-        name = k[7:]
-        new_state_dicts[name] = v
-    model.load_state_dict(new_state_dicts)
+        state_dicts = torch.load(BytesIO(buffer),
+                                 map_location=torch.device('cpu'))
+
+    with config.log_entry_and_exit('model initialization'):
+        new_state_dicts = OrderedDict()
+        for k, v in state_dicts['net'].items():
+            name = k[7:]
+            new_state_dicts[name] = v
+        model.load_state_dict(new_state_dicts)
+
     for param in model.parameters():
         param.requires_grad = False
     return model
@@ -61,7 +66,6 @@ def extract_feature(patch_list: List,
     :param pyparams: parameter dict
     :return: a list of features
     """
-    logging.info("-> Extracting features...")
     # Model setup and load pretrained weight
     net = models.get_model(model_type=pyparams['model_type'],
                            model_name=pyparams['model_name'],
@@ -75,12 +79,12 @@ def extract_feature(patch_list: List,
     bs = pyparams['batch_size']
     num_batch = int(np.ceil(len(patch_list) / bs))
     feats_list = []
-    for b in range(num_batch):
-        batch = patch_list[b*bs: b*bs + min(len(patch_list[b*bs:]), bs)]
-        batch = torch.stack([transformer(i) for i in batch])
-        with torch.no_grad():
-            features = net.extract_features(batch)
-        feats_list.extend(features.tolist())
+    with config.log_entry_and_exit('forward pass through net'):
+        for b in range(num_batch):
+            batch = patch_list[b*bs: b*bs + min(len(patch_list[b*bs:]), bs)]
+            batch = torch.stack([transformer(i) for i in batch])
+            with torch.no_grad():
+                features = net.extract_features(batch)
+            feats_list.extend(features.tolist())
 
-    logging.info("-> Done extracting features.")
     return feats_list

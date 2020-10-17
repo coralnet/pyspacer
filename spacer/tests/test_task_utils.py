@@ -47,3 +47,6 @@ class TestRowColCheck(unittest.TestCase):
         except AssertionError as err:
             self.assertIn('col', repr(err))
             self.assertNotIn('row', repr(err))
+
+if __name__ == '__main__':
+    unittest.main()

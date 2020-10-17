@@ -1,5 +1,5 @@
 from typing import List, Tuple
-import logging
+
 import numpy as np
 from PIL import Image
 
@@ -29,12 +29,11 @@ def crop_patches(im: Image,
     :param crop_size: patch size
     :return: patch list
     """
-    logging.info("-> Cropping {} patches...".format(len(rowcols)))
-
+    # For some images np.array returns an empty array.
+    # Running it twice fixes it
     # Ref: https://github.com/numpy/numpy/issues/11629
-    # Looks like it's PIL issue
-    _ = np.array(im)  # For some images np.array returns an empty array.
-    im = np.array(im)  # Running it twice fixes this. Don't ask me why.
+    _ = np.array(im)
+    im = np.array(im)
 
     if len(im.shape) == 2 or im.shape[2] == 1:
         im = gray2rgb(im)
@@ -46,7 +45,6 @@ def crop_patches(im: Image,
     patches = [crop_simple(im, (row + pad, col + pad), crop_size)
                for row, col in rowcols]
 
-    logging.info("-> Done dropping {} patches.".format(len(rowcols)))
     return patches
 
 

@@ -3,16 +3,16 @@ Defines storage ABC; implementations; and factory.
 """
 
 import abc
+import logging
 import os
 import pickle
 import warnings
-import logging
-
 from functools import lru_cache
 from io import BytesIO
 from typing import Union, Tuple
 from urllib.error import URLError
 
+import botocore.exceptions
 import wget
 from PIL import Image
 from sklearn.calibration import CalibratedClassifierCV
@@ -72,22 +72,29 @@ class S3Storage(Storage):
     """ Stores objects on AWS S3 """
 
     def __init__(self, bucketname: str):
-        conn = config.get_s3_conn()
-        self.bucket = conn.get_bucket(bucketname)
+        self.bucketname = bucketname
 
     def store(self, key: str, stream: BytesIO):
-        key = self.bucket.new_key(key)
-        key.set_contents_from_file(stream)
+        s3 = config.get_s3_conn()
+        s3.Bucket(self.bucketname).put_object(Body=stream, Key=key)
 
     def load(self, key: str):
-        key = self.bucket.get_key(key)
-        return BytesIO(key.get_contents_as_string())
+        s3 = config.get_s3_conn()
+        stream = BytesIO()
+        s3.Object(self.bucketname, key).download_fileobj(stream)
+        return stream
 
     def delete(self, key: str) -> None:
-        self.bucket.delete_key(key)
+        s3 = config.get_s3_conn()
+        s3.Object(self.bucketname, key).delete()
 
     def exists(self, key: str):
-        return self.bucket.get_key(key) is not None
+        s3 = config.get_s3_conn()
+        try:
+            s3.Object(self.bucketname, key).load()
+            return True
+        except botocore.exceptions.ClientError:
+            return False
 
 
 class FileSystemStorage(Storage):
@@ -172,17 +179,17 @@ def download_model(keyname: str) -> Tuple[str, bool]:
     assert config.HAS_S3_MODEL_ACCESS, "Need access to model bucket."
     assert config.HAS_LOCAL_MODEL_PATH, "Model path not set or is invalid."
     destination = os.path.join(config.LOCAL_MODEL_PATH, keyname)
-    if not os.path.isfile(destination):
-        logging.info("-> Downloading {}...".format(keyname))
-        conn = config.get_s3_conn()
-        bucket = conn.get_bucket(config.MODELS_BUCKET, validate=True)
-        key = bucket.get_key(keyname)
-        key.get_contents_to_filename(destination)
-        was_cashed = False
-        logging.info("-> Done downloading {}.".format(keyname))
-    else:
-        # Already cached, no need to download
-        was_cashed = True
+
+    with config.log_entry_and_exit('fetching of model to ' + destination):
+        if not os.path.isfile(destination):
+            with config.log_entry_and_exit('downloading from ' + keyname):
+                s3 = config.get_s3_conn()
+                s3.Bucket(config.MODELS_BUCKET).download_file(keyname,
+                                                              destination)
+                was_cashed = False
+        else:
+            # Already cached, no need to download
+            was_cashed = True
 
     return destination, was_cashed
 
@@ -224,7 +231,7 @@ def load_classifier(loc: 'DataLocation'):
         """
         from sklearn.calibration import LabelEncoder
 
-        logging.info("-> Patching legacy classifier.")
+        logging.info("Patching legacy classifier.")
         assert len(clf.calibrated_classifiers_) == 1
         assert all(clf.classes_ == clf.calibrated_classifiers_[0].classes_)
         clf.calibrated_classifiers_[0].label_encoder_ = LabelEncoder()
@@ -239,5 +246,3 @@ def load_classifier(loc: 'DataLocation'):
         patch_legacy()
 
     return clf
-
-

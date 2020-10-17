@@ -2,9 +2,9 @@
 Utility methods for training classifiers.
 """
 
+import logging
 import random
 import string
-import logging
 from typing import Tuple, List
 
 import numpy as np
@@ -38,13 +38,13 @@ def train(labels: ImageLabels,
     np.random.shuffle(ref_set)
     ref_set = ref_set[:max_imgs_in_memory]  # Enforce memory limit.
     train_set = list(set(labels.image_keys) - set(ref_set))
-    logging.info("-> Trainset: {}, valset: {} images".
+    logging.info("Trainset: {}, valset: {} images".
                  format(len(train_set), len(ref_set)))
 
     # Figure out # images per batch and batches per epoch.
     images_per_batch, batches_per_epoch = \
         calc_batch_size(max_imgs_in_memory, len(train_set))
-    logging.info("-> Using {} images per mini-batch and {} mini-batches per "
+    logging.info("Using {} images per mini-batch and {} mini-batches per "
                  "epoch".format(images_per_batch, batches_per_epoch))
 
     # Identify classes common to both train and val.
@@ -52,38 +52,38 @@ def train(labels: ImageLabels,
     trainclasses = labels.unique_classes(train_set)
     refclasses = labels.unique_classes(ref_set)
     classes = list(trainclasses.intersection(refclasses))
-    logging.info("-> Trainset: {}, valset: {}, common: {} labels".format(
+    logging.info("Trainset: {}, valset: {}, common: {} labels".format(
         len(trainclasses), len(refclasses), len(classes)))
     if len(classes) == 1:
         raise ValueError('Not enough classes to do training (only 1)')
 
     # Load reference data (must hold in memory for the calibration)
-    logging.info("-> Loading reference data.")
-    refx, refy = load_batch_data(labels, ref_set, classes, feature_loc)
+    with config.log_entry_and_exit("loading of reference data"):
+        refx, refy = load_batch_data(labels, ref_set, classes, feature_loc)
 
     # Initialize classifier and ref set accuracy list
-    logging.info("-> Online training using {}...".format(clf_type))
-    if clf_type == 'MLP':
-        if len(train_set) * labels.samples_per_image >= 50000:
-            hls, lr = (200, 100), 1e-4
+    with config.log_entry_and_exit("training using " + clf_type):
+        if clf_type == 'MLP':
+            if len(train_set) * labels.samples_per_image >= 50000:
+                hls, lr = (200, 100), 1e-4
+            else:
+                hls, lr = (100,), 1e-3
+            clf = MLPClassifier(hidden_layer_sizes=hls, learning_rate_init=lr)
         else:
-            hls, lr = (100,), 1e-3
-        clf = MLPClassifier(hidden_layer_sizes=hls, learning_rate_init=lr)
-    else:
-        clf = SGDClassifier(loss='log', average=True, random_state=0)
-    ref_acc = []
-    for epoch in range(nbr_epochs):
-        np.random.shuffle(train_set)
-        mini_batches = chunkify(train_set, batches_per_epoch)
-        for mb in mini_batches:
-            x, y = load_batch_data(labels, mb, classes, feature_loc)
-            clf.partial_fit(x, y, classes=classes)
-        ref_acc.append(calc_acc(refy, clf.predict(refx)))
-        logging.info("-> Epoch {}, acc: {}".format(epoch, ref_acc[-1]))
+            clf = SGDClassifier(loss='log', average=True, random_state=0)
+        ref_acc = []
+        for epoch in range(nbr_epochs):
+            np.random.shuffle(train_set)
+            mini_batches = chunkify(train_set, batches_per_epoch)
+            for mb in mini_batches:
+                x, y = load_batch_data(labels, mb, classes, feature_loc)
+                clf.partial_fit(x, y, classes=classes)
+            ref_acc.append(calc_acc(refy, clf.predict(refx)))
+            logging.info("Epoch {}, acc: {}".format(epoch, ref_acc[-1]))
 
-    logging.info("-> Calibrating.")
-    clf_calibrated = CalibratedClassifierCV(clf, cv="prefit")
-    clf_calibrated.fit(refx, refy)
+    with config.log_entry_and_exit("calibration"):
+        clf_calibrated = CalibratedClassifierCV(clf, cv="prefit")
+        clf_calibrated.fit(refx, refy)
 
     return clf_calibrated, ref_acc
 
@@ -92,10 +92,7 @@ def evaluate_classifier(clf: CalibratedClassifierCV,
                         labels: ImageLabels,
                         classes: List[int],
                         feature_loc: DataLocation) -> Tuple[List, List, List]:
-    """
-    Return the accuracy of classifier "clf" evaluated on "imkeys"
-    with ground truth given in "gtdict". Features are fetched from S3 "bucket".
-    """
+    """ Evaluates classifier on data """
     scores, gts, ests = [], [], []
     for imkey in labels.image_keys:
         x, y = load_image_data(labels, imkey, classes, feature_loc)

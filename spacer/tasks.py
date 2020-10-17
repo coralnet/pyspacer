@@ -1,12 +1,12 @@
 """
 Defines the highest level methods for completing tasks.
 """
-import time
 import logging
+import time
 import traceback
 
 from spacer import config
-from spacer.data_classes import ImageLabels, ImageFeatures
+from spacer.data_classes import ImageFeatures
 from spacer.extract_features import feature_extractor_factory
 from spacer.messages import \
     ExtractFeaturesMsg, \
@@ -23,7 +23,6 @@ from spacer.train_classifier import trainer_factory
 
 def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
 
-    logging.info("-> Extracting features for job:{}.".format(msg.job_token))
     extractor = feature_extractor_factory(msg.feature_extractor_name)
     img = load_image(msg.image_loc)
 
@@ -37,29 +36,33 @@ def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
         )
 
     check_rowcols(msg.rowcols, img)
-    features, return_msg = extractor(img, msg.rowcols)
-    features.store(msg.feature_loc)
+
+    with config.log_entry_and_exit('actual extraction'):
+        features, return_msg = extractor(img, msg.rowcols)
+
+    with config.log_entry_and_exit('storing features'):
+        features.store(msg.feature_loc)
+
     return return_msg
 
 
 def train_classifier(msg: TrainClassifierMsg) -> TrainClassifierReturnMsg:
-
-    logging.info("-> Training classifier pk:{}.".format(msg.job_token))
     trainer = trainer_factory(msg.trainer_name)
 
     # Do the actual training
-    clf, val_results, return_message = trainer(
-        ImageLabels.load(msg.traindata_loc),
-        ImageLabels.load(msg.valdata_loc),
-        msg.nbr_epochs,
-        [load_classifier(loc) for loc in msg.previous_model_locs],
-        msg.features_loc,
-        msg.clf_type
-    )
+    with config.log_entry_and_exit('actual training'):
+        clf, val_results, return_message = trainer(
+            msg.train_labels,
+            msg.val_labels,
+            msg.nbr_epochs,
+            [load_classifier(loc) for loc in msg.previous_model_locs],
+            msg.features_loc,
+            msg.clf_type
+        )
 
-    # Store
-    store_classifier(msg.model_loc, clf)
-    val_results.store(msg.valresult_loc)
+    with config.log_entry_and_exit('storing classifier and val res'):
+        store_classifier(msg.model_loc, clf)
+        val_results.store(msg.valresult_loc)
 
     return return_message
 
@@ -119,19 +122,28 @@ def process_job(job_msg: JobMsg) -> JobReturnMsg:
     assert isinstance(job_msg, JobMsg)
     assert job_msg.task_name in config.TASKS
 
-    try:
-        results = [run[job_msg.task_name](task) for task in job_msg.tasks]
-        return_msg = JobReturnMsg(
-            original_job=job_msg,
-            ok=True,
-            results=results,
-            error_message=None
-        )
-    except Exception as e:
-        return_msg = JobReturnMsg(
-            original_job=job_msg,
-            ok=False,
-            results=None,
-            error_message=traceback.format_exc()
-        )
+    results = []
+    for task in job_msg.tasks:
+        try:
+            with config.log_entry_and_exit('{} [{}]'.format(
+                    job_msg.task_name, task.job_token)):
+                results.append(run[job_msg.task_name](task))
+        except Exception:
+            logging.error('Error executing job {}: {}'.format(
+                task.job_token, traceback.format_exc()))
+            return_msg = JobReturnMsg(
+                original_job=job_msg,
+                ok=False,
+                results=None,
+                error_message=traceback.format_exc()
+            )
+            return return_msg
+
+    return_msg = JobReturnMsg(
+        original_job=job_msg,
+        ok=True,
+        results=results,
+        error_message=None
+    )
+
     return return_msg

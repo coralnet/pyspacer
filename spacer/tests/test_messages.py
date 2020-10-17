@@ -259,3 +259,7 @@ class TestJobReturnMsg(unittest.TestCase):
             msg.serialize()))
         self.assertEqual(msg, JobReturnMsg.deserialize(
             json.loads(json.dumps(msg.serialize()))))
+
+
+if __name__ == '__main__':
+    unittest.main()

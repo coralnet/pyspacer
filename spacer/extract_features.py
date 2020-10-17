@@ -5,7 +5,6 @@ Defines feature-extractor ABC; implementations; and factory.
 import abc
 import random
 import time
-import logging
 from typing import List
 from typing import Tuple
 
@@ -84,7 +83,9 @@ class VGG16CaffeExtractor(FeatureExtractor):
                         'batch_size': 10}
 
         # Crop patches
-        patch_list = crop_patches(im, rowcols, caffe_params['crop_size'])
+        with config.log_entry_and_exit('cropping of {} patches'.format(
+                len(rowcols))):
+            patch_list = crop_patches(im, rowcols, caffe_params['crop_size'])
         del im
 
         # Extract features
@@ -119,7 +120,7 @@ class EfficientNetExtractor(FeatureExtractor):
 
         # Cache models locally.
         self.modelweighs_path, self.model_was_cashed = download_model(
-            'efficientnet_b0_ver1.pt')
+           'efficientnet_b0_ver1.pt')
 
     def __call__(self, im, rowcols):
 
@@ -134,7 +135,8 @@ class EfficientNetExtractor(FeatureExtractor):
                         'batch_size': 10}
 
         # Crop patches
-        patch_list = crop_patches(im, rowcols, torch_params['crop_size'])
+        with config.log_entry_and_exit('cropping %s patches' % len(rowcols)):
+            patch_list = crop_patches(im, rowcols, torch_params['crop_size'])
         del im
 
         # Extract features
@@ -163,11 +165,12 @@ def feature_extractor_factory(modelname,
     if modelname == 'vgg16_coralnet_ver1':
         assert config.HAS_CAFFE, \
             "Need Caffe installed to instantiate {}".format(modelname)
-        logging.info("-> Initializing VGG16CaffeExtractor")
-        return VGG16CaffeExtractor()
+        with config.log_entry_and_exit("initializing VGG16CaffeExtractor"):
+            extractor = VGG16CaffeExtractor()
     if modelname == 'efficientnet_b0_ver1':
-        logging.info("-> Initializing EfficientNetExtractor")
-        return EfficientNetExtractor()
+        with config.log_entry_and_exit("initializing EfficientNetExtractor"):
+            extractor = EfficientNetExtractor()
     if modelname == 'dummy':
-        logging.info("-> Initializing DummyExtractor")
-        return DummyExtractor(dummy_featuredim)
+        with config.log_entry_and_exit("initializing DummyExtractor"):
+            extractor = DummyExtractor(dummy_featuredim)
+    return extractor

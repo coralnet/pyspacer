@@ -50,7 +50,7 @@ def extract_and_classify(im_key, clf_key, rowcol):
         job_token='beta_reg_test',
         feature_extractor_name='vgg16_coralnet_ver1',
         image_loc=DataLocation(storage_type='s3',
-                               bucket_name='spacer-test',
+                               bucket_name=config.TEST_BUCKET,
                                key=s3_key_prefix + im_key + '.jpg'),
         rowcols=rowcol,
         feature_loc=new_feats_loc
@@ -61,7 +61,7 @@ def extract_and_classify(im_key, clf_key, rowcol):
         job_token='regression_test',
         feature_loc=new_feats_loc,
         classifier_loc=DataLocation(storage_type='s3',
-                                    bucket_name='spacer-test',
+                                    bucket_name=config.TEST_BUCKET,
                                     key=s3_key_prefix + clf_key)
     )
     new_return = classify_features(msg)
@@ -69,7 +69,7 @@ def extract_and_classify(im_key, clf_key, rowcol):
     legacy_return = ClassifyReturnMsg.load(
         DataLocation(
             storage_type='s3',
-            bucket_name='spacer-test',
+            bucket_name=config.TEST_BUCKET,
             key=s3_key_prefix + im_key + '.scores.json'
         )
     )
@@ -111,7 +111,7 @@ class TestExtractFeatures(unittest.TestCase):
             job_token='beta_reg_test',
             feature_extractor_name='vgg16_coralnet_ver1',
             image_loc=DataLocation(storage_type='s3',
-                                   bucket_name='spacer-test',
+                                   bucket_name=config.TEST_BUCKET,
                                    key=s3_key_prefix + im_key + '.png'),
             rowcols=rowcols,
             feature_loc=new_feats_loc
@@ -121,7 +121,7 @@ class TestExtractFeatures(unittest.TestCase):
         legacy_feats = ImageFeatures.load(
             DataLocation(
                 storage_type='s3',
-                bucket_name='spacer-test',
+                bucket_name=config.TEST_BUCKET,
                 key=s3_key_prefix + im_key + '.png.features.json'
             ))
 
@@ -157,11 +157,11 @@ class TestClassifyFeatures(unittest.TestCase):
         msg = ClassifyFeaturesMsg(
             job_token='regression_test',
             feature_loc=DataLocation(storage_type='s3',
-                                     bucket_name='spacer-test',
+                                     bucket_name=config.TEST_BUCKET,
                                      key=s3_key_prefix + im_key + '.features.'
                                                                   'json'),
             classifier_loc=DataLocation(storage_type='s3',
-                                        bucket_name='spacer-test',
+                                        bucket_name=config.TEST_BUCKET,
                                         key=s3_key_prefix + clf_key)
         )
         new_return = classify_features(msg)
@@ -172,7 +172,7 @@ class TestClassifyFeatures(unittest.TestCase):
         legacy_return = ClassifyReturnMsg.load(
             DataLocation(
                 storage_type='s3',
-                bucket_name='spacer-test',
+                bucket_name=config.TEST_BUCKET,
                 key=s3_key_prefix + im_key + '.scores.json'
             )
         )
@@ -199,7 +199,7 @@ class TestExtractClassify(unittest.TestCase):
 
     def setUp(self):
         config.filter_warnings()
-        self.storage = storage_factory('s3', 'spacer-test')
+        self.storage = storage_factory('s3', config.TEST_BUCKET)
 
     def test_tricky_example(self):
         """ From regression testing, this particular row, col location
