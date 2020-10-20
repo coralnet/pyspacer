@@ -205,7 +205,7 @@ class ImageFeatures(DataClass):
         )
 
     def serialize(self):
-        raise DeprecationWarning('Use .store() and .load() methods instead.')
+        raise NotImplementedError('Use .store() and .load() methods instead.')
 
     def __eq__(self, other):
         return all([a == b for a, b in zip(self.point_features,

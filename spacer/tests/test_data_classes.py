@@ -116,6 +116,10 @@ class TestImageFeaturesNumpyStore(unittest.TestCase):
         feats_reloaded = ImageFeatures.load(feat_loc)
         self.assertEqual(feats, feats_reloaded)
 
+    def test_deprecated_serializer(self):
+        feats = ImageFeatures.example()
+        self.assertRaises(NotImplementedError, feats.serialize)
+
 
 class TestFeatureLabels(unittest.TestCase):
 
