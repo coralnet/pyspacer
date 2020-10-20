@@ -88,6 +88,7 @@ class TestImageFeaturesNumpyStore(unittest.TestCase):
         s3 = config.get_s3_conn()
         s3.Object(config.TEST_BUCKET, self.s3_loc.key).delete()
 
+    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
     def test_s3(self):
         self._test_numpy_store(self.s3_loc)
 
