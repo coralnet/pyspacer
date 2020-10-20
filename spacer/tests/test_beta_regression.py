@@ -139,7 +139,7 @@ class TestExtractFeatures(unittest.TestCase):
                                          new_feats.point_features,
                                          msg.rowcols):
             self.assertTrue(np.allclose(legacy_pf.data, new_pf.data,
-                                        atol=1e-5))
+                                        atol=1e-3))
 
 
 @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to tests')
