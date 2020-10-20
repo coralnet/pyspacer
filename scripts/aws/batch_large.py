@@ -29,10 +29,10 @@ def run(job_queue: str = 'shakeout'):
             runtime[job_id]
         ])
 
-    json.dump(to_store, open('runtimes_shakeout.json', 'w'))
+    json.dump(to_store, open('runtimes.json', 'w'))
 
 
-def render(filename='runtimes_shakeout.json'):
+def render(filename='runtimes.json'):
 
     data = json.load(open(filename))
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 4))
@@ -78,7 +78,7 @@ def render(filename='runtimes_shakeout.json'):
     ax1.set_ylabel('Runtime (s)')
     ax1.legend()
     plt.show()
-
+    fig.savefig('/Users/beijbom/Desktop/both_runtime.jpg')
 
 if __name__ == '__main__':
     render()

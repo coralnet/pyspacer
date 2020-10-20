@@ -74,7 +74,8 @@ def classify_features(msg: ClassifyFeaturesMsg) -> ClassifyReturnMsg:
 
     clf = load_classifier(msg.classifier_loc)
 
-    scores = [(pf.row, pf.col, clf.predict_proba(pf.data_np).tolist()[0]) for
+    scores = [(pf.row, pf.col,
+               clf.predict_proba(pf.data.reshape(1, -1)).tolist()[0]) for
               pf in features.point_features]
 
     # Return
