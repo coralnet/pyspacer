@@ -180,7 +180,7 @@ class TestClassifyFeatures(unittest.TestCase):
 
         for ls, ns in zip(legacy_return.scores, new_return.scores):
             with self.subTest(im_key=im_key, clf_key=clf_key):
-                self.assertTrue(np.allclose(ls[2], ns[2]))
+                self.assertTrue(np.allclose(ls[2], ns[2], atol=1e-3))
 
     def test_all(self):
 
