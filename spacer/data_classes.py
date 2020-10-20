@@ -233,8 +233,8 @@ class ImageFeatures(DataClass):
 
         storage = storage_factory(loc.storage_type, loc.bucket_name)
         stream = storage.load(loc.key)
+        stream.seek(0)
         try:
-            stream.seek(0)
             data = np.load(stream)
             valid_rowcol = data['meta'][0]
             if valid_rowcol:
@@ -250,15 +250,8 @@ class ImageFeatures(DataClass):
                     feature_dim=data['meta'][2]
                 )
             else:
-                return ImageFeatures(
-                    point_features=[PointFeatures(
-                        row=None,
-                        col=None,
-                        data=feat) for feat in data['feat']],
-                    valid_rowcol=data['meta'][0],
-                    npoints=data['meta'][1],
-                    feature_dim=data['meta'][2]
-                )
+                return cls.deserialize(data['feat'].tolist())
+
         except ValueError:
             "We used to store these as a JSON file with a list of features."
             data = json.loads(stream.getvalue().decode('utf-8'))
