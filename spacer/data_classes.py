@@ -115,7 +115,7 @@ class PointFeatures(DataClass):
     def __init__(self,
                  row: Optional[int],  # Row where feature was extracted
                  col: Optional[int],  # Column where feature was extracted
-                 data: np.array,  # Feature vector. 32 bit precision floats.
+                 data: np.array,  # Feature vector with half precision floats.
                  ):
         self.row = row
         self.col = col
