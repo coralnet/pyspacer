@@ -12,7 +12,7 @@ from contextlib import ContextDecorator
 from typing import Tuple, Optional
 
 import boto3
-import botocore
+import botocore.exceptions as boto_exceptions
 from PIL import Image
 
 # Configure a simple logger that works with AWS cloudwatch
@@ -177,7 +177,7 @@ try:
     s3 = get_s3_conn()
     s3.meta.client.head_bucket(Bucket=TEST_BUCKET)
     HAS_S3_TEST_ACCESS = True
-except botocore.exceptions.ClientError:  # pragma: no cover
+except [boto_exceptions.ClientError, boto_exceptions.NoCredentialsError]:  # pragma: no cover
     logging.info("No connection to spacer-test bucket, "
                  "can't run remote tests")
     HAS_S3_TEST_ACCESS = False
@@ -186,7 +186,7 @@ try:
     s3 = get_s3_conn()
     s3.meta.client.head_bucket(Bucket=MODELS_BUCKET)
     HAS_S3_MODEL_ACCESS = True
-except botocore.exceptions.ClientError:  # pragma: no cover
+except [boto_exceptions.ClientError, boto_exceptions.NoCredentialsError]:  # pragma: no cover
     logging.info("No connection to spacer-tools bucket, "
                  "can't run remote tests")
     HAS_S3_MODEL_ACCESS = False
