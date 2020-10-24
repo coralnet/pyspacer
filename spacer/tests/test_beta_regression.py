@@ -139,7 +139,7 @@ class TestExtractFeatures(unittest.TestCase):
                                          new_feats.point_features,
                                          msg.rowcols):
             self.assertTrue(np.allclose(legacy_pf.data, new_pf.data,
-                                        atol=1e-3))
+                                        atol=1e-5))
 
 
 @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to tests')
@@ -180,7 +180,7 @@ class TestClassifyFeatures(unittest.TestCase):
 
         for ls, ns in zip(legacy_return.scores, new_return.scores):
             with self.subTest(im_key=im_key, clf_key=clf_key):
-                self.assertTrue(np.allclose(ls[2], ns[2], atol=1e-3))
+                self.assertTrue(np.allclose(ls[2], ns[2]))
 
     def test_all(self):
 

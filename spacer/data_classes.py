@@ -115,18 +115,18 @@ class PointFeatures(DataClass):
     def __init__(self,
                  row: Optional[int],  # Row where feature was extracted
                  col: Optional[int],  # Column where feature was extracted
-                 data: np.array,  # Feature vector with half precision floats.
+                 data: np.array,  # Feature vector with 32 bit precision.
                  ):
         self.row = row
         self.col = col
-        self.data = np.array(data, dtype=np.half)
+        self.data = np.array(data, dtype=np.float)
 
     @classmethod
     def example(cls):
         return cls(
             row=100,
             col=100,
-            data=np.array([1.1, 1.3, 1.12], dtype=np.half)
+            data=np.array([1.1, 1.3, 1.12], dtype=np.float)
         )
 
     def __eq__(self, other):
@@ -265,7 +265,7 @@ class ImageFeatures(DataClass):
         else:
             rows = np.array([])
             cols = np.array([])
-        feat = np.array([p.data for p in self.point_features], dtype=np.half)
+        feat = np.array([p.data for p in self.point_features], dtype=np.float)
         meta = np.array([self.valid_rowcol, self.npoints, self.feature_dim])
         output = BytesIO()
         np.savez_compressed(output, meta=meta, rows=rows, cols=cols, feat=feat)

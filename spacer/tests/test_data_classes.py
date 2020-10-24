@@ -53,7 +53,7 @@ class TestImageFeatures(unittest.TestCase):
     def test_getitem(self):
         msg = ImageFeatures.example()
         point_features = msg[(100, 100)]
-        self.assertAlmostEqual(point_features[0], 1.1, places=3)
+        self.assertAlmostEqual(point_features[0], 1.1)
 
     def test_legacy_getitme(self):
         msg = ImageFeatures.example()
