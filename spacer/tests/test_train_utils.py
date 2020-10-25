@@ -2,6 +2,8 @@ import itertools
 import unittest
 from typing import Tuple
 
+import numpy as np
+
 from spacer import config
 from spacer.data_classes import ImageLabels, PointFeatures, ImageFeatures
 from spacer.messages import DataLocation
@@ -255,7 +257,7 @@ class TestLoadImageData(unittest.TestCase):
         x, y = load_image_data(labels, self.feat_key, [1, 2], self.feature_loc)
 
         self.assertEqual(y, [1, 2, 1])
-        self.assertEqual(x[0], features.point_features[0].data)
+        self.assertTrue(np.array_equal(x[0], features.point_features[0].data))
 
     def test_reverse(self):
         """ here the order of features and labels are reversed.
@@ -268,7 +270,7 @@ class TestLoadImageData(unittest.TestCase):
         self.assertEqual(y, [1, 2, 1])
         # Since the order is reversed, the first feature should be the second
         # vector of point_features list.
-        self.assertEqual(x[0], features.point_features[1].data)
+        self.assertTrue(np.array_equal(x[0], features.point_features[1].data))
 
     def test_legacy_reverse(self):
         """
@@ -282,7 +284,7 @@ class TestLoadImageData(unittest.TestCase):
         self.assertEqual(y, [1, 2, 1])
         # Since the order is reversed, the first feature should be the second
         # vector of point_features list. But it is not.
-        self.assertNotEqual(x[0], features.point_features[1].data)
+        self.assertFalse(np.array_equal(x[0], features.point_features[1].data))
 
     def test_smaller_labelset(self):
         """ Here we use a smaller labelset and assert
@@ -293,8 +295,8 @@ class TestLoadImageData(unittest.TestCase):
         x, y = load_image_data(labels, self.feat_key, [1], self.feature_loc)
 
         self.assertEqual(y, [1, 1])
-        self.assertEqual(x[0], features.point_features[0].data)
-        self.assertEqual(x[1], features.point_features[2].data)
+        self.assertTrue(np.array_equal(x[0], features.point_features[0].data))
+        self.assertTrue(np.array_equal(x[1], features.point_features[2].data))
 
     def test_other_small_labelset(self):
         """ Here we use a smaller labelset and assert
@@ -305,7 +307,7 @@ class TestLoadImageData(unittest.TestCase):
         x, y = load_image_data(labels, self.feat_key, [2], self.feature_loc)
 
         self.assertEqual(y, [2])
-        self.assertEqual(x[0], features.point_features[1].data)
+        self.assertTrue(np.array_equal(x[0], features.point_features[1].data))
 
     def test_legacy_smaller_labelset(self):
         """
@@ -319,8 +321,8 @@ class TestLoadImageData(unittest.TestCase):
         self.assertEqual(y, [1, 1])
         # Since the order is reversed, the first feature should be the second
         # vector of point_features list. But it is not.
-        self.assertEqual(x[0], features.point_features[0].data)
-        self.assertEqual(x[1], features.point_features[2].data)
+        self.assertTrue(np.array_equal(x[0], features.point_features[0].data))
+        self.assertTrue(np.array_equal(x[1], features.point_features[2].data))
 
 
 class TestLoadBatchData(unittest.TestCase):
@@ -379,16 +381,16 @@ class TestLoadBatchData(unittest.TestCase):
         x, y = load_batch_data(labels, [self.feat_key1, self.feat_key2],
                                [1, 2], self.feat_loc_template)
 
-        self.assertEqual(x[0], features1.point_features[0].data)
-        self.assertEqual(x[3], features2.point_features[0].data)
+        self.assertTrue(np.array_equal(x[0], features1.point_features[0].data))
+        self.assertTrue(np.array_equal(x[3], features2.point_features[0].data))
 
     def test_reverse_imkey_order(self):
         labels, features1, features2 = self.fixtures(valid_rowcol=True)
         x, y = load_batch_data(labels, [self.feat_key2, self.feat_key1],
                                [1, 2], self.feat_loc_template)
 
-        self.assertEqual(x[0], features2.point_features[0].data)
-        self.assertEqual(x[3], features1.point_features[0].data)
+        self.assertTrue(np.array_equal(x[0], features2.point_features[0].data))
+        self.assertTrue(np.array_equal(x[3], features1.point_features[0].data))
 
     def test_one_label(self):
 

@@ -1,6 +1,7 @@
 import json
 import os
 import unittest
+import random
 
 from spacer import config
 from spacer.data_classes import \
@@ -16,30 +17,11 @@ class TestDataClass(unittest.TestCase):
 
     def test_repr(self):
         pf = PointFeatures.example()
-        self.assertEqual(str(pf),
-                         "{'col': 100, 'data': [1.1, 1.3, 1.12], 'row': 100}")
-
-
-class TestPointFeatures(unittest.TestCase):
-
-    def test_serialize(self):
-
-        msg = PointFeatures.example()
-        self.assertEqual(msg, PointFeatures.deserialize(
-            msg.serialize()))
-        self.assertEqual(msg, PointFeatures.deserialize(
-            json.loads(json.dumps(msg.serialize()))))
+        self.assertIn("'col': 100", str(pf))
+        self.assertIn("'row': 100", str(pf))
 
 
 class TestImageFeatures(unittest.TestCase):
-
-    def test_serialize(self):
-
-        msg = ImageFeatures.example()
-        self.assertEqual(msg, ImageFeatures.deserialize(
-            msg.serialize()))
-        self.assertEqual(msg, ImageFeatures.deserialize(
-            json.loads(json.dumps(msg.serialize()))))
 
     def test_legacy(self):
         """
@@ -49,16 +31,10 @@ class TestImageFeatures(unittest.TestCase):
                                'legacy.jpg.feats')) as fp:
             feats = ImageFeatures.deserialize(json.load(fp))
         self.assertEqual(feats.valid_rowcol, False)
-        self.assertEqual(ImageFeatures.deserialize(
-            feats.serialize()).valid_rowcol, False)
 
         self.assertTrue(isinstance(feats.point_features[0], PointFeatures))
         self.assertEqual(feats.npoints, len(feats.point_features))
         self.assertEqual(feats.feature_dim, len(feats.point_features[0].data))
-
-        self.assertEqual(feats, ImageFeatures.deserialize(feats.serialize()))
-        self.assertEqual(feats, ImageFeatures.deserialize(json.loads(
-            json.dumps(feats.serialize()))))
 
     @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
     def test_legacy_from_s3(self):
@@ -68,18 +44,82 @@ class TestImageFeatures(unittest.TestCase):
 
         feats = ImageFeatures.load(legacy_feat_loc)
         self.assertEqual(feats.valid_rowcol, False)
-        self.assertEqual(feats, ImageFeatures.deserialize(json.loads(
-            json.dumps(feats.serialize()))))
+
+        mem_loc = DataLocation(storage_type='memory', key='tmp')
+        feats.store(mem_loc)
+        reloaded_feats = ImageFeatures.load(mem_loc)
+        self.assertEqual(feats, reloaded_feats)
 
     def test_getitem(self):
         msg = ImageFeatures.example()
         point_features = msg[(100, 100)]
-        self.assertEqual(point_features[0], 1.1)
+        self.assertAlmostEqual(point_features[0], 1.1)
 
     def test_legacy_getitme(self):
         msg = ImageFeatures.example()
         msg.valid_rowcol = False
         self.assertRaises(ValueError, msg.__getitem__, (100, 100))
+
+
+@unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
+class TestImageFeaturesNumpyStore(unittest.TestCase):
+
+    def setUp(self) -> None:
+        self.fs_loc = DataLocation(
+                storage_type='filesystem',
+                key='tmp/tmp_feats',
+                bucket_name='')
+        self.s3_loc = DataLocation(
+            storage_type='s3',
+            key='tmp_feats',
+            bucket_name=config.TEST_BUCKET
+        )
+        self.mem_loc = DataLocation(
+            storage_type='memory',
+            key='tmp_feats'
+        )
+
+    def tearDown(self):
+
+        if os.path.exists(self.fs_loc.key):
+            os.remove(self.fs_loc.key)
+        dirname = os.path.abspath(os.path.dirname(self.fs_loc.key))
+        if os.path.exists(dirname):
+            os.rmdir(dirname)
+        s3 = config.get_s3_conn()
+        s3.Object(config.TEST_BUCKET, self.s3_loc.key).delete()
+
+    def test_s3(self):
+        self._test_numpy_store(self.s3_loc)
+
+    def test_fs(self):
+        self._test_numpy_store(self.fs_loc)
+
+    def test_mem(self):
+        self._test_numpy_store(self.mem_loc)
+
+    def _test_numpy_store(self, feat_loc):
+
+        n_pts = 200
+        n_dim = 1280
+        feats = ImageFeatures(
+            point_features=[PointFeatures(row=i,
+                                          col=i,
+                                          data=[random.random()]*n_dim)
+                            for i in range(n_pts)],
+            valid_rowcol=True,
+            feature_dim=n_dim,
+            npoints=n_pts
+        )
+        with config.log_entry_and_exit('Storing feats vector'):
+            feats.store(feat_loc)
+
+        feats_reloaded = ImageFeatures.load(feat_loc)
+        self.assertEqual(feats, feats_reloaded)
+
+    def test_deprecated_serializer(self):
+        feats = ImageFeatures.example()
+        self.assertRaises(NotImplementedError, feats.serialize)
 
 
 class TestFeatureLabels(unittest.TestCase):

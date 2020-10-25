@@ -115,28 +115,23 @@ class PointFeatures(DataClass):
     def __init__(self,
                  row: Optional[int],  # Row where feature was extracted
                  col: Optional[int],  # Column where feature was extracted
-                 data: List[float],  # Feature vector as list of floats.
+                 data: np.array,  # Feature vector with 32 bit precision.
                  ):
         self.row = row
         self.col = col
-        self.data = data
+        self.data = np.array(data, dtype=np.float)
 
     @classmethod
     def example(cls):
         return cls(
             row=100,
             col=100,
-            data=[1.1, 1.3, 1.12]
+            data=np.array([1.1, 1.3, 1.12], dtype=np.float)
         )
 
-    @classmethod
-    def deserialize(cls, data: Dict) -> 'PointFeatures':
-        """ Redefined here to help the Typing module. """
-        return cls(**data)
-
-    @property
-    def data_np(self):
-        return np.array(self.data).reshape(1, -1)
+    def __eq__(self, other):
+        return self.row == other.row and self.col == other.col and \
+               np.allclose(self.data, other.data)
 
 
 class ImageFeatures(DataClass):
@@ -195,35 +190,22 @@ class ImageFeatures(DataClass):
     @classmethod
     def deserialize(cls, data: Union[Dict, List]) -> 'ImageFeatures':
 
-        if isinstance(data, List):
-            # Legacy feature were stored as a list of list
-            # without row and column information.
-            assert len(data) > 0, "Empty features file."
-            return ImageFeatures(
-                point_features=[PointFeatures(row=None,
-                                              col=None,
-                                              data=entry) for entry in data],
-                valid_rowcol=False,
-                feature_dim=len(data[0]),
-                npoints=len(data)
-            )
-        else:
-            return ImageFeatures(
-                point_features=[PointFeatures.deserialize(feat)
-                                for feat in data['point_features']],
-                valid_rowcol=data['valid_rowcol'],
-                feature_dim=data['feature_dim'],
-                npoints=data['npoints']
-            )
+        assert isinstance(data, List), \
+            "Deserialize only supported for legacy format"
+        # Legacy feature were stored as a list of list
+        # without row and column information.
+        assert len(data) > 0, "Empty features file."
+        return ImageFeatures(
+            point_features=[PointFeatures(row=None,
+                                          col=None,
+                                          data=entry) for entry in data],
+            valid_rowcol=False,
+            feature_dim=len(data[0]),
+            npoints=len(data)
+        )
 
     def serialize(self):
-        return {
-            'point_features': [feats.serialize() for
-                               feats in self.point_features],
-            'valid_rowcol': self.valid_rowcol,
-            'feature_dim': self.feature_dim,
-            'npoints': self.npoints
-        }
+        raise NotImplementedError('Use .store() and .load() methods instead.')
 
     def __eq__(self, other):
         return all([a == b for a, b in zip(self.point_features,
@@ -245,6 +227,50 @@ class ImageFeatures(DataClass):
                              valid_rowcol=True,
                              feature_dim=feature_dim,
                              npoints=len(point_labels))
+
+    @classmethod
+    def load(cls, loc: 'DataLocation'):
+
+        storage = storage_factory(loc.storage_type, loc.bucket_name)
+        stream = storage.load(loc.key)
+        stream.seek(0)
+        try:
+            data = np.load(stream)
+            valid_rowcol = data['meta'][0]
+            if valid_rowcol:
+                return ImageFeatures(
+                    point_features=[PointFeatures(
+                        row=int(row),
+                        col=int(col),
+                        data=feat) for row, col, feat in zip(data['rows'],
+                                                             data['cols'],
+                                                             data['feat'])],
+                    valid_rowcol=data['meta'][0],
+                    npoints=data['meta'][1],
+                    feature_dim=data['meta'][2]
+                )
+            else:
+                return cls.deserialize(data['feat'].tolist())
+
+        except ValueError:
+            "We used to store these as a JSON file with a list of features."
+            data = json.loads(stream.getvalue().decode('utf-8'))
+            return cls.deserialize(data)
+
+    def store(self, loc: 'DataLocation'):
+        storage = storage_factory(loc.storage_type, loc.bucket_name)
+        if self.valid_rowcol:
+            rows = np.array([p.row for p in self.point_features], dtype=np.uint16)
+            cols = np.array([p.col for p in self.point_features], dtype=np.uint16)
+        else:
+            rows = np.array([])
+            cols = np.array([])
+        feat = np.array([p.data for p in self.point_features], dtype=np.float)
+        meta = np.array([self.valid_rowcol, self.npoints, self.feature_dim])
+        output = BytesIO()
+        np.savez_compressed(output, meta=meta, rows=rows, cols=cols, feat=feat)
+        output.seek(0)
+        storage.store(loc.key, output)
 
 
 class ValResults(DataClass):
