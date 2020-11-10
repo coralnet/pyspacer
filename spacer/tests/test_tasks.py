@@ -211,7 +211,6 @@ class ClassifyReturnMsgTest(unittest.TestCase):
             self.assertTrue(isinstance(class_, int))
 
         self.assertTrue(isinstance(return_msg.valid_rowcol, bool))
-        print(return_msg.valid_rowcol)
 
         self.assertTrue(type(return_msg.scores), ClassifyReturnMsg)
 
