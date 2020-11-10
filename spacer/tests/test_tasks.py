@@ -187,7 +187,36 @@ class TestTrainClassifier(unittest.TestCase):
                              len(val_labels) * val_labels.samples_per_image)
 
 
-class TestClassifyFeatures(unittest.TestCase):
+class ClassifyReturnMsgTest(unittest.TestCase):
+
+    def _validate_return_msg(self, return_msg, valid_rowcol):
+
+        self.assertTrue(isinstance(return_msg.runtime, float))
+
+        for row, col, scores in return_msg.scores:
+            self.assertTrue(isinstance(scores, list))
+            self.assertEqual(len(scores), len(return_msg.classes))
+
+            if valid_rowcol:
+                self.assertTrue(isinstance(return_msg[(row, col)], list))
+                self.assertEqual(return_msg[(row, col)], scores)
+                self.assertTrue(isinstance(row, int))
+                self.assertTrue(isinstance(col, int))
+            else:
+                self.assertRaises(ValueError, return_msg.__getitem__, (10, 20))
+                self.assertIsNone(row)
+                self.assertIsNone(col)
+
+        for class_ in return_msg.classes:
+            self.assertTrue(isinstance(class_, int))
+
+        self.assertTrue(isinstance(return_msg.valid_rowcol, bool))
+        print(return_msg.valid_rowcol)
+
+        self.assertTrue(type(return_msg.scores), ClassifyReturnMsg)
+
+
+class TestClassifyFeatures(ClassifyReturnMsgTest):
 
     def setUp(self):
         config.filter_warnings()
@@ -203,21 +232,9 @@ class TestClassifyFeatures(unittest.TestCase):
                                         key='legacy.model',
                                         bucket_name=config.TEST_BUCKET)
         )
-        clf = load_classifier(msg.classifier_loc)
+
         return_msg = classify_features(msg)
-
-        # Legacy feature didn't store rowcol information.
-        self.assertFalse(return_msg.valid_rowcol)
-
-        self.assertRaises(ValueError, return_msg.__getitem__, (10, 20))
-
-        for row, col, scores in return_msg.scores:
-            self.assertEqual(row, None)
-            self.assertEqual(col, None)
-            self.assertTrue(isinstance(scores, list))
-            self.assertEqual(len(scores), len(clf.classes_))
-
-        self.assertTrue(type(return_msg.scores), ClassifyReturnMsg)
+        self._validate_return_msg(return_msg, False)
 
     @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to tests')
     def test_new(self):
@@ -237,27 +254,12 @@ class TestClassifyFeatures(unittest.TestCase):
             classifier_loc=model_loc
         )
 
-        clf = load_classifier(model_loc)
-
         return_msg = classify_features(msg)
 
-        for class_ in return_msg.classes:
-            self.assertTrue(isinstance(class_, int))
-
-        self.assertTrue(return_msg.valid_rowcol)
-        for pf in feats.point_features:
-            self.assertTrue(isinstance(return_msg[(pf.row, pf.col)], list))
-
-        for row, col, scores in return_msg.scores:
-            self.assertTrue(isinstance(row, int))
-            self.assertTrue(isinstance(col, int))
-            self.assertTrue(isinstance(scores, list))
-            self.assertEqual(len(scores), len(clf.classes_))
-
-        self.assertTrue(type(return_msg.scores), ClassifyReturnMsg)
+        self._validate_return_msg(return_msg, True)
 
 
-class TestClassifyImage(unittest.TestCase):
+class TestClassifyImage(ClassifyReturnMsgTest):
 
     def setUp(self):
         config.filter_warnings()
@@ -276,24 +278,7 @@ class TestClassifyImage(unittest.TestCase):
                                         bucket_name=config.TEST_BUCKET)
         )
         return_msg = classify_image(msg)
-        self.assertEqual(len(return_msg.scores), len(msg.rowcols))
-        for rowcol in msg.rowcols:
-            self.assertTrue(isinstance(return_msg[rowcol], list))
-
-        for class_ in return_msg.classes:
-            self.assertTrue(isinstance(class_, int))
-
-        clf = load_classifier(msg.classifier_loc)
-        for row, col, scores in return_msg.scores:
-            self.assertTrue(isinstance(row, int))
-            self.assertTrue(isinstance(col, int))
-            self.assertTrue(isinstance(scores, list))
-            self.assertEqual(len(scores), len(clf.classes_))
-
-        for rowcol, rc_score in zip(msg.rowcols, return_msg.scores):
-            self.assertEqual(rowcol, rc_score[:2])
-
-        self.assertTrue(type(return_msg.scores), ClassifyReturnMsg)
+        self._validate_return_msg(return_msg, True)
 
 
 class TestClassifyImageCache(unittest.TestCase):

@@ -245,10 +245,9 @@ class ImageFeatures(DataClass):
                         data=feat) for row, col, feat in zip(data['rows'],
                                                              data['cols'],
                                                              data['feat'])],
-                    valid_rowcol=data['meta'][0],
+                    valid_rowcol=bool(data['meta'][0]),
                     npoints=data['meta'][1],
-                    feature_dim=data['meta'][2]
-                )
+                    feature_dim=data['meta'][2])
             else:
                 return cls.deserialize(data['feat'].tolist())
 
