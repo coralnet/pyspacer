@@ -253,7 +253,6 @@ class TestClassifyFeatures(unittest.TestCase):
             self.assertTrue(isinstance(col, int))
             self.assertTrue(isinstance(scores, list))
             self.assertEqual(len(scores), len(clf.classes_))
-            print(scores)
 
         self.assertTrue(type(return_msg.scores), ClassifyReturnMsg)
 
