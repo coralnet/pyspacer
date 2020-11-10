@@ -75,8 +75,8 @@ def classify_features(msg: ClassifyFeaturesMsg) -> ClassifyReturnMsg:
     clf = load_classifier(msg.classifier_loc)
 
     scores = [(pf.row, pf.col,
-               clf.predict_proba(pf.data.reshape(1, -1)).tolist()[0]) for
-              pf in features.point_features]
+               clf.predict_proba(pf.data.reshape(1, -1)).tolist()[0])
+              for pf in features.point_features]
 
     # Return
     return ClassifyReturnMsg(
@@ -100,14 +100,15 @@ def classify_image(msg: ClassifyImageMsg) -> ClassifyReturnMsg:
 
     # Classify
     clf = load_classifier(msg.classifier_loc)
-    scores = [(row, col, clf.predict_proba(features.get_array((row, col))).
-               tolist()) for row, col in msg.rowcols]
+    scores = [(row, col,
+               clf.predict_proba(features.get_array((row, col))).tolist()[0])
+              for row, col in msg.rowcols]
 
     # Return
     return ClassifyReturnMsg(
         runtime=time.time() - t0,
         scores=scores,
-        classes=list(clf.classes_),
+        classes=clf.classes_.tolist(),
         valid_rowcol=True)
 
 
