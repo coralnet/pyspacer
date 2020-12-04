@@ -136,8 +136,17 @@ def load_image_data(labels: ImageLabels,
     image_labels = labels.data[imkey]
 
     # Sanity check
-    assert len(image_labels) == len(image_features.point_features), \
-        "number of extracted features doesn't match the number of labels!"
+    if image_features.valid_rowcol:
+        # With new data structure just check that the sets of row, col
+        # given by the labels is available in the features.
+        rc_features_set = set([(pf.row, pf.col) for pf in
+                               image_features.point_features])
+        rc_labels_set = set([(row, col) for (row, col, _) in image_labels])
+        assert rc_labels_set.issubset(rc_features_set)
+    else:
+        # With legacy data structure check that length is the same.
+        assert len(image_labels) == len(image_features.point_features), \
+            "number of extracted features doesn't match the number of labels!"
 
     x, y = [], []
     if image_features.valid_rowcol:

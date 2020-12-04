@@ -136,3 +136,4 @@ dmypy.json
 .png
 *secrets*
 .DS_Store
+scratchpad.py

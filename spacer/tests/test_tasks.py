@@ -3,7 +3,7 @@ import unittest
 from PIL import Image
 
 from spacer import config
-from spacer.data_classes import ImageFeatures, ValResults
+from spacer.data_classes import ImageFeatures, ValResults, ImageLabels
 from spacer.messages import \
     ExtractFeaturesMsg, \
     ExtractFeaturesReturnMsg, \
@@ -124,6 +124,22 @@ class TestExtractFeatures(unittest.TestCase):
         storage = storage_factory('memory')
         self.assertTrue(storage.exists('feats'))
 
+    def test_duplicate_rowcols(self):
+
+        msg = ExtractFeaturesMsg(
+            job_token='job_nbr_1',
+            feature_extractor_name='dummy',
+            rowcols=[(100, 100), (50, 50), (100, 100)],
+            image_loc=DataLocation(storage_type='memory',
+                                   key='tmp_img'),
+            feature_loc=DataLocation(storage_type='memory',
+                                     key='tmp_feats')
+        )
+        store_image(msg.image_loc, Image.new('RGB', (110, 110)))
+        _ = extract_features(msg)
+        features = ImageFeatures.load(msg.feature_loc)
+        self.assertEqual(len(features.point_features), len(msg.rowcols))
+
 
 class TestTrainClassifier(unittest.TestCase):
 
@@ -179,12 +195,68 @@ class TestTrainClassifier(unittest.TestCase):
             # Do some checks on ValResults
             val_res = ValResults.load(valresult_loc)
             self.assertTrue(type(val_res) == ValResults)
-            self.assertEqual(len(val_res.gt),  len(val_res.est))
-            self.assertEqual(len(val_res.gt),  len(val_res.scores))
+            self.assertEqual(len(val_res.gt), len(val_res.est))
+            self.assertEqual(len(val_res.gt), len(val_res.scores))
 
             # Check that the amount of labels correspond to the val_data.
             self.assertEqual(len(val_res.gt),
                              len(val_labels) * val_labels.samples_per_image)
+
+    def test_duplicates(self):
+
+        labels = ImageLabels(data={})
+        for i in range(config.MIN_TRAINIMAGES):
+            msg = ExtractFeaturesMsg(
+                job_token='dummy',
+                feature_extractor_name='dummy',
+                rowcols=[(100, 100), (50, 50)],
+                image_loc=DataLocation(storage_type='memory',
+                                       key='{}.jpg'.format(i)),
+                feature_loc=DataLocation(storage_type='memory',
+                                         key='{}.json'.format(i))
+            )
+
+            # Add a duplicate that was not part of feature extraction.
+            store_image(msg.image_loc, Image.new('RGB', (101, 101)))
+            extract_features(msg)
+            rowcols = msg.rowcols
+            rowcols.append((100, 100))
+            point_labels = [1, 0, 1]
+            labels.data[msg.feature_loc.key] = [
+                (row, col, pl) for (row, col), pl in
+                zip(rowcols, point_labels)
+            ]
+
+        # Create train and val data.
+        features_loc_template = DataLocation(storage_type='memory', key='')
+
+        msg = TrainClassifierMsg(
+            job_token='test',
+            trainer_name='minibatch',
+            nbr_epochs=1,
+            clf_type='LR',
+            train_labels=labels,
+            val_labels=labels,
+            features_loc=features_loc_template,
+            previous_model_locs=[],
+            model_loc=DataLocation(storage_type='memory', key='model'),
+            valresult_loc=DataLocation(storage_type='memory', key='result')
+        )
+        return_msg = train_classifier(msg)
+
+        # Basically make sure this doesn't raise any errors
+        self.assertTrue(True)
+
+        # Now change the rowcols in the labels file to include a tuple
+        # not extracted.
+        faulty_labels = ImageLabels(data={})
+        for key, value in labels.data.items():
+            faulty_labels.data[key] = value
+            row, col, label = faulty_labels.data[key][-1]
+            faulty_labels.data[key][-1] = (row-1, col-1, label)
+
+        with self.assertRaises(AssertionError):
+            train_classifier(msg)
 
 
 class ClassifyReturnMsgTest(unittest.TestCase):
