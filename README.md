@@ -66,10 +66,6 @@ The last step will run the default CMD command specified in the dockerfile
 (unit-test with coverage). If you want to enter the docker container 
 run the same command but append `bash` in the end: 
 
-```
-docker run -v /path/to/your/local/models:/workspace/models -v ${PWD}:/workspace/spacer/ -it spacer:test
-```
-
 #### Pip install
 * `pip install spacer`
 * Set environmental variables.
