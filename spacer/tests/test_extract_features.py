@@ -45,6 +45,25 @@ class TestDummyExtractor(unittest.TestCase):
                                         dummy_featuredim=feature_dim)
         self.assertEqual(ext.feature_dim, feature_dim)
 
+    def test_duplicate_rowcols(self):
+
+        msg = ExtractFeaturesMsg(
+            job_token='job_nbr_1',
+            feature_extractor_name='dummy',
+            rowcols=[(100, 100), (100, 100), (50, 50)],
+            image_loc=DataLocation(storage_type='memory',
+                                   key='not_used'),
+            feature_loc=DataLocation(storage_type='memory',
+                                     key='not_used')
+        )
+
+        ext = feature_extractor_factory(msg.feature_extractor_name,
+                                        dummy_featuredim=4096)
+
+        features, return_msg = ext(Image.new('RGB', (100, 100)), msg.rowcols)
+
+        self.assertEqual(len(features.point_features), len(msg.rowcols))
+
 
 @unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
 @unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
