@@ -79,15 +79,22 @@ RUN pip3 install Pillow==6.2.0
 RUN pip3 install numpy==1.18.1
 RUN pip3 install scikit-learn==0.22.1
 RUN pip3 install scikit-image==0.15.0
-RUN pip3 install torch==1.4.0
-RUN pip3 install torchvision==0.5.0
+RUN pip3 install torch==1.8.0
+RUN pip3 install torchvision==0.9.1
 RUN pip3 install boto3==1.15.8
 RUN pip3 install botocore==1.18.8
+RUN pip3 install awscli==1.18.223
 
 ENV SPACER_LOCAL_MODEL_PATH=/workspace/models
+WORKDIR /workspace/models
+ARG AWS_SECRET_ACCESS_KEY
+ARG AWS_ACCESS_KEY_ID
+RUN aws s3 cp s3://spacer-tools/efficientnet_b0_ver1.pt ${SPACER_LOCAL_MODEL_PATH}/
+RUN aws s3 cp s3://spacer-tools/vgg16_coralnet_ver1.deploy.prototxt ${SPACER_LOCAL_MODEL_PATH}/
+RUN aws s3 cp s3://spacer-tools/vgg16_coralnet_ver1.caffemodel ${SPACER_LOCAL_MODEL_PATH}/
+
 ENV PYTHONPATH="/workspace/spacer:${PYTHONPATH}"
 WORKDIR /workspace
-RUN mkdir models
 RUN mkdir spacer
 COPY ./spacer spacer/spacer
 WORKDIR spacer
