@@ -64,7 +64,12 @@ The `-v ${PWD}:/workspace/spacer/` mounts your current folder including
 
 The last step will run the default CMD command specified in the dockerfile 
 (unit-test with coverage). If you want to enter the docker container 
-run the same command but append `bash` in the end: 
+run the same command but append `bash` in the end.
+
+To publish to staging run
+`sh scripts/release.sh staging`
+and to production
+`sh scripts/release.sh production`
 
 #### Pip install
 * `pip install spacer`
