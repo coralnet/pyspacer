@@ -12,16 +12,19 @@ from spacer.messages import \
     DataLocation, \
     ImageLabels
 
+TEST_URL = \
+    'https://upload.wikimedia.org/wikipedia/commons/7/7b/Red_sea_coral_reef.jpg'
+TEST_URL_FILENAME = 'Red_sea_coral_reef.jpg'
+
 
 class TestProcessJobErrorHandling(unittest.TestCase):
 
     def setUp(self):
         config.filter_warnings()
-        self.url = 'https://homepages.cae.wisc.edu/~ece533/images/baboon.png'
 
     def tearDown(self):
-        if os.path.exists('baboon.png'):
-            os.remove('baboon.png')
+        if os.path.exists(TEST_URL_FILENAME):
+            os.remove(TEST_URL_FILENAME)
 
     def test_input_type(self):
         self.assertRaises(AssertionError, process_job, 'sdf')
@@ -69,7 +72,7 @@ class TestProcessJobErrorHandling(unittest.TestCase):
                      tasks=[ClassifyImageMsg(
                          job_token='my_job',
                          image_loc=DataLocation(storage_type='url',
-                                                key=self.url),
+                                                key=TEST_URL),
                          feature_extractor_name='invalid_name',
                          rowcols=[(1, 1)],
                          classifier_loc=DataLocation(storage_type='memory',
@@ -87,7 +90,7 @@ class TestProcessJobErrorHandling(unittest.TestCase):
                      tasks=[ClassifyImageMsg(
                          job_token='my_job',
                          image_loc=DataLocation(storage_type='url',
-                                                key=self.url),
+                                                key=TEST_URL),
                          feature_extractor_name='dummy',
                          rowcols=[(1, 1)],
                          classifier_loc=DataLocation(storage_type='memory',
@@ -136,11 +139,10 @@ class TestProcessJobMultiple(unittest.TestCase):
 
     def setUp(self):
         config.filter_warnings()
-        self.url = 'https://homepages.cae.wisc.edu/~ece533/images/baboon.png'
 
     def tearDown(self):
-        if os.path.exists('baboon.png'):
-            os.remove('baboon.png')
+        if os.path.exists(TEST_URL_FILENAME):
+            os.remove(TEST_URL_FILENAME)
 
     def test_multiple_feature_extract(self):
         extract_msg = ExtractFeaturesMsg(
@@ -148,7 +150,7 @@ class TestProcessJobMultiple(unittest.TestCase):
             feature_extractor_name='dummy',
             rowcols=[(1, 1)],
             image_loc=DataLocation(storage_type='url',
-                                   key=self.url),
+                                   key=TEST_URL),
             feature_loc=DataLocation(storage_type='memory',
                                      key='my_feats'))
 
@@ -166,7 +168,7 @@ class TestProcessJobMultiple(unittest.TestCase):
             feature_extractor_name='dummy',
             rowcols=[(1, 1)],
             image_loc=DataLocation(storage_type='url',
-                                   key=self.url),
+                                   key=TEST_URL),
             feature_loc=DataLocation(storage_type='memory',
                                      key='my_feats'))
 
