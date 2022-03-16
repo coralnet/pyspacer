@@ -1,6 +1,6 @@
 # PySpacer
 
-[![Build Status](https://travis-ci.com/beijbom/pyspacer.svg?branch=master)](https://travis-ci.com/beijbom/pyspacer)
+[![CI Status](https://github.com/beijbom/pyspacer/actions/workflows/python-app.yml/badge.svg)](https://github.com/beijbom/pyspacer/actions/workflows/python-app.yml)
 [![PyPI version](https://badge.fury.io/py/pyspacer.svg)](https://badge.fury.io/py/pyspacer)
 
 This repository provide utilities to extract features from random point 
