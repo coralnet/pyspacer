@@ -27,6 +27,9 @@ from spacer.tasks import \
 from spacer.train_utils import make_random_data
 from spacer.train_utils import train
 
+TEST_URL = \
+    'https://upload.wikimedia.org/wikipedia/commons/7/7b/Red_sea_coral_reef.jpg'
+
 
 class TestImageAndPointLimitsAsserts(unittest.TestCase):
 
@@ -340,8 +343,7 @@ class TestClassifyImage(ClassifyReturnMsgTest):
         msg = ClassifyImageMsg(
             job_token='my_job',
             image_loc=DataLocation(storage_type='url',
-                                   key='https://homepages.cae.wisc.edu/~ece533'
-                                       '/images/baboon.png'),
+                                   key=TEST_URL),
             feature_extractor_name='dummy',
             rowcols=[(100, 100), (200, 200)],
             classifier_loc=DataLocation(storage_type='s3',
@@ -369,8 +371,7 @@ class TestClassifyImageCache(unittest.TestCase):
         msg = ClassifyImageMsg(
             job_token='my_job',
             image_loc=DataLocation(storage_type='url',
-                                   key='https://homepages.cae.wisc.edu/~ece533'
-                                       '/images/baboon.png'),
+                                   key=TEST_URL),
             feature_extractor_name='dummy',
             rowcols=[(100, 100), (200, 200)],
             classifier_loc=DataLocation(storage_type='s3',
@@ -381,8 +382,7 @@ class TestClassifyImageCache(unittest.TestCase):
         msg2 = ClassifyImageMsg(
             job_token='my_job',
             image_loc=DataLocation(storage_type='url',
-                                   key='https://homepages.cae.wisc.edu/~ece533'
-                                       '/images/baboon.png'),
+                                   key=TEST_URL),
             feature_extractor_name='dummy',
             rowcols=[(100, 100), (200, 200)],
             classifier_loc=DataLocation(storage_type='s3',
@@ -403,8 +403,7 @@ class TestBadRowcols(unittest.TestCase):
         msg = ClassifyImageMsg(
             job_token='my_job',
             image_loc=DataLocation(storage_type='url',
-                                   key='https://homepages.cae.wisc.edu/~ece533'
-                                       '/images/baboon.png'),
+                                   key=TEST_URL),
             feature_extractor_name='dummy',
             rowcols=[(-1, -1)],
             classifier_loc=DataLocation(storage_type='s3',
