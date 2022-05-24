@@ -18,6 +18,7 @@ from PIL import Image
 from sklearn.calibration import CalibratedClassifierCV
 
 from spacer import config
+from spacer.exceptions import SpacerInputError
 
 
 class Storage(abc.ABC):  # pragma: no cover
@@ -49,7 +50,10 @@ class URLStorage(Storage):
         raise TypeError('Store operation not supported for URL storage.')
 
     def load(self, url: str):
-        tmp_path = wget.download(url)
+        try:
+            tmp_path = wget.download(url)
+        except URLError as e:
+            raise SpacerInputError(str(e))
         stream = self.fs_storage.load(tmp_path)
         self.fs_storage.delete(tmp_path)
         return stream

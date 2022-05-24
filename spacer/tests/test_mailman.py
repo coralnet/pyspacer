@@ -63,7 +63,8 @@ class TestProcessJobErrorHandling(unittest.TestCase):
                                                      key='doesnt_matter'))])
         return_msg = process_job(msg)
         self.assertFalse(return_msg.ok)
-        self.assertTrue('URLError' in return_msg.error_message)
+        self.assertIn("URLError", return_msg.error_message)
+        self.assertIn("SpacerInputError", return_msg.error_message)
         self.assertTrue(type(return_msg), JobReturnMsg)
 
     def test_img_classify_feature_extractor_name(self):
