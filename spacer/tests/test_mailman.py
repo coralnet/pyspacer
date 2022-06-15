@@ -48,7 +48,7 @@ class TestProcessJobErrorHandling(unittest.TestCase):
         self.assertFalse(return_msg.ok)
         self.assertIn("KeyError", return_msg.error_message)
         self.assertIn("missing_image", return_msg.error_message)
-        self.assertTrue(type(return_msg), JobReturnMsg)
+        self.assertEqual(type(return_msg), JobReturnMsg)
 
     def test_img_classify_bad_url(self):
 
@@ -63,8 +63,9 @@ class TestProcessJobErrorHandling(unittest.TestCase):
                                                      key='doesnt_matter'))])
         return_msg = process_job(msg)
         self.assertFalse(return_msg.ok)
-        self.assertTrue('URLError' in return_msg.error_message)
-        self.assertTrue(type(return_msg), JobReturnMsg)
+        self.assertIn("URLError", return_msg.error_message)
+        self.assertIn("SpacerInputError", return_msg.error_message)
+        self.assertEqual(type(return_msg), JobReturnMsg)
 
     def test_img_classify_feature_extractor_name(self):
 
@@ -82,7 +83,7 @@ class TestProcessJobErrorHandling(unittest.TestCase):
         self.assertIn("AssertionError", return_msg.error_message)
         self.assertIn("Model name invalid_name not registered",
                       return_msg.error_message)
-        self.assertTrue(type(return_msg), JobReturnMsg)
+        self.assertEqual(type(return_msg), JobReturnMsg)
 
     def test_img_classify_classifier_key(self):
 
@@ -100,7 +101,7 @@ class TestProcessJobErrorHandling(unittest.TestCase):
         self.assertFalse(return_msg.ok)
         self.assertIn("KeyError", return_msg.error_message)
         self.assertIn("no_classifier_here", return_msg.error_message)
-        self.assertTrue(type(return_msg), JobReturnMsg)
+        self.assertEqual(type(return_msg), JobReturnMsg)
 
     def test_train_classifier(self):
 
@@ -132,7 +133,7 @@ class TestProcessJobErrorHandling(unittest.TestCase):
             self.assertFalse(return_msg.ok)
             self.assertIn("KeyError", return_msg.error_message)
             self.assertIn("my_previous_model", return_msg.error_message)
-            self.assertTrue(type(return_msg), JobReturnMsg)
+            self.assertEqual(type(return_msg), JobReturnMsg)
 
 
 class TestProcessJobMultiple(unittest.TestCase):
@@ -160,7 +161,7 @@ class TestProcessJobMultiple(unittest.TestCase):
         return_msg = process_job(job_msg)
         self.assertTrue(return_msg.ok)
         self.assertEqual(len(return_msg.results), 2)
-        self.assertTrue(type(return_msg), JobReturnMsg)
+        self.assertEqual(type(return_msg), JobReturnMsg)
 
     def test_multiple_feature_extract_one_fail(self):
         good_extract_msg = ExtractFeaturesMsg(
@@ -188,7 +189,7 @@ class TestProcessJobMultiple(unittest.TestCase):
         return_msg = process_job(job_msg)
         self.assertFalse(return_msg.ok)
         self.assertIn('bad_url', return_msg.error_message)
-        self.assertTrue(type(return_msg), JobReturnMsg)
+        self.assertEqual(type(return_msg), JobReturnMsg)
 
 
 if __name__ == '__main__':

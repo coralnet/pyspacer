@@ -123,7 +123,7 @@ class TestExtractFeatures(unittest.TestCase):
                                      key='feats')
         )
         return_msg = extract_features(msg)
-        self.assertTrue(type(return_msg) == ExtractFeaturesReturnMsg)
+        self.assertEqual(type(return_msg), ExtractFeaturesReturnMsg)
         storage = storage_factory('memory')
         self.assertTrue(storage.exists('feats'))
 
@@ -193,11 +193,11 @@ class TestTrainClassifier(unittest.TestCase):
                 valresult_loc=valresult_loc
             )
             return_msg = train_classifier(msg)
-            self.assertTrue(type(return_msg) == TrainClassifierReturnMsg)
+            self.assertEqual(type(return_msg), TrainClassifierReturnMsg)
 
             # Do some checks on ValResults
             val_res = ValResults.load(valresult_loc)
-            self.assertTrue(type(val_res) == ValResults)
+            self.assertEqual(type(val_res), ValResults)
             self.assertEqual(len(val_res.gt), len(val_res.est))
             self.assertEqual(len(val_res.gt), len(val_res.scores))
 
@@ -287,7 +287,7 @@ class ClassifyReturnMsgTest(unittest.TestCase):
 
         self.assertTrue(isinstance(return_msg.valid_rowcol, bool))
 
-        self.assertTrue(type(return_msg.scores), ClassifyReturnMsg)
+        self.assertEqual(type(return_msg), ClassifyReturnMsg)
 
 
 class TestClassifyFeatures(ClassifyReturnMsgTest):
