@@ -3,7 +3,7 @@ coverage==5.0.3
 tqdm==4.43.0
 fire==0.2.1
 Pillow==6.2.2
-numpy==1.18.1
+numpy==1.22.0
 scipy==1.4.1
 scikit-learn==0.22.1
 scikit-image==0.17.2
