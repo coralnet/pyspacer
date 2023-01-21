@@ -51,7 +51,7 @@ class URLStorage(Storage):
 
     def load(self, url: str):
         try:
-            tmp_path = wget.download(url, bar=None)
+            tmp_path = wget.download(url, out=config.TMP_PATH, bar=None)
         except URLError as e:
             raise SpacerInputError(str(e))
         stream = self.fs_storage.load(tmp_path)
@@ -63,7 +63,7 @@ class URLStorage(Storage):
 
     def exists(self, url: str) -> bool:
         try:
-            tmp_path = wget.download(url, bar=None)
+            tmp_path = wget.download(url, out=config.TMP_PATH, bar=None)
         except URLError:
             return False
         except ValueError:

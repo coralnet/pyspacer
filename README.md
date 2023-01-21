@@ -45,7 +45,9 @@ The `secrets.json` should look like this.
   "SPACER_AWS_SECRET_ACCESS_KEY": "YOUR_AWS_SECRET_KEY",
   "SPACER_LOCAL_MODEL_PATH": "/path/to/your/local/models"
 }
-``` 
+```
+
+There is also an optional `TMP_PATH` setting: a filesystem directory to use for temporary files from unit tests and downloads. It defaults to the relative path `tmp`.
 
 #### Docker build
 The docker build is the preferred build and the one used in deployment.

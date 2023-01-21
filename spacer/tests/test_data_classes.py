@@ -2,6 +2,7 @@ import json
 import os
 import unittest
 import random
+from pathlib import Path
 
 from spacer import config
 from spacer.data_classes import \
@@ -67,7 +68,7 @@ class TestImageFeaturesNumpyStore(unittest.TestCase):
     def setUp(self) -> None:
         self.fs_loc = DataLocation(
                 storage_type='filesystem',
-                key='tmp/tmp_feats',
+                key=str(Path(config.TMP_PATH) / 'tmp_feats'),
                 bucket_name='')
         self.s3_loc = DataLocation(
             storage_type='s3',

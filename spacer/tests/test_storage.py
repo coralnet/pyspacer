@@ -3,6 +3,7 @@ import os
 import time
 import unittest
 from io import BytesIO
+from pathlib import Path
 
 import numpy as np
 from PIL import Image
@@ -170,17 +171,17 @@ class TestLocalStorage(unittest.TestCase):
     def setUp(self):
         self.tmp_image_loc = DataLocation(
             storage_type='filesystem',
-            key='tmp/tmp_image.jpg',
+            key=str(Path(config.TMP_PATH) / 'tmp_image.jpg'),
             bucket_name=''
         )
         self.tmp_json_loc = DataLocation(
             storage_type='filesystem',
-            key='tmp/tmp_data.json',
+            key=str(Path(config.TMP_PATH) / 'tmp_data.json'),
             bucket_name=''
         )
         self.tmp_model_loc = DataLocation(
             storage_type='filesystem',
-            key='tmp/tmp_model.pkl',
+            key=str(Path(config.TMP_PATH) / 'tmp_model.pkl'),
             bucket_name=''
         )
         self.storage = storage_factory('filesystem', '')

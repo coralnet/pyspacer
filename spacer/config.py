@@ -121,6 +121,9 @@ LOCAL_MODEL_PATH = get_local_model_path()
 HAS_LOCAL_MODEL_PATH = LOCAL_MODEL_PATH is not None and \
                        os.path.exists(LOCAL_MODEL_PATH)
 
+# Filesystem dir to use for temporary files from unit tests and downloads.
+TMP_PATH = get_secret('TMP_PATH') or 'tmp'
+
 TASKS = [
     'extract_features',
     'train_classifier',

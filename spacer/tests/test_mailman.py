@@ -1,5 +1,5 @@
-import os
 import unittest
+from pathlib import Path
 
 from spacer import config
 from spacer.tasks import process_job
@@ -14,7 +14,7 @@ from spacer.messages import \
 
 TEST_URL = \
     'https://upload.wikimedia.org/wikipedia/commons/7/7b/Red_sea_coral_reef.jpg'
-TEST_URL_FILENAME = 'Red_sea_coral_reef.jpg'
+TEST_URL_FILEPATH = Path(config.TMP_PATH) / 'Red_sea_coral_reef.jpg'
 
 
 class TestProcessJobErrorHandling(unittest.TestCase):
@@ -23,8 +23,8 @@ class TestProcessJobErrorHandling(unittest.TestCase):
         config.filter_warnings()
 
     def tearDown(self):
-        if os.path.exists(TEST_URL_FILENAME):
-            os.remove(TEST_URL_FILENAME)
+        if TEST_URL_FILEPATH.exists():
+            TEST_URL_FILEPATH.unlink()
 
     def test_input_type(self):
         self.assertRaises(AssertionError, process_job, 'sdf')
@@ -142,8 +142,8 @@ class TestProcessJobMultiple(unittest.TestCase):
         config.filter_warnings()
 
     def tearDown(self):
-        if os.path.exists(TEST_URL_FILENAME):
-            os.remove(TEST_URL_FILENAME)
+        if TEST_URL_FILEPATH.exists():
+            TEST_URL_FILEPATH.unlink()
 
     def test_multiple_feature_extract(self):
         extract_msg = ExtractFeaturesMsg(
