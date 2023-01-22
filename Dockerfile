@@ -75,15 +75,14 @@ RUN pip3 install wget==3.2
 RUN pip3 install coverage==5.0.3
 RUN pip3 install tqdm==4.43.0
 RUN pip3 install fire==0.2.1
-RUN pip3 install Pillow==6.2.0
+RUN pip3 install Pillow==8.2.0
 RUN pip3 install numpy==1.18.1
 RUN pip3 install scikit-learn==0.22.1
 RUN pip3 install scikit-image==0.17.2
 RUN pip3 install torchvision==0.9.0
 RUN pip3 install torch==1.8.0
-RUN pip3 install boto3==1.15.8
-RUN pip3 install botocore==1.18.8
-RUN pip3 install awscli==1.18.223
+RUN pip3 install boto3==1.23.10
+RUN pip3 install awscli==1.24.10
 
 ENV SPACER_LOCAL_MODEL_PATH=/workspace/models
 WORKDIR /workspace/models

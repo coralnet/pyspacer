@@ -2,12 +2,11 @@ wget==3.2
 coverage==5.0.3
 tqdm==4.43.0
 fire==0.2.1
-Pillow==6.2.2
+Pillow==8.2.0
 numpy==1.18.1
 scipy==1.4.1
 scikit-learn==0.22.1
 scikit-image==0.17.2
 torch==1.4.0
 torchvision==0.5.0
-boto3==1.15.8
-botocore==1.18.8
+boto3==1.23.10
