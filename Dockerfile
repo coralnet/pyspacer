@@ -97,7 +97,7 @@ FROM caffe AS spacer
 # for faster builds.
 # Note that numpy is not here because it was specified before building caffe.
 RUN pip3 install wget==3.2
-RUN pip3 install coverage==5.0.3
+RUN pip3 install coverage==7.0.5
 RUN pip3 install tqdm==4.43.0
 RUN pip3 install fire==0.2.1
 RUN pip3 install Pillow==8.2.0
@@ -120,4 +120,12 @@ RUN mkdir spacer
 COPY ./spacer spacer/spacer
 WORKDIR spacer
 
-CMD coverage run --source=spacer --omit=spacer/tests/* -m unittest; coverage report -m
+# Run unit tests with code coverage reporting.
+# - Exclude coverage of the unit tests themselves, to not reduce the score for
+#   skipped tests.
+# - Output coverage to a file outside of /workspacer/spacer, in case that dir
+#   is read-only (preferable for some Docker setups).
+# - Print coverage results.
+CMD coverage run --data-file=/workspace/.coverage \
+    --source=spacer --omit=spacer/tests/* -m unittest \
+    && coverage report --data-file=/workspace/.coverage -m
