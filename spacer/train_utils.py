@@ -70,7 +70,7 @@ def train(labels: ImageLabels,
                 hls, lr = (100,), 1e-3
             clf = MLPClassifier(hidden_layer_sizes=hls, learning_rate_init=lr)
         else:
-            clf = SGDClassifier(loss='log', average=True, random_state=0)
+            clf = SGDClassifier(loss='log_loss', average=True, random_state=0)
         ref_acc = []
         for epoch in range(nbr_epochs):
             np.random.shuffle(train_set)

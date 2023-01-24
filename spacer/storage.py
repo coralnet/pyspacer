@@ -3,7 +3,6 @@ Defines storage ABC; implementations; and factory.
 """
 
 import abc
-import logging
 import os
 import pickle
 import warnings
@@ -17,6 +16,7 @@ import botocore.exceptions
 import wget
 from PIL import Image
 from sklearn.calibration import CalibratedClassifierCV
+from sklearn.linear_model import SGDClassifier
 
 from spacer import config
 from spacer.exceptions import SpacerInputError
@@ -254,10 +254,20 @@ class ClassifierUnpickler(Unpickler):
         clf = super().load()
 
         # Detect legacy classifiers and patch as needed.
-        # Most of the relevant CalibratedClassifierCV attributes seem to be
-        # unchanged from 0.17.1 to 1.1.3, except for calibrated_classifiers_,
-        # which is a list of _CalibratedClassifier instances.
+        #
+        # The main scikit-learn classes to keep tabs on for changes are:
+        # - CalibratedClassifierCV: clf
+        # - _CalibratedClassifier: each element of the
+        #   clf.calibrated_classifiers_ list
+        # - MLPClassifier, SGDClassifier: possible classes of
+        #   clf.base_estimator and the base_estimator attribute of each
+        #   _CalibratedClassifier
+
+        self.patch_base_estimator(clf.base_estimator)
+
         for calibrated_clf in clf.calibrated_classifiers_:
+
+            self.patch_base_estimator(calibrated_clf.base_estimator)
 
             # This attribute was introduced after 0.17.1 and by 0.22.1. It's set
             # unconditionally in __init__().
@@ -270,6 +280,14 @@ class ClassifierUnpickler(Unpickler):
                 calibrated_clf.calibrators = calibrated_clf.calibrators_
 
         return clf
+
+    @staticmethod
+    def patch_base_estimator(base_estimator):
+        if isinstance(base_estimator, SGDClassifier):
+            if base_estimator.loss == 'log':
+                # The loss parameter name 'log' was deprecated in favor of the
+                # new name 'log_loss' as of scikit-learn 1.1.
+                base_estimator.loss = 'log_loss'
 
 
 @lru_cache(maxsize=3)
