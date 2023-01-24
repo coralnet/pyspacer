@@ -9,6 +9,7 @@ import pickle
 import warnings
 from functools import lru_cache
 from io import BytesIO
+from pickle import Unpickler
 from typing import Union, Tuple
 from urllib.error import URLError
 
@@ -212,41 +213,80 @@ def load_image(loc: 'DataLocation'):
 
 
 def store_classifier(loc: 'DataLocation', clf: CalibratedClassifierCV):
+    if not hasattr(clf, 'calibrated_classifiers_'):
+        raise ValueError("Only fitted classifiers can be stored.")
     storage = storage_factory(loc.storage_type, loc.bucket_name)
     storage.store(loc.key, BytesIO(pickle.dumps(clf, protocol=2)))
+
+
+class ClassifierUnpickler(Unpickler):
+    """
+    Custom Unpickler for sklearn classifiers. Upgrades classifiers pickled
+    in older sklearn versions to be loadable in newer versions.
+    pyspacer has used scikit-learn versions 0.17.1, 0.22.1, and 1.1.3,
+    so these are the only versions that are considered.
+
+    Note: this is only tested for inference.
+    """
+    IMPORT_MAPPING = {
+        # Importing from most sklearn sub-modules was deprecated as
+        # of 0.22 and no longer possible as of 0.24 (they established an API
+        # deprecation cycle of two minor versions starting in 0.22).
+        'sklearn.linear_model.sgd_fast': 'sklearn.linear_model',
+        'sklearn.linear_model.stochastic_gradient': 'sklearn.linear_model',
+    }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # We can't see the base class's attributes from here for some reason,
+        # so we have to set anything we want ourselves.
+        if 'fix_imports' in kwargs:
+            self.fix_imports = kwargs['fix_imports']
+
+    def find_class(self, module, name):
+        if self.fix_imports:
+            if module in self.IMPORT_MAPPING:
+                module = self.IMPORT_MAPPING[module]
+        return super().find_class(module, name)
+
+    def load(self):
+        clf = super().load()
+
+        # Detect legacy classifiers and patch as needed.
+        # Most of the relevant CalibratedClassifierCV attributes seem to be
+        # unchanged from 0.17.1 to 1.1.3, except for calibrated_classifiers_,
+        # which is a list of _CalibratedClassifier instances.
+        for calibrated_clf in clf.calibrated_classifiers_:
+
+            # This attribute was introduced after 0.17.1 and by 0.22.1. It's set
+            # unconditionally in __init__().
+            if not hasattr(calibrated_clf, 'classes'):
+                calibrated_clf.classes = calibrated_clf.classes_
+
+            # This attribute was introduced after 0.22.1 and by 0.24.2. It's set
+            # unconditionally in __init__().
+            if not hasattr(calibrated_clf, 'calibrators'):
+                calibrated_clf.calibrators = calibrated_clf.calibrators_
+
+        return clf
 
 
 @lru_cache(maxsize=3)
 def load_classifier(loc: 'DataLocation'):
 
-    # This warning is due to the sklearn 0.17.1, 0.22.2 migration.
-    warnings.filterwarnings('ignore', category=UserWarning,
-                            message="Trying to unpickle.*")
-
-    # This future warning also has to do with the unpickling of the
-    # legacy model. It uses a to-be-deprecated import statement.
-    warnings.filterwarnings('ignore', category=FutureWarning,
-                            message="The sklearn.linear_model.*")
-
-    def patch_legacy():
-        """
-        Upgrades models trained on scikit-learn 0.17.1 to 0.22.2
-        Note: this in only tested for inference.
-        """
-        from sklearn.calibration import LabelEncoder
-
-        logging.info("Patching legacy classifier.")
-        assert len(clf.calibrated_classifiers_) == 1
-        assert all(clf.classes_ == clf.calibrated_classifiers_[0].classes_)
-        clf.calibrated_classifiers_[0].label_encoder_ = LabelEncoder()
-        clf.calibrated_classifiers_[0].label_encoder_.fit(clf.classes_)
-
     storage = storage_factory(loc.storage_type, loc.bucket_name)
-    clf = pickle.loads(storage.load(loc.key).getbuffer(), fix_imports=True,
-                       encoding='latin1')
+    stream = storage.load(loc.key)
+    stream.seek(0)
 
-    if hasattr(clf, 'calibrated_classifiers_') and not \
-            hasattr(clf.calibrated_classifiers_[0], 'label_encoder'):
-        patch_legacy()
+    # Restore old warnings config once this block is over.
+    with warnings.catch_warnings():
+        # Ignore unpickling warnings from sklearn.
+        warnings.filterwarnings(
+            'ignore', category=UserWarning,
+            message=r"Trying to unpickle estimator [A-Za-z_]+"
+                    r" from version pre-0\.18.*")
+        clf = ClassifierUnpickler(
+            stream, fix_imports=True, encoding='latin1').load()
 
     return clf

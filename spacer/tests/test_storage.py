@@ -1,3 +1,4 @@
+import abc
 import json
 import os
 import time
@@ -8,7 +9,6 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 from sklearn.calibration import CalibratedClassifierCV
-from sklearn.linear_model import SGDClassifier
 
 from spacer import config
 from spacer.data_classes import ImageFeatures
@@ -21,6 +21,7 @@ from spacer.storage import \
     store_image, \
     store_classifier, \
     clear_memory_storage
+from spacer.train_utils import make_random_data, train
 
 
 class TestGlobalMemoryStorage(unittest.TestCase):
@@ -45,6 +46,33 @@ class TestGlobalMemoryStorage(unittest.TestCase):
         clear_memory_storage()
         storage = storage_factory('memory')
         self.assertFalse(storage.exists('feats'))
+
+
+class BaseStorageTest(unittest.TestCase, abc.ABC):
+
+    def do_test_delete(self):
+        data = json.dumps({'a': 1, 'b': 2})
+        stream = BytesIO(json.dumps(data).encode('utf-8'))
+        self.storage.store(self.tmp_json_loc.key, stream)
+        self.assertTrue(self.storage.exists(self.tmp_json_loc.key))
+        self.storage.delete(self.tmp_json_loc.key)
+        self.assertFalse(self.storage.exists(self.tmp_json_loc.key))
+
+    def do_test_load_store_model(self):
+        features_loc_template = DataLocation(storage_type='memory', key='')
+        train_labels = make_random_data(
+            im_count=20,
+            class_list=[1, 2],
+            points_per_image=5,
+            feature_dim=5,
+            feature_loc=features_loc_template,
+        )
+        clf, _ = train(train_labels, features_loc_template, 1, 'LR')
+        store_classifier(self.tmp_model_loc, clf)
+        self.assertTrue(self.storage.exists(self.tmp_model_loc.key))
+
+        clf2 = load_classifier(self.tmp_model_loc)
+        self.assertTrue(isinstance(clf2, CalibratedClassifierCV))
 
 
 class TestURLStorage(unittest.TestCase):
@@ -99,7 +127,7 @@ class TestURLStorage(unittest.TestCase):
 
 
 @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
-class TestS3Storage(unittest.TestCase):
+class TestS3Storage(BaseStorageTest):
 
     def setUp(self):
         config.filter_warnings()
@@ -122,10 +150,9 @@ class TestS3Storage(unittest.TestCase):
         self.storage = storage_factory('s3', config.TEST_BUCKET)
 
     def tearDown(self):
-        s3 = config.get_s3_conn()
-        s3.Object(config.TEST_BUCKET, self.tmp_image_loc.key).delete()
-        s3.Object(config.TEST_BUCKET, self.tmp_json_loc.key).delete()
-        s3.Object(config.TEST_BUCKET, self.tmp_model_loc.key).delete()
+        self.storage.delete(self.tmp_image_loc.key)
+        self.storage.delete(self.tmp_json_loc.key)
+        self.storage.delete(self.tmp_model_loc.key)
 
     def test_load_store_image(self):
         img = Image.new('RGB', (100, 200))
@@ -145,9 +172,7 @@ class TestS3Storage(unittest.TestCase):
         self.assertFalse(feats.valid_rowcol)
 
     def test_delete(self):
-        store_image(self.tmp_image_loc, Image.new('RGB', (100, 100)))
-        self.storage.delete(self.tmp_json_loc.key)
-        self.assertFalse(self.storage.exists(self.tmp_json_loc.key))
+        self.do_test_delete()
 
     def test_load_legacy_model(self):
         clf = load_classifier(DataLocation(
@@ -158,15 +183,10 @@ class TestS3Storage(unittest.TestCase):
         self.assertTrue(isinstance(clf, CalibratedClassifierCV))
 
     def test_load_store_model(self):
-        clf = CalibratedClassifierCV(SGDClassifier())
-        store_classifier(self.tmp_model_loc, clf)
-        self.assertTrue(self.storage.exists(self.tmp_model_loc.key))
-
-        clf2 = load_classifier(self.tmp_model_loc)
-        self.assertTrue(isinstance(clf2, CalibratedClassifierCV))
+        self.do_test_load_store_model()
 
 
-class TestLocalStorage(unittest.TestCase):
+class TestLocalStorage(BaseStorageTest):
 
     def setUp(self):
         self.tmp_image_loc = DataLocation(
@@ -224,12 +244,7 @@ class TestLocalStorage(unittest.TestCase):
         self.assertEqual(data, data2)
 
     def test_delete(self):
-
-        data = json.dumps({'a': 1, 'b': 2})
-        stream = BytesIO(json.dumps(data).encode('utf-8'))
-        self.storage.store(self.tmp_json_loc.key, stream)
-        self.storage.delete(self.tmp_json_loc.key)
-        self.assertFalse(os.path.exists(self.tmp_json_loc.key))
+        self.do_test_delete()
 
     def test_load_legacy_model(self):
         loc = DataLocation(
@@ -240,15 +255,10 @@ class TestLocalStorage(unittest.TestCase):
         self.assertTrue(isinstance(clf, CalibratedClassifierCV))
 
     def test_load_store_model(self):
-        clf = CalibratedClassifierCV(SGDClassifier())
-        store_classifier(self.tmp_model_loc, clf)
-        self.assertTrue(self.storage.exists(self.tmp_model_loc.key))
-
-        clf2 = load_classifier(self.tmp_model_loc)
-        self.assertTrue(isinstance(clf2, CalibratedClassifierCV))
+        self.do_test_load_store_model()
 
 
-class TestMemoryStorage(unittest.TestCase):
+class TestMemoryStorage(BaseStorageTest):
 
     def setUp(self):
         self.tmp_image_loc = DataLocation(
@@ -282,20 +292,10 @@ class TestMemoryStorage(unittest.TestCase):
         self.assertEqual(data, data2)
 
     def test_delete(self):
-        data = json.dumps({'a': 1, 'b': 2})
-        stream = BytesIO(json.dumps(data).encode('utf-8'))
-        self.storage.store(self.tmp_json_loc.key, stream)
-        self.assertTrue(self.storage.exists(self.tmp_json_loc.key))
-        self.storage.delete(self.tmp_json_loc.key)
-        self.assertFalse(self.storage.exists(self.tmp_json_loc.key))
+        self.do_test_delete()
 
     def test_load_store_model(self):
-        clf = CalibratedClassifierCV(SGDClassifier())
-        store_classifier(self.tmp_model_loc, clf)
-        self.assertTrue(self.storage.exists(self.tmp_model_loc.key))
-
-        clf2 = load_classifier(self.tmp_model_loc)
-        self.assertTrue(isinstance(clf2, CalibratedClassifierCV))
+        self.do_test_load_store_model()
 
 
 class TestFactory(unittest.TestCase):
