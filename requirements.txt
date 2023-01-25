@@ -5,7 +5,7 @@ fire==0.2.1
 Pillow==8.2.0
 
 # https://numpy.org/devdocs/release.html
-numpy==1.20.3
+numpy==1.24.1
 
 # https://docs.scipy.org/doc/scipy/release.html
 # https://github.com/scipy/scipy/releases

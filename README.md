@@ -7,7 +7,7 @@ This repository provide utilities to extract features from random point
 locations in images and then training classifiers over those features.
 It is used in the vision backend of `https://github.com/beijbom/coralnet`.
 
-Spacer currently supports python >=3.6.
+Spacer currently supports python >=3.8.
 
 ### Overview
 Spacer executes tasks as defined in messages. The messages types are defined

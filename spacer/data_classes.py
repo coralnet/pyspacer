@@ -119,14 +119,14 @@ class PointFeatures(DataClass):
                  ):
         self.row = row
         self.col = col
-        self.data = np.array(data, dtype=np.float)
+        self.data = np.array(data, dtype=float)
 
     @classmethod
     def example(cls):
         return cls(
             row=100,
             col=100,
-            data=np.array([1.1, 1.3, 1.12], dtype=np.float)
+            data=np.array([1.1, 1.3, 1.12], dtype=float)
         )
 
     def __eq__(self, other):
@@ -264,7 +264,7 @@ class ImageFeatures(DataClass):
         else:
             rows = np.array([])
             cols = np.array([])
-        feat = np.array([p.data for p in self.point_features], dtype=np.float)
+        feat = np.array([p.data for p in self.point_features], dtype=float)
         meta = np.array([self.valid_rowcol, self.npoints, self.feature_dim])
         output = BytesIO()
         np.savez_compressed(output, meta=meta, rows=rows, cols=cols, feat=feat)

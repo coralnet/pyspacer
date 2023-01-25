@@ -61,14 +61,13 @@ RUN git clone -b ${CLONE_TAG} --depth 1 https://github.com/Qengineering/caffe.gi
 # We can later change some package versions for spacer. However, numpy needs
 # to stay the same after building caffe. Otherwise, it may get an error like
 # "module compiled against API version 0x10 but this version of numpy is 0xe"
-# when importing caffe. For the moment we cap numpy before 1.24, since we are
-# still using deprecated type aliases like np.float, which 1.24 removes.
+# when importing caffe.
 #
 # caffe's requirements.txt doesn't cap the protobuf version, but protobuf 4.x
 # results in an error like "Couldn't build proto file into descriptor pool:
 # duplicate file name" when importing caffe. So we avoid protobuf 4.x.
 WORKDIR $CAFFE_ROOT/python
-RUN for req in $(cat requirements.txt) pydot 'numpy<1.21' 'protobuf<4'; \
+RUN for req in $(cat requirements.txt) pydot 'numpy==1.24.1' 'protobuf<4'; \
     do pip3 install $req; \
     done
 

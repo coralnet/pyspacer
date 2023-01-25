@@ -83,7 +83,7 @@ def classify_from_imlist(im_list: List,
                         transformer.preprocess(im_list[pos])
             net.forward(start=startlayer)
             scorelist.extend(list(copy(net.blobs[scorelayer].data).
-                                  astype(np.float)))
+                                  astype(float)))
 
         scorelist = scorelist[:len(im_list)]
 
