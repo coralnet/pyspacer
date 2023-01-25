@@ -13,7 +13,7 @@ from typing import Tuple, Optional
 
 import boto3
 import botocore.exceptions
-from PIL import Image
+from PIL import Image, ImageFile
 
 # Configure a simple logger that works with AWS cloudwatch
 if len(logging.getLogger().handlers) > 0:
@@ -198,3 +198,8 @@ except (botocore.exceptions.ClientError,
 
 # Add margin to avoid warnings when running unit-test.
 Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS + 20000
+
+# Configure Pillow to be tolerant of image files that are truncated (missing
+# data from the last block).
+# https://stackoverflow.com/a/23575424/
+ImageFile.LOAD_TRUNCATED_IMAGES = True

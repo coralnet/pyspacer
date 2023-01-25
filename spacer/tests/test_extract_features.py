@@ -103,10 +103,10 @@ class TestCaffeExtractor(unittest.TestCase):
 
     def test_corner_case1(self):
         """
-        This particular image caused trouble on the production server.
-        The image file itself is lightly corrupted, and PIL doesn't like it.
+        This particular image caused trouble on the coralnet production server.
+        The image file itself is lightly corrupted. Pillow can only read it
+        if LOAD_TRUNCATED_IMAGES is set to True.
         """
-
         msg = ExtractFeaturesMsg(
             job_token='cornercase_1',
             feature_extractor_name='vgg16_coralnet_ver1',
@@ -129,11 +129,9 @@ class TestCaffeExtractor(unittest.TestCase):
         self.assertEqual(features.point_features[0].row, 148)
         self.assertEqual(features.point_features[0].col, 50)
 
-    def test_cornercase2(self):
+    def test_corner_case2(self):
         """
-        This particular image caused trouble on the production server.
-        The image file itself is lightly corrupted, and PIL doesn't
-        quite like it.
+        Another corrupted image seen in coralnet production.
         """
         msg = ExtractFeaturesMsg(
             job_token='cornercase_2',

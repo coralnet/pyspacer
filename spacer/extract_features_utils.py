@@ -29,10 +29,6 @@ def crop_patches(im: Image,
     :param crop_size: patch size
     :return: patch list
     """
-    # For some images np.array returns an empty array.
-    # Running it twice fixes it
-    # Ref: https://github.com/numpy/numpy/issues/11629
-    _ = np.array(im)
     im = np.array(im)
 
     if len(im.shape) == 2 or im.shape[2] == 1:
