@@ -7,12 +7,8 @@ Pillow==8.2.0
 # https://numpy.org/devdocs/release.html
 numpy==1.24.1
 
-# https://docs.scipy.org/doc/scipy/release.html
-# https://github.com/scipy/scipy/releases
-scipy==1.4.1
-
 # https://scikit-learn.org/stable/whats_new.html
-# Requires: numpy, scipy
+# Requires: numpy (and scipy)
 scikit-learn==1.1.3
 
 scikit-image==0.17.2
