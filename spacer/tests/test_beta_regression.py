@@ -1,6 +1,6 @@
 """
 This file runs regression compared to results from the Beta production server.
-See pyspacer/scripts/make_legacy_score_for_regression_testing.py for details.
+See scripts/regression/caffe_extractor.py for details.
 """
 import json
 import unittest
@@ -80,11 +80,8 @@ def extract_and_classify(im_key, clf_key, rowcol):
 @unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
 @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
 class TestExtractFeatures(unittest.TestCase):
-    """ Tests new feature extractor against legacy.
-    These tests do not pass. In tests, it varied between sources and
-    images and even within images. Some row, col locations gave
-    identical features while some did not. This 'test' instead
-    prints the 2-norm difference.
+    """
+    Tests new feature extractor against legacy.
     """
 
     def setUp(self):
@@ -142,11 +139,11 @@ class TestExtractFeatures(unittest.TestCase):
                                         atol=1e-5))
 
 
-@unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to tests')
+@unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
 class TestClassifyFeatures(unittest.TestCase):
     """ Test the classify_features task and compare to scores
     calculated using previous sci-kit learn versions.
-    Test pass if scores are identical.
+    Test pass if scores are near identical.
     """
 
     def setUp(self):
