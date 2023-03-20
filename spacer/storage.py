@@ -253,6 +253,17 @@ class ClassifierUnpickler(Unpickler):
     def load(self):
         clf = super().load()
 
+        if not isinstance(clf, CalibratedClassifierCV):
+            raise ValueError(
+                f"Loaded a {type(clf).__name__}"
+                f" instead of a CalibratedClassifierCV.")
+
+        if clf.cv != 'prefit':
+            raise ValueError(
+                f"Loaded classifier has cv '{clf.cv}' instead of 'prefit'."
+                f" Don't know how to check this classifier type for"
+                f" compatibility.")
+
         # Detect legacy classifiers and patch as needed.
         #
         # The main scikit-learn classes to keep tabs on for changes are:
@@ -269,9 +280,14 @@ class ClassifierUnpickler(Unpickler):
 
             self.patch_base_estimator(calibrated_clf.base_estimator)
 
-            # This attribute was introduced after 0.17.1 and by 0.22.1. It's set
-            # unconditionally in __init__().
-            if not hasattr(calibrated_clf, 'classes'):
+            # sklearn 0.17.1: the classes attribute didn't exist.
+            # sklearn 0.22.1: the classes attribute was introduced, and was
+            # set unconditionally in __init__(), but ended up as None for
+            # our use cases.
+            if (
+                not hasattr(calibrated_clf, 'classes')
+                or calibrated_clf.classes is None
+            ):
                 calibrated_clf.classes = calibrated_clf.classes_
 
             # This attribute was introduced after 0.22.1 and by 0.24.2. It's set
@@ -301,9 +317,13 @@ def load_classifier(loc: 'DataLocation'):
     with warnings.catch_warnings():
         # Ignore unpickling warnings from sklearn.
         warnings.filterwarnings(
-            'ignore', category=UserWarning,
+            'ignore',
+            category=UserWarning,
+            # Part after 'version' either starts with 'pre-0.18' or '0.22.1'
             message=r"Trying to unpickle estimator [A-Za-z_]+"
-                    r" from version pre-0\.18.*")
+                    r" from version"
+                    r" ((pre-0\.18)|(0\.22\.1)).*",
+        )
         clf = ClassifierUnpickler(
             stream, fix_imports=True, encoding='latin1').load()
 

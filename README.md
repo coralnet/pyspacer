@@ -81,7 +81,7 @@ and to production
 * Clone this repo
 * `pip install -r requirements.txt`
 
-If using Windows: turn Git's `autocrlf` setting off. Otherwise, the pickled classifier `spacer/tests/fixtures/legacy.model` will get checked out with `\r\n` newlines, and the pickle module will fail to load it, leading to test failures.
+If using Windows: turn Git's `autocrlf` setting off before your initial checkout. Otherwise, pickled classifiers in `spacer/tests/fixtures` will get checked out with `\r\n` newlines, and the pickle module will fail to load them, leading to test failures. However, autocrlf should be left on when adding any new non-pickle files.
 
 ### Code coverage
 If you are using the docker build or local install, 

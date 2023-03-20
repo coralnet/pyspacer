@@ -241,12 +241,12 @@ class ClassifyFeaturesMsg(DataClass):
         return ClassifyFeaturesMsg(
             job_token='my_job',
             feature_loc=DataLocation(storage_type='url',
-                                     key='https://spacer-test.s3-us-west-2.'
-                                         'amazonaws.com/08bfc10v7t.png.'
+                                     key='https://my-bucket.s3-my-region.'
+                                         'amazonaws.com/01234aeiou.png.'
                                          'featurevector'),
             classifier_loc=DataLocation(storage_type='url',
-                                        key='https://spacer-test.s3-us-west-2.'
-                                        'amazonaws.com/legacy.model')
+                                        key='https://my-bucket.s3-my-region.'
+                                        'amazonaws.com/my_model_id.model')
         )
 
     def serialize(self):
@@ -286,13 +286,13 @@ class ClassifyImageMsg(DataClass):
         return ClassifyImageMsg(
             job_token='my_job',
             image_loc=DataLocation(storage_type='url',
-                                   key='https://spacer-test.s3-us-west-2.'
-                                   'amazonaws.com/08bfc10v7t.png'),
+                                   key='https://my-bucket.s3-my-region.'
+                                   'amazonaws.com/01234aeiou.png'),
             feature_extractor_name='vgg16_coralnet_ver1',
             rowcols=[(1, 1), (2, 2)],
             classifier_loc=DataLocation(storage_type='url',
-                                        key='https://spacer-test.s3-us-west-2.'
-                                        'amazonaws.com/legacy.model')
+                                        key='https://my-bucket.s3-my-region.'
+                                        'amazonaws.com/my_model_id.model')
         )
 
     def serialize(self):

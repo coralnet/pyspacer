@@ -29,7 +29,7 @@ class TestImageFeatures(unittest.TestCase):
         Loads a legacy feature file and make sure it's parsed correctly.
         """
         with open(os.path.join(config.LOCAL_FIXTURE_DIR,
-                               'legacy.jpg.feats')) as fp:
+                               'cnbeta.jpg.feats')) as fp:
             feats = ImageFeatures.deserialize(json.load(fp))
         self.assertEqual(feats.valid_rowcol, False)
 

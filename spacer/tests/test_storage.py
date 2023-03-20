@@ -21,6 +21,7 @@ from spacer.storage import \
     store_image, \
     store_classifier, \
     clear_memory_storage
+from spacer.tests.utils import cn_beta_fixture_location
 from spacer.train_utils import make_random_data, train
 
 
@@ -91,7 +92,8 @@ class TestURLStorage(unittest.TestCase):
     def test_load_classifier(self):
         loc = DataLocation(
             storage_type='url',
-            key='https://spacer-test.s3-us-west-2.amazonaws.com/legacy.model'
+            key='https://spacer-test.s3-us-west-2.amazonaws.com/'
+                'legacy_compat/coralnet_beta/example.model'
         )
         clf = load_classifier(loc)
         self.assertTrue(isinstance(clf, CalibratedClassifierCV))
@@ -163,11 +165,8 @@ class TestS3Storage(BaseStorageTest):
         self.assertTrue(isinstance(img2, Image.Image))
 
     def test_load_legacy_features(self):
-        feats = ImageFeatures.load(DataLocation(
-            storage_type='s3',
-            key='legacy.jpg.feats',
-            bucket_name=config.TEST_BUCKET
-        ))
+        feats = ImageFeatures.load(
+            cn_beta_fixture_location('example.jpg.feats'))
         self.assertTrue(isinstance(feats, ImageFeatures))
         self.assertFalse(feats.valid_rowcol)
 
@@ -175,11 +174,7 @@ class TestS3Storage(BaseStorageTest):
         self.do_test_delete()
 
     def test_load_legacy_model(self):
-        clf = load_classifier(DataLocation(
-            storage_type='s3',
-            key='legacy.model',
-            bucket_name=config.TEST_BUCKET
-        ))
+        clf = load_classifier(cn_beta_fixture_location('example.model'))
         self.assertTrue(isinstance(clf, CalibratedClassifierCV))
 
     def test_load_store_model(self):
@@ -227,7 +222,7 @@ class TestLocalStorage(BaseStorageTest):
     def test_load_legacy_features(self):
         loc = DataLocation(
             storage_type='filesystem',
-            key=os.path.join(config.LOCAL_FIXTURE_DIR, 'legacy.jpg.feats')
+            key=os.path.join(config.LOCAL_FIXTURE_DIR, 'cnbeta.jpg.feats')
         )
         feats = ImageFeatures.load(loc)
         self.assertTrue(isinstance(feats, ImageFeatures))
@@ -249,7 +244,7 @@ class TestLocalStorage(BaseStorageTest):
     def test_load_legacy_model(self):
         loc = DataLocation(
             storage_type='filesystem',
-            key=os.path.join(config.LOCAL_FIXTURE_DIR, 'legacy.model')
+            key=os.path.join(config.LOCAL_FIXTURE_DIR, 'cnbeta.model')
         )
         clf = load_classifier(loc)
         self.assertTrue(isinstance(clf, CalibratedClassifierCV))
@@ -332,7 +327,7 @@ class TestLRUCache(unittest.TestCase):
     def test_load_classifier(self):
         loc = DataLocation(
             storage_type='filesystem',
-            key=os.path.join(config.LOCAL_FIXTURE_DIR, 'legacy.model')
+            key=os.path.join(config.LOCAL_FIXTURE_DIR, 'cnbeta.model')
         )
 
         load_classifier.cache_clear()

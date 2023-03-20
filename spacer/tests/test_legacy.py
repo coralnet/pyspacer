@@ -1,8 +1,8 @@
 """
-This file runs regression compared to results from the Beta production server.
-See scripts/regression/caffe_extractor.py for details.
+These tests check for compatibility with results of previous coralnet/pyspacer
+versions.
+Much of the test data was prepared using scripts/regression/caffe_extractor.py
 """
-import json
 import unittest
 
 import numpy as np
@@ -16,29 +16,40 @@ from spacer.messages import \
     ClassifyReturnMsg
 from spacer.storage import storage_factory
 from spacer.tasks import classify_features, extract_features
+from spacer.tests.utils import cn_beta_fixture_location
 
-reg_meta = {
+
+cn_beta_fixtures = {
     's16': ('1355.model', ['i2921', 'i2934']),
     's295': ('10279.model', ['i1370227', 'i160100']),
     's603': ('3709.model', ['i576858', 'i576912']),
     's812': ('4772.model', ['i672762', 'i674185']),
     's1388': ('8942.model', ['i1023182', 'i1023213'])
 }
+pyspacer_031_vgg16_fixtures = {
+    '23': {'classifier': 33358, 'images': [3286565, 3286615]},
+    '1288': {'classifier': 33360, 'images': [3286481, 3286511]},
+}
+pyspacer_031_efficientnet_fixtures = {
+    '23': {'classifier': 33369, 'images': [3286565, 3286615]},
+    '1288': {'classifier': 33368, 'images': [3286481, 3286511]},
+}
 
-s3_key_prefix = 'beta_reg/'
+
+def pyspacer031_vgg16_fixture_location(key):
+    return DataLocation(
+        storage_type='s3',
+        bucket_name=config.TEST_BUCKET,
+        key='legacy_compat/pyspacer_0.3.1/vgg16/' + key
+    )
 
 
-def get_rowcol(key, storage):
-    """ This file was saved using
-    coralnet/project/vision_backend/management/commands/
-    vb_export_spacer_data.py
-
-    https://github.com/beijbom/coralnet/blob/
-    e08afaa0164425fc16ae4ed60841d70f2eff59a6/project/vision_backend/
-    management/commands/vb_export_spacer_data.py
-    """
-    anns = json.loads(storage.load(key).getvalue().decode('utf-8'))
-    return [(entry['row'], entry['col']) for entry in anns]
+def pyspacer031_efficientnet_fixture_location(key):
+    return DataLocation(
+        storage_type='s3',
+        bucket_name=config.TEST_BUCKET,
+        key='legacy_compat/pyspacer_0.3.1/efficientnet/' + key
+    )
 
 
 def extract_and_classify(im_key, clf_key, rowcol):
@@ -49,9 +60,7 @@ def extract_and_classify(im_key, clf_key, rowcol):
     msg = ExtractFeaturesMsg(
         job_token='beta_reg_test',
         feature_extractor_name='vgg16_coralnet_ver1',
-        image_loc=DataLocation(storage_type='s3',
-                               bucket_name=config.TEST_BUCKET,
-                               key=s3_key_prefix + im_key + '.jpg'),
+        image_loc=cn_beta_fixture_location(im_key + '.jpg'),
         rowcols=rowcol,
         feature_loc=new_feats_loc
     )
@@ -60,18 +69,12 @@ def extract_and_classify(im_key, clf_key, rowcol):
     msg = ClassifyFeaturesMsg(
         job_token='regression_test',
         feature_loc=new_feats_loc,
-        classifier_loc=DataLocation(storage_type='s3',
-                                    bucket_name=config.TEST_BUCKET,
-                                    key=s3_key_prefix + clf_key)
+        classifier_loc=cn_beta_fixture_location(clf_key)
     )
     new_return = classify_features(msg)
 
     legacy_return = ClassifyReturnMsg.load(
-        DataLocation(
-            storage_type='s3',
-            bucket_name=config.TEST_BUCKET,
-            key=s3_key_prefix + im_key + '.scores.json'
-        )
+        cn_beta_fixture_location(im_key + '.scores.json')
     )
     return new_return, legacy_return
 
@@ -81,7 +84,9 @@ def extract_and_classify(im_key, clf_key, rowcol):
 @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
 class TestExtractFeatures(unittest.TestCase):
     """
-    Tests new feature extractor against legacy.
+    Test pyspacer's Caffe extractor and compare to features extracted using
+    CoralNet Beta's Caffe extractor.
+    Tests pass if feature values are near identical.
     """
 
     def setUp(self):
@@ -89,10 +94,8 @@ class TestExtractFeatures(unittest.TestCase):
 
     def test_png(self):
         """
-        Run feature extraction on an image and compare to legacy extracted
-        features. Note that we use a png image here to avoid the problems
-        with libjpeg versions. Here we are interested in asserting
-        that the caffe feature extraction code is backwards compatible.
+        Note that we use a png image here to avoid the inconsistencies
+        with libjpeg versions.
         See discussion in https://github.com/beijbom/pyspacer/pull/10 for
         more details on libjpeg.
         """
@@ -107,20 +110,15 @@ class TestExtractFeatures(unittest.TestCase):
         msg = ExtractFeaturesMsg(
             job_token='beta_reg_test',
             feature_extractor_name='vgg16_coralnet_ver1',
-            image_loc=DataLocation(storage_type='s3',
-                                   bucket_name=config.TEST_BUCKET,
-                                   key=s3_key_prefix + im_key + '.png'),
+            image_loc=cn_beta_fixture_location(im_key + '.png'),
             rowcols=rowcols,
             feature_loc=new_feats_loc
         )
         _ = extract_features(msg)
 
         legacy_feats = ImageFeatures.load(
-            DataLocation(
-                storage_type='s3',
-                bucket_name=config.TEST_BUCKET,
-                key=s3_key_prefix + im_key + '.png.features.json'
-            ))
+            cn_beta_fixture_location(im_key + '.png.features.json')
+        )
 
         self.assertFalse(legacy_feats.valid_rowcol)
         self.assertEqual(legacy_feats.npoints, len(rowcols))
@@ -141,49 +139,83 @@ class TestExtractFeatures(unittest.TestCase):
 
 @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
 class TestClassifyFeatures(unittest.TestCase):
-    """ Test the classify_features task and compare to scores
-    calculated using previous sci-kit learn versions.
+    """
+    Get scores from the current classify_features task using previous
+    scikit-learn versions' classifiers.
+    Compare to scores calculated entirely with previous scikit-learn versions.
     Test pass if scores are near identical.
     """
 
     def setUp(self):
         config.filter_warnings()
 
-    def run_one_test(self, im_key, clf_key):
+    def run_one_test(
+        self,
+        feature_loc: DataLocation,
+        classifier_loc: DataLocation,
+        scores_loc: DataLocation
+    ):
 
         msg = ClassifyFeaturesMsg(
             job_token='regression_test',
-            feature_loc=DataLocation(storage_type='s3',
-                                     bucket_name=config.TEST_BUCKET,
-                                     key=s3_key_prefix + im_key + '.features.'
-                                                                  'json'),
-            classifier_loc=DataLocation(storage_type='s3',
-                                        bucket_name=config.TEST_BUCKET,
-                                        key=s3_key_prefix + clf_key)
+            feature_loc=feature_loc,
+            classifier_loc=classifier_loc
         )
         new_return = classify_features(msg)
 
-        # The features are legacy, so the scores don't have valid row-cols.
-        self.assertFalse(new_return.valid_rowcol)
+        legacy_return = ClassifyReturnMsg.load(scores_loc)
 
-        legacy_return = ClassifyReturnMsg.load(
-            DataLocation(
-                storage_type='s3',
-                bucket_name=config.TEST_BUCKET,
-                key=s3_key_prefix + im_key + '.scores.json'
-            )
-        )
-        self.assertFalse(legacy_return.valid_rowcol)
-
-        for ls, ns in zip(legacy_return.scores, new_return.scores):
-            with self.subTest(im_key=im_key, clf_key=clf_key):
+        with self.subTest(feats=feature_loc.key, clf=classifier_loc.key):
+            for ls, ns in zip(legacy_return.scores, new_return.scores):
                 self.assertTrue(np.allclose(ls[2], ns[2]))
 
-    def test_all(self):
-
-        for source, (clf, imgs) in reg_meta.items():
+    def test_cn_beta(self):
+        for source, (clf, imgs) in cn_beta_fixtures.items():
             for img in imgs:
-                self.run_one_test(source + '/' + img, source + '/' + clf)
+                self.run_one_test(
+                    cn_beta_fixture_location(
+                        f"{source}/{img}.features.json"),
+                    cn_beta_fixture_location(
+                        f"{source}/{clf}"),
+                    cn_beta_fixture_location(
+                        f"{source}/{img}.scores.json"),
+                )
+
+    def test_pyspacer_0_3_1_vgg16(self):
+        for source_id, source_data in pyspacer_031_vgg16_fixtures.items():
+            for image_id in source_data['images']:
+                classifier_id = source_data['classifier']
+                features_filename = f"{image_id}.featurevector"
+                classifier_filename = f"{classifier_id}.model"
+                scores_filename = \
+                    f"img{image_id}_clf{classifier_id}.scores.json"
+                self.run_one_test(
+                    pyspacer031_vgg16_fixture_location(
+                        f"s{source_id}/{features_filename}"),
+                    pyspacer031_vgg16_fixture_location(
+                        f"s{source_id}/{classifier_filename}"),
+                    pyspacer031_vgg16_fixture_location(
+                        f"s{source_id}/{scores_filename}"),
+                )
+
+    def test_pyspacer_0_3_1_efficientnet(self):
+        for source_id, source_data in (
+            pyspacer_031_efficientnet_fixtures.items()
+        ):
+            for image_id in source_data['images']:
+                classifier_id = source_data['classifier']
+                features_filename = f"{image_id}.featurevector"
+                classifier_filename = f"{classifier_id}.model"
+                scores_filename = \
+                    f"img{image_id}_clf{classifier_id}.scores.json"
+                self.run_one_test(
+                    pyspacer031_efficientnet_fixture_location(
+                        f"s{source_id}/{features_filename}"),
+                    pyspacer031_efficientnet_fixture_location(
+                        f"s{source_id}/{classifier_filename}"),
+                    pyspacer031_efficientnet_fixture_location(
+                        f"s{source_id}/{scores_filename}"),
+                )
 
 
 @unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
