@@ -81,20 +81,6 @@ def get_s3_conn():
                           aws_secret_access_key=aws_key_secret)
 
 
-def get_sqs_conn():
-    """
-    Returns a connection to SQS.
-    - It first looks for credentials in the environmental vars.
-    - If not found there it looks in secrets.json
-    - If not found there it will default to credentials in ~/.aws/credentials
-    """
-    aws_key_id, aws_key_secret = get_aws_credentials()
-    return boto3.resource('sqs',
-                          region_name="us-west-2",
-                          aws_access_key_id=aws_key_id,
-                          aws_secret_access_key=aws_key_secret)
-
-
 def get_local_model_path():
     local_model_path = os.getenv('SPACER_LOCAL_MODEL_PATH')
     if local_model_path is None:

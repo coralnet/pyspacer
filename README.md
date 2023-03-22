@@ -17,8 +17,8 @@ in `data_classes.py` which define input and output types.
 Refer to the unit-test in `test_tasks.py` for examples on how to create tasks.
 
 Tasks can be executed directly by calling the methods in tasks.py. 
-However, spacer also supports an interface with SQS 
-handled by `sqs_fetch()` in `mailman.py`. 
+However, spacer also supports an interface with AWS Batch 
+handled by `env_job()` in `mailman.py`. 
 
 Spacer supports four storage types: `s3`, `filesystem`, `memory` and `url`.
  Refer to `storage.py` for details. The Memory storage is mostly used for 
