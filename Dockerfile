@@ -97,14 +97,14 @@ FROM caffe AS spacer
 # Note that numpy is not here because it was specified before building caffe.
 RUN pip3 install wget==3.2
 RUN pip3 install coverage==7.0.5
-RUN pip3 install tqdm==4.43.0
-RUN pip3 install fire==0.2.1
+RUN pip3 install tqdm==4.65.0
+RUN pip3 install fire==0.5.0
 RUN pip3 install Pillow==9.4.0
 RUN pip3 install scikit-learn==1.1.3
-RUN pip3 install torchvision==0.9.0
-RUN pip3 install torch==1.8.0
+RUN pip3 install torch==1.13.1
+RUN pip3 install torchvision==0.14.1
 RUN pip3 install boto3==1.23.10
-RUN pip3 install awscli==1.24.10
+RUN pip3 install awscli==1.27.95
 
 ENV SPACER_LOCAL_MODEL_PATH=/workspace/models
 WORKDIR /workspace/models
