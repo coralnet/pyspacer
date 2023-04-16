@@ -295,7 +295,7 @@ class TestClassifyFeatures(ClassifyReturnMsgTest):
     def setUp(self):
         config.filter_warnings()
 
-    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to tests')
+    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
     def test_legacy(self):
         msg = ClassifyFeaturesMsg(
             job_token='my_job',
@@ -306,7 +306,7 @@ class TestClassifyFeatures(ClassifyReturnMsgTest):
         return_msg = classify_features(msg)
         self._validate_return_msg(return_msg, False)
 
-    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to tests')
+    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
     def test_new(self):
 
         feats = ImageFeatures.make_random([1, 2, 3, 2], feature_dim=4096)
@@ -332,7 +332,7 @@ class TestClassifyImage(ClassifyReturnMsgTest):
     def setUp(self):
         config.filter_warnings()
 
-    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to tests')
+    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
     def test_deploy_simple(self):
         msg = ClassifyImageMsg(
             job_token='my_job',
@@ -351,7 +351,7 @@ class TestClassifyImageCache(unittest.TestCase):
     def setUp(self):
         config.filter_warnings()
 
-    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to tests')
+    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
     def test_classify_image_with_caching(self):
         """ Call classify_image three times.
         The first 2 time with same message.

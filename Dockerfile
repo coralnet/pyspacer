@@ -26,7 +26,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         cmake \
         git \
-        wget \
         vim \
         libatlas-base-dev \
         libboost-all-dev \
@@ -95,7 +94,6 @@ FROM caffe AS spacer
 # But by doing it explicitly, the docker build can cache each step's result
 # for faster builds.
 # Note that numpy is not here because it was specified before building caffe.
-RUN pip3 install wget==3.2
 RUN pip3 install coverage==7.0.5
 RUN pip3 install tqdm==4.65.0
 RUN pip3 install fire==0.5.0

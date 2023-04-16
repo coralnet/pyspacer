@@ -1,4 +1,3 @@
-wget==3.2
 coverage==7.0.5
 
 # https://tqdm.github.io/releases/

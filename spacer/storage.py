@@ -11,9 +11,9 @@ from io import BytesIO
 from pickle import Unpickler
 from typing import Union, Tuple
 from urllib.error import URLError
+import urllib.request
 
 import botocore.exceptions
-import wget
 from PIL import Image
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.linear_model import SGDClassifier
@@ -50,26 +50,28 @@ class URLStorage(Storage):
     def store(self, url: str, stream: BytesIO):
         raise TypeError('Store operation not supported for URL storage.')
 
-    def load(self, url: str):
+    def load(self, url: str) -> BytesIO:
         try:
-            tmp_path = wget.download(url, out=config.TMP_PATH, bar=None)
-        except URLError as e:
+            download_response = urllib.request.urlopen(url)
+        except (URLError, ValueError) as e:
             raise SpacerInputError(str(e))
-        stream = self.fs_storage.load(tmp_path)
-        self.fs_storage.delete(tmp_path)
-        return stream
+        return BytesIO(download_response.read())
 
     def delete(self, url: str) -> None:
         raise TypeError('Delete operation not supported for URL storage.')
 
     def exists(self, url: str) -> bool:
+        # HEAD can check for existence without downloading the entire resource
         try:
-            tmp_path = wget.download(url, out=config.TMP_PATH, bar=None)
+            request = urllib.request.Request(url, method='HEAD')
+        except ValueError:
+            # Might be an invalid URL format
+            return False
+
+        try:
+            urllib.request.urlopen(request)
         except URLError:
             return False
-        except ValueError:
-            return False
-        self.fs_storage.delete(tmp_path)
         return True
 
 

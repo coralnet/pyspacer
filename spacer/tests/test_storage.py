@@ -12,6 +12,7 @@ from sklearn.calibration import CalibratedClassifierCV
 
 from spacer import config
 from spacer.data_classes import ImageFeatures
+from spacer.exceptions import SpacerInputError
 from spacer.messages import DataLocation
 from spacer.storage import \
     storage_factory, \
@@ -78,6 +79,10 @@ class BaseStorageTest(unittest.TestCase, abc.ABC):
 
 class TestURLStorage(unittest.TestCase):
 
+    INVALID_URL = 'not_even_a_url'
+    UNREACHABLE_DOMAIN = 'https://not-a-real-domain/'
+    UNREACHABLE_URL = 'https://coralnet.ucsd.edu/not-a-real-page/'
+
     def setUp(self):
         self.storage = storage_factory('url')
 
@@ -110,12 +115,9 @@ class TestURLStorage(unittest.TestCase):
     def test_exists(self):
         self.assertTrue(self.storage.exists(
             'https://spacer-test.s3-us-west-2.amazonaws.com/08bfc10v7t.png'))
-        self.assertFalse(self.storage.exists(
-            'not_even_a_url'
-        ))
-        self.assertFalse(self.storage.exists(
-            'https://not-a-real-domain/image.png'
-        ))
+        self.assertFalse(self.storage.exists(self.INVALID_URL))
+        self.assertFalse(self.storage.exists(self.UNREACHABLE_DOMAIN))
+        self.assertFalse(self.storage.exists(self.UNREACHABLE_URL))
 
     def test_unsupported_methods(self):
         self.assertRaises(TypeError,
@@ -126,6 +128,23 @@ class TestURLStorage(unittest.TestCase):
         self.assertRaises(TypeError,
                           self.storage.delete,
                           'dummy')
+
+    def test_invalid_url(self):
+        with self.assertRaises(SpacerInputError) as context:
+            self.storage.load(self.INVALID_URL)
+        self.assertEqual(
+            f"unknown url type: '{self.INVALID_URL}'",
+            context.exception.args[0],
+            "Should raise the appropriate error",
+        )
+
+    def test_unreachable_domain(self):
+        with self.assertRaises(SpacerInputError):
+            self.storage.load(self.UNREACHABLE_DOMAIN)
+
+    def test_unreachable_url(self):
+        with self.assertRaises(SpacerInputError):
+            self.storage.load(self.UNREACHABLE_URL)
 
 
 @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
