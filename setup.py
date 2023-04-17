@@ -31,7 +31,7 @@ setuptools.setup(
         'numpy>=1.17.5',
         'scikit-learn==0.22.1',
         'scikit-image==0.17.2',
-        'torch==1.4.0',
+        'torch==1.13.1',
         'torchvision==0.5.0',
         'boto3',
         'botocore'
