@@ -13,6 +13,16 @@ from spacer.messages import JobMsg, DataLocation
 from spacer.tasks import process_job
 
 
+# Configure a simple logger that works with AWS CloudWatch.
+if len(logging.getLogger().handlers) > 0:
+    # The Lambda environment pre-configures a handler logging to stderr.
+    # If a handler is already configured,
+    # `.basicConfig` does not execute. Thus we set the level directly.
+    logging.getLogger().setLevel(logging.INFO)
+else:
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
+
+
 def env_job(): # pragma: no cover
     """
     Runs a job defined in environment variables.

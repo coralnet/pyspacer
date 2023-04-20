@@ -15,15 +15,6 @@ import boto3
 import botocore.exceptions
 from PIL import Image, ImageFile
 
-# Configure a simple logger that works with AWS cloudwatch
-if len(logging.getLogger().handlers) > 0:
-    # The Lambda environment pre-configures a handler logging to stderr.
-    # If a handler is already configured,
-    # `.basicConfig` does not execute. Thus we set the level directly.
-    logging.getLogger().setLevel(logging.INFO)
-else:
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
-
 
 def filter_warnings():
     """ Filters out some verified warnings. """
