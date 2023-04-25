@@ -99,16 +99,16 @@ class ExtractFeaturesReturnMsg(DataClass):
     """ Return message for extract_features task. """
 
     def __init__(self,
-                 model_was_cashed: bool,
+                 model_was_cached: bool,
                  runtime: float):
 
-        self.model_was_cashed = model_was_cashed
+        self.model_was_cached = model_was_cached
         self.runtime = runtime
 
     @classmethod
     def example(cls) -> 'ExtractFeaturesReturnMsg':
         return ExtractFeaturesReturnMsg(
-            model_was_cashed=True,
+            model_was_cached=True,
             runtime=2.1
         )
 
