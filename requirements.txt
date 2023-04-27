@@ -25,4 +25,4 @@ torch==1.13.1
 # https://github.com/pytorch/vision#installation
 torchvision==0.14.1
 
-boto3==1.23.10
+boto3>=1.26.122,<1.27
