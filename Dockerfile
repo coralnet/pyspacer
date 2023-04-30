@@ -10,8 +10,8 @@
 
 
 # Ubuntu setup + Caffe installation
-# Python 3.8 is the default Python for Ubuntu 20.04.
-FROM ubuntu:20.04 as caffe
+# Python 3.10 is the default Python for Ubuntu 22.04.
+FROM ubuntu:22.04 as caffe
 LABEL maintainer oscar.beijbom@gmail.com
 
 # This section has to do with setting the time-zone and installing the OS.
@@ -101,8 +101,8 @@ RUN pip3 install Pillow==9.4.0
 RUN pip3 install scikit-learn==1.1.3
 RUN pip3 install torch==1.13.1
 RUN pip3 install torchvision==0.14.1
-RUN pip3 install boto3==1.23.10
-RUN pip3 install awscli==1.27.95
+RUN pip3 install boto3==1.26.122
+RUN pip3 install awscli==1.27.122
 
 ENV SPACER_LOCAL_MODEL_PATH=/workspace/models
 WORKDIR /workspace/models
