@@ -4,7 +4,6 @@ import os
 import time
 import unittest
 from io import BytesIO
-from pathlib import Path
 
 import numpy as np
 from PIL import Image
@@ -24,6 +23,7 @@ from spacer.storage import \
     clear_memory_storage
 from spacer.tests.utils import cn_beta_fixture_location
 from spacer.train_utils import make_random_data, train
+from .utils import temp_filesystem_data_location
 
 
 class TestGlobalMemoryStorage(unittest.TestCase):
@@ -203,38 +203,15 @@ class TestS3Storage(BaseStorageTest):
 class TestLocalStorage(BaseStorageTest):
 
     def setUp(self):
-        self.tmp_image_loc = DataLocation(
-            storage_type='filesystem',
-            key=str(Path(config.TMP_PATH) / 'tmp_image.jpg'),
-            bucket_name=''
-        )
-        self.tmp_json_loc = DataLocation(
-            storage_type='filesystem',
-            key=str(Path(config.TMP_PATH) / 'tmp_data.json'),
-            bucket_name=''
-        )
-        self.tmp_model_loc = DataLocation(
-            storage_type='filesystem',
-            key=str(Path(config.TMP_PATH) / 'tmp_model.pkl'),
-            bucket_name=''
-        )
         self.storage = storage_factory('filesystem', '')
-
-    def tearDown(self):
-
-        for tmp_loc in [self.tmp_json_loc,
-                        self.tmp_image_loc,
-                        self.tmp_model_loc]:
-            if os.path.exists(tmp_loc.key):
-                os.remove(tmp_loc.key)
-        dirname = os.path.abspath(os.path.dirname(self.tmp_json_loc.key))
-        if os.path.exists(dirname):
-            os.rmdir(dirname)
 
     def test_load_store_image(self):
         img = Image.new('RGB', (100, 200))
-        store_image(self.tmp_image_loc, img)
-        img2 = load_image(self.tmp_image_loc)
+
+        with temp_filesystem_data_location() as tmp_image_loc:
+            store_image(tmp_image_loc, img)
+            img2 = load_image(tmp_image_loc)
+
         self.assertTrue(np.array_equal(np.array(img), np.array(img2)))
         self.assertTrue(isinstance(img2, Image.Image))
 
@@ -251,14 +228,18 @@ class TestLocalStorage(BaseStorageTest):
 
         data = json.dumps({'a': 1, 'b': 2})
         stream = BytesIO(json.dumps(data).encode('utf-8'))
-        self.storage.store(self.tmp_json_loc.key, stream)
 
-        data2 = json.loads(self.storage.load(
-            self.tmp_json_loc.key).getvalue().decode('utf-8'))
+        with temp_filesystem_data_location() as tmp_json_loc:
+            self.storage.store(tmp_json_loc.key, stream)
+            data2 = json.loads(self.storage.load(
+                tmp_json_loc.key).getvalue().decode('utf-8'))
+
         self.assertEqual(data, data2)
 
     def test_delete(self):
-        self.do_test_delete()
+        with temp_filesystem_data_location() as temp_loc:
+            self.tmp_json_loc = temp_loc
+            self.do_test_delete()
 
     def test_load_legacy_model(self):
         loc = DataLocation(
@@ -269,7 +250,9 @@ class TestLocalStorage(BaseStorageTest):
         self.assertTrue(isinstance(clf, CalibratedClassifierCV))
 
     def test_load_store_model(self):
-        self.do_test_load_store_model()
+        with temp_filesystem_data_location() as temp_loc:
+            self.tmp_model_loc = temp_loc
+            self.do_test_load_store_model()
 
 
 class TestMemoryStorage(BaseStorageTest):

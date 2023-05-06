@@ -47,8 +47,6 @@ The `secrets.json` should look like this.
 }
 ```
 
-There is also an optional `TMP_PATH` setting: a filesystem directory to use for temporary files from unit tests and downloads. It defaults to the relative path `tmp`.
-
 #### Docker build
 The docker build is the preferred build and the one used in deployment.
 * Install docker on your system
