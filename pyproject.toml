@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyspacer"
+version = "0.4.0"
+authors = [
+  { name="Oscar Beijbom", email="oscar.beijbom@gmail.com" },
+]
+description = "Spatial image analysis with pytorch and caffe backends."
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "Pillow>=9.0.1",
+    "numpy>=1.19",
+    "scikit-learn==1.1.3",
+    "torch==1.13.1",
+    "torchvision==0.14.1",
+    "boto3",
+]
+license = {file = "license.txt"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/beijbom/pyspacer"
