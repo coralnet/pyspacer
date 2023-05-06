@@ -67,7 +67,7 @@ The last step will run the default CMD command specified in the dockerfile
 run the same command but append `bash` in the end.
 
 #### Pip install
-* `pip install spacer`
+* `pip install pyspacer`
 * Set environmental variables.
 
 #### Local clone
