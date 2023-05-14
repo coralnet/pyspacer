@@ -34,18 +34,30 @@ The spacer repo can be installed in three ways.
 * Using pip install -- for integration in other code-bases.
 
 #### Config
-Spacer needs three variables. They can either be set
-as environmental variables (recommended if you `pip install` the package), 
-or in a `secrets.json` file in the same directory as this README 
-(recommended for Docker builds and local clones). 
-The `secrets.json` should look like this.
-```json
-{
-  "SPACER_AWS_ACCESS_KEY_ID": "YOUR_AWS_KEY_ID",
-  "SPACER_AWS_SECRET_ACCESS_KEY": "YOUR_AWS_SECRET_KEY",
-  "SPACER_LOCAL_MODEL_PATH": "/path/to/your/local/models"
-}
-```
+Spacer has three config variables. They can be set in any of the following ways:
+
+1. As environment variables; recommended if you `pip install` the package. Each variable name must be prefixed with `SPACER_`:
+   - `export SPACER_AWS_ACCESS_KEY_ID='YOUR_AWS_KEY_ID'`
+   - `export SPACER_AWS_SECRET_ACCESS_KEY='YOUR_AWS_SECRET_KEY'`
+   - `export SPACER_LOCAL_MODEL_PATH='/path/to/your/local/models'`
+2. As a Django setting; recommended for a Django project that uses spacer. Example code in a Django settings module:
+   ```python
+   SPACER = {
+       'AWS_ACCESS_KEY_ID': 'YOUR_AWS_KEY_ID',
+       'AWS_SECRET_ACCESS_KEY': 'YOUR_AWS_SECRET_KEY',
+       'LOCAL_MODEL_PATH': '/path/to/your/local/models',
+   }
+   ```
+3. In a `secrets.json` file in the same directory as this README; recommended for Docker builds and local clones. Example `secrets.json` contents:
+   ```json
+   {
+     "AWS_ACCESS_KEY_ID": "YOUR_AWS_KEY_ID",
+     "AWS_SECRET_ACCESS_KEY": "YOUR_AWS_SECRET_KEY",
+     "LOCAL_MODEL_PATH": "/path/to/your/local/models"
+   }
+   ```
+   
+LOCAL_MODEL_PATH is required. The two AWS access variables are required unless spacer is running on an AWS instance which has been set up with `aws configure`.
 
 #### Docker build
 The docker build is the preferred build and the one used in deployment.

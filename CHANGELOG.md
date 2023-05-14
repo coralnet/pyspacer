@@ -12,11 +12,17 @@
   - torch: ==1.4.0 to ==1.13.1
   - torchvision: ==0.5.0 to ==0.14.1
   - Removed wget
-  - Removed tqdm
   - Removed scikit-image
+  - Removed tqdm (but it's still a developer requirement)
   - (Removed botocore from dependencies list, but only because it was redundant with boto3 already depending on it)
 
+- Previously, config variables could be specified by a `secrets.json` file or by environment variables. Now a third way is available: a `SPACER` setting in a Django project. Also, the `secrets.json` method no longer uses `SPACER_` prefixes for each variable name. See README for details.
+
+- The `LOCAL_MODELS_PATH` setting is now explicitly required. It was previously not required upfront, but its absence would make some tests fail.
+
 - When an image is sourced from a URL, and the download fails, PySpacer now raises a `SpacerInputError` (instead of a `URLError` for example). The new `SpacerInputError` exception class indicates that the error was most likely caused by the input given to PySpacer (such as an unreachable URL) rather than by a PySpacer bug.
+
+- PySpacer now only configures logging for fire / AWS Batch. When used as a pluggable app, it leaves the existing logging config alone.
 
 ## 0.3.1
 
