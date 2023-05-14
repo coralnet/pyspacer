@@ -276,6 +276,16 @@ class ClassifierUnpickler(Unpickler):
         #   clf.base_estimator and the base_estimator attribute of each
         #   _CalibratedClassifier
 
+        # These attrs were added after sklearn 0.22.1. The calibration.py
+        # comments (as of 0.24.2) indicate that they're ignored if cv='prefit'.
+        # Despite not being used in our case, if they're not set, then they get
+        # an AttributeError when inspecting the classifier in a debugger.
+        # We can just set them to their defaults.
+        if not hasattr(clf, 'ensemble'):
+            clf.ensemble = True
+        if not hasattr(clf, 'n_jobs'):
+            clf.n_jobs = None
+
         self.patch_base_estimator(clf.base_estimator)
 
         for calibrated_clf in clf.calibrated_classifiers_:
