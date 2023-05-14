@@ -10,7 +10,7 @@ import time
 import warnings
 from contextlib import ContextDecorator
 from pathlib import Path
-from typing import Tuple, Optional
+from typing import Optional, Tuple, Union
 
 import boto3
 import botocore.exceptions
@@ -49,7 +49,7 @@ def get_secret(key):
             return None
 
 
-def get_config_value(key: str, required: bool) -> Optional[str|Path]:
+def get_config_value(key: str, required: bool) -> Optional[Union[str, Path]]:
     # Try environment variables. Each should be prefixed with 'SPACER_'.
     value = os.getenv('SPACER_' + key)
     if value:
