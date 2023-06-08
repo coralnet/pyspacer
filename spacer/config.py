@@ -9,20 +9,12 @@ import os
 import time
 import warnings
 from contextlib import ContextDecorator
-from typing import Tuple, Optional
+from pathlib import Path
+from typing import Optional, Tuple, Union
 
 import boto3
 import botocore.exceptions
-from PIL import Image
-
-# Configure a simple logger that works with AWS cloudwatch
-if len(logging.getLogger().handlers) > 0:
-    # The Lambda environment pre-configures a handler logging to stderr.
-    # If a handler is already configured,
-    # `.basicConfig` does not execute. Thus we set the level directly.
-    logging.getLogger().setLevel(logging.INFO)
-else:
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
+from PIL import Image, ImageFile
 
 
 def filter_warnings():
@@ -36,11 +28,14 @@ def filter_warnings():
                             message="unclosed.*<_io.TextIOWrapper.*>")
 
 
+APP_DIR = Path(__file__).resolve().parent
+REPO_DIR = APP_DIR.parent
+
+
 def get_secret(key):
     """ Try to load settings from secrets.json file """
-    secrets_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                '..', 'secrets.json')
-    if not os.path.exists(secrets_path):  # pragma: no cover
+    secrets_path = REPO_DIR / 'secrets.json'
+    if not secrets_path.exists():  # pragma: no cover
         RuntimeWarning('secrets.json not found')
         return None
     else:
@@ -54,23 +49,56 @@ def get_secret(key):
             return None
 
 
+def get_config_value(key: str, required: bool) -> Optional[Union[str, Path]]:
+    # Try environment variables. Each should be prefixed with 'SPACER_'.
+    value = os.getenv('SPACER_' + key)
+    if value:
+        return value
+
+    # Try secrets file. Example:
+    # {
+    #     "AWS_ACCESS_KEY_ID": "...",
+    #     "AWS_SECRET_ACCESS_KEY": "..."
+    # }
+    value = get_secret(key)
+    if value:
+        return value
+
+    # Try Django settings. Example:
+    # SPACER = {
+    #     'AWS_ACCESS_KEY_ID': '...',
+    #     'AWS_SECRET_ACCESS_KEY': '...',
+    # }
+    try:
+        from django.conf import settings
+        from django.core.exceptions import ImproperlyConfigured
+
+        try:
+            spacer_settings: dict = getattr(settings, 'SPACER')
+            value = spacer_settings[key]
+        except (ImproperlyConfigured, AttributeError, KeyError):
+            value = None
+    except ImportError:
+        value = None
+
+    if required and not value:
+        raise RuntimeError(f"{key} setting is required.")
+
+    # Ensure we don't return an empty string
+    return value or None
+
+
 def get_aws_credentials() -> Tuple[Optional[str], Optional[str]]:
-    aws_key_id = os.getenv('SPACER_AWS_ACCESS_KEY_ID')
-    aws_key_secret = os.getenv('SPACER_AWS_SECRET_ACCESS_KEY')
-
-    if not aws_key_id:
-        aws_key_id = get_secret('SPACER_AWS_ACCESS_KEY_ID')
-    if not aws_key_secret:
-        aws_key_secret = get_secret('SPACER_AWS_SECRET_ACCESS_KEY')
-
-    return aws_key_id, aws_key_secret
+    return (
+        get_config_value('AWS_ACCESS_KEY_ID', required=False),
+        get_config_value('AWS_SECRET_ACCESS_KEY', required=False),
+    )
 
 
 def get_s3_conn():
     """
     Returns a boto s3 connection.
-    - It first looks for credentials in the environmental vars.
-    - If not found there it looks in secrets.json
+    - It first looks for credentials in spacer config.
     - If not found there it will default to credentials in ~/.aws/credentials
     """
     aws_key_id, aws_key_secret = get_aws_credentials()
@@ -79,27 +107,6 @@ def get_s3_conn():
                           region_name="us-west-2",
                           aws_access_key_id=aws_key_id,
                           aws_secret_access_key=aws_key_secret)
-
-
-def get_sqs_conn():
-    """
-    Returns a connection to SQS.
-    - It first looks for credentials in the environmental vars.
-    - If not found there it looks in secrets.json
-    - If not found there it will default to credentials in ~/.aws/credentials
-    """
-    aws_key_id, aws_key_secret = get_aws_credentials()
-    return boto3.resource('sqs',
-                          region_name="us-west-2",
-                          aws_access_key_id=aws_key_id,
-                          aws_secret_access_key=aws_key_secret)
-
-
-def get_local_model_path():
-    local_model_path = os.getenv('SPACER_LOCAL_MODEL_PATH')
-    if local_model_path is None:
-        return get_secret('SPACER_LOCAL_MODEL_PATH')  # pragma: no cover
-    return local_model_path
 
 
 class log_entry_and_exit(ContextDecorator):
@@ -116,10 +123,7 @@ class log_entry_and_exit(ContextDecorator):
                      time.time() - self.start_time)
 
 
-LOCAL_MODEL_PATH = get_local_model_path()
-
-HAS_LOCAL_MODEL_PATH = LOCAL_MODEL_PATH is not None and \
-                       os.path.exists(LOCAL_MODEL_PATH)
+LOCAL_MODEL_PATH = get_config_value('LOCAL_MODEL_PATH', required=True)
 
 TASKS = [
     'extract_features',
@@ -163,8 +167,7 @@ STORAGE_TYPES = [
 MAX_IMAGE_PIXELS = 10000 * 10000  # 100 mega pixels is max we allow.
 MAX_POINTS_PER_IMAGE = 1000
 
-LOCAL_FIXTURE_DIR = os.path.join(os.path.dirname(
-    os.path.abspath(__file__)), 'tests', 'fixtures')
+LOCAL_FIXTURE_DIR = str(APP_DIR / 'tests' / 'fixtures')
 
 # The train_classifier task require as least this many images.
 MIN_TRAINIMAGES = 10
@@ -195,3 +198,8 @@ except (botocore.exceptions.ClientError,
 
 # Add margin to avoid warnings when running unit-test.
 Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS + 20000
+
+# Configure Pillow to be tolerant of image files that are truncated (missing
+# data from the last block).
+# https://stackoverflow.com/a/23575424/
+ImageFile.LOAD_TRUNCATED_IMAGES = True

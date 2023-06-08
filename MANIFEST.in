@@ -1,0 +1,9 @@
+# The setuptools build backend uses this file to figure out which project files
+# should be included in a source distribution.
+# https://packaging.python.org/en/latest/guides/using-manifest-in/
+
+graft spacer
+prune scripts
+prune spacer/tests
+recursive-exclude */__pycache__ *
+recursive-exclude */*/__pycache__ *

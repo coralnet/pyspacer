@@ -99,16 +99,16 @@ class ExtractFeaturesReturnMsg(DataClass):
     """ Return message for extract_features task. """
 
     def __init__(self,
-                 model_was_cashed: bool,
+                 model_was_cached: bool,
                  runtime: float):
 
-        self.model_was_cashed = model_was_cashed
+        self.model_was_cached = model_was_cached
         self.runtime = runtime
 
     @classmethod
     def example(cls) -> 'ExtractFeaturesReturnMsg':
         return ExtractFeaturesReturnMsg(
-            model_was_cashed=True,
+            model_was_cached=True,
             runtime=2.1
         )
 
@@ -241,12 +241,12 @@ class ClassifyFeaturesMsg(DataClass):
         return ClassifyFeaturesMsg(
             job_token='my_job',
             feature_loc=DataLocation(storage_type='url',
-                                     key='https://spacer-test.s3-us-west-2.'
-                                         'amazonaws.com/08bfc10v7t.png.'
+                                     key='https://my-bucket.s3-my-region.'
+                                         'amazonaws.com/01234aeiou.png.'
                                          'featurevector'),
             classifier_loc=DataLocation(storage_type='url',
-                                        key='https://spacer-test.s3-us-west-2.'
-                                        'amazonaws.com/legacy.model')
+                                        key='https://my-bucket.s3-my-region.'
+                                        'amazonaws.com/my_model_id.model')
         )
 
     def serialize(self):
@@ -286,13 +286,13 @@ class ClassifyImageMsg(DataClass):
         return ClassifyImageMsg(
             job_token='my_job',
             image_loc=DataLocation(storage_type='url',
-                                   key='https://spacer-test.s3-us-west-2.'
-                                   'amazonaws.com/08bfc10v7t.png'),
+                                   key='https://my-bucket.s3-my-region.'
+                                   'amazonaws.com/01234aeiou.png'),
             feature_extractor_name='vgg16_coralnet_ver1',
             rowcols=[(1, 1), (2, 2)],
             classifier_loc=DataLocation(storage_type='url',
-                                        key='https://spacer-test.s3-us-west-2.'
-                                        'amazonaws.com/legacy.model')
+                                        key='https://my-bucket.s3-my-region.'
+                                        'amazonaws.com/my_model_id.model')
         )
 
     def serialize(self):

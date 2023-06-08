@@ -1,4 +1,3 @@
-import os
 import unittest
 
 from spacer import config
@@ -14,17 +13,12 @@ from spacer.messages import \
 
 TEST_URL = \
     'https://upload.wikimedia.org/wikipedia/commons/7/7b/Red_sea_coral_reef.jpg'
-TEST_URL_FILENAME = 'Red_sea_coral_reef.jpg'
 
 
 class TestProcessJobErrorHandling(unittest.TestCase):
 
     def setUp(self):
         config.filter_warnings()
-
-    def tearDown(self):
-        if os.path.exists(TEST_URL_FILENAME):
-            os.remove(TEST_URL_FILENAME)
 
     def test_input_type(self):
         self.assertRaises(AssertionError, process_job, 'sdf')
@@ -140,10 +134,6 @@ class TestProcessJobMultiple(unittest.TestCase):
 
     def setUp(self):
         config.filter_warnings()
-
-    def tearDown(self):
-        if os.path.exists(TEST_URL_FILENAME):
-            os.remove(TEST_URL_FILENAME)
 
     def test_multiple_feature_extract(self):
         extract_msg = ExtractFeaturesMsg(

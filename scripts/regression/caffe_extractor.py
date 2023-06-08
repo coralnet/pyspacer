@@ -19,6 +19,7 @@ for more details.
 We also run a subset of these tests as part of the standard test suite.
 """
 
+import json
 import os.path as osp
 import numpy as np
 from spacer.messages import \
@@ -29,8 +30,8 @@ from spacer import config
 
 from spacer.tasks import classify_features
 from spacer.storage import storage_factory
-from spacer.tests.test_beta_regression import \
-    get_rowcol, reg_meta, s3_key_prefix, extract_and_classify
+from spacer.tests.test_legacy import cn_beta_fixtures, extract_and_classify
+from spacer.tests.utils import cn_beta_fixture_location
 
 import pkg_resources
 
@@ -45,10 +46,10 @@ def build():
     assert pkg_resources.get_distribution("scikit-learn").version == '0.17.1',\
         "Must use scikit-learn 0.17.1 to run this script."
 
-    for source_name in reg_meta:
+    for source_name in cn_beta_fixtures:
 
-        clf_name = reg_meta[source_name][0]
-        for img_prefix in reg_meta[source_name][1]:
+        clf_name = cn_beta_fixtures[source_name][0]
+        for img_prefix in cn_beta_fixtures[source_name][1]:
 
             msg = ClassifyFeaturesMsg(
                 job_token='regression_test',
@@ -78,11 +79,25 @@ def log(msg):
         print(msg)
 
 
+def get_rowcol(key, storage):
+    """ This file was saved using
+    coralnet/project/vision_backend/management/commands/
+    vb_export_spacer_data.py
+
+    https://github.com/beijbom/coralnet/blob/
+    e08afaa0164425fc16ae4ed60841d70f2eff59a6/project/vision_backend/
+    management/commands/vb_export_spacer_data.py
+    """
+    anns = json.loads(storage.load(key).getvalue().decode('utf-8'))
+    return [(entry['row'], entry['col']) for entry in anns]
+
+
 def run():
 
     def run_one_test(im_key, clf_key):
 
-        rowcol = get_rowcol(s3_key_prefix + im_key + '.anns.json', storage)
+        rowcol = get_rowcol(
+            cn_beta_fixture_location(im_key + '.anns.json'), storage)
 
         new_return, legacy_return = \
             extract_and_classify(im_key, clf_key, rowcol)
@@ -125,7 +140,7 @@ def run():
 
     all_score_diffs = []
 
-    for source, (clf, imgs) in reg_meta.items():
+    for source, (clf, imgs) in cn_beta_fixtures.items():
         for img in imgs:
             run_one_test(source + '/' + img, source + '/' + clf)
 

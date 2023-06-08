@@ -1,5 +1,5 @@
 """
-Defines the highest-level method for task handling through AWS SQS.
+Defines the highest-level method for task handling through AWS Batch.
 """
 
 import json
@@ -10,15 +10,29 @@ import fire
 
 from spacer import config
 from spacer.messages import JobMsg, DataLocation
-from spacer.tasks import \
-    process_job
+from spacer.tasks import process_job
+
+
+# Configure a simple logger that works with AWS CloudWatch.
+if len(logging.getLogger().handlers) > 0:
+    # The Lambda environment pre-configures a handler logging to stderr.
+    # If a handler is already configured,
+    # `.basicConfig` does not execute. Thus we set the level directly.
+    logging.getLogger().setLevel(logging.INFO)
+else:
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
 
 
 def env_job(): # pragma: no cover
-    """ Runs a job defined in environmental variables. Setup to play
-    nicely with AWS Batch.
-    Expects JOB_MSG_LOC to contain the json-serialized DataLocation of JobMgs.
-    Expects OUT_QUEUE to contain the name of the desired results queue.
+    """
+    Runs a job defined in environment variables.
+    This is set up to be used in AWS Batch, using a job definition with
+    a command such as: ["python3","spacer/mailman.py","env_job"]
+
+    Expects JOB_MSG_LOC to contain the json-serialized DataLocation of the
+    job msg.
+    Expects RES_MSG_LOC to contain the json-serialized DataLocation of the
+    job return msg.
     """
 
     job_msg_loc = os.getenv('JOB_MSG_LOC')
@@ -48,15 +62,6 @@ def env_job(): # pragma: no cover
         }
 
     # Return
-    out_queue_name = os.getenv('RES_SQS_QUEUE')
-    if out_queue_name is not None:
-        with config.log_entry_and_exit('writing results to {}'.format(
-                out_queue_name)):
-            conn = config.get_sqs_conn()
-            out_queue = conn.get_queue(out_queue_name)
-            m_out = out_queue.new_message(body=json.dumps(job_return_msg_dict))
-            out_queue.write(m_out)
-
     out_msg_loc = os.getenv('RES_MSG_LOC')
     if out_msg_loc is not None:
         with config.log_entry_and_exit('out message location deserialization'):

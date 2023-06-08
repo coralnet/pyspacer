@@ -7,7 +7,7 @@ This repository provide utilities to extract features from random point
 locations in images and then training classifiers over those features.
 It is used in the vision backend of `https://github.com/beijbom/coralnet`.
 
-Spacer currently supports python >=3.6.
+Spacer currently supports python >=3.8.
 
 ### Overview
 Spacer executes tasks as defined in messages. The messages types are defined
@@ -17,8 +17,8 @@ in `data_classes.py` which define input and output types.
 Refer to the unit-test in `test_tasks.py` for examples on how to create tasks.
 
 Tasks can be executed directly by calling the methods in tasks.py. 
-However, spacer also supports an interface with SQS 
-handled by `sqs_fetch()` in `mailman.py`. 
+However, spacer also supports an interface with AWS Batch 
+handled by `env_job()` in `mailman.py`. 
 
 Spacer supports four storage types: `s3`, `filesystem`, `memory` and `url`.
  Refer to `storage.py` for details. The Memory storage is mostly used for 
@@ -34,18 +34,30 @@ The spacer repo can be installed in three ways.
 * Using pip install -- for integration in other code-bases.
 
 #### Config
-Spacer needs three variables. They can either be set
-as environmental variables (recommended if you `pip install` the package), 
-or in a `secrets.json` file in the same directory as this README 
-(recommended for Docker builds and local clones). 
-The `secrets.json` should look like this.
-```json
-{
-  "SPACER_AWS_ACCESS_KEY_ID": "YOUR_AWS_KEY_ID",
-  "SPACER_AWS_SECRET_ACCESS_KEY": "YOUR_AWS_SECRET_KEY",
-  "SPACER_LOCAL_MODEL_PATH": "/path/to/your/local/models"
-}
-``` 
+Spacer has three config variables. They can be set in any of the following ways:
+
+1. As environment variables; recommended if you `pip install` the package. Each variable name must be prefixed with `SPACER_`:
+   - `export SPACER_AWS_ACCESS_KEY_ID='YOUR_AWS_KEY_ID'`
+   - `export SPACER_AWS_SECRET_ACCESS_KEY='YOUR_AWS_SECRET_KEY'`
+   - `export SPACER_LOCAL_MODEL_PATH='/path/to/your/local/models'`
+2. As a Django setting; recommended for a Django project that uses spacer. Example code in a Django settings module:
+   ```python
+   SPACER = {
+       'AWS_ACCESS_KEY_ID': 'YOUR_AWS_KEY_ID',
+       'AWS_SECRET_ACCESS_KEY': 'YOUR_AWS_SECRET_KEY',
+       'LOCAL_MODEL_PATH': '/path/to/your/local/models',
+   }
+   ```
+3. In a `secrets.json` file in the same directory as this README; recommended for Docker builds and local clones. Example `secrets.json` contents:
+   ```json
+   {
+     "AWS_ACCESS_KEY_ID": "YOUR_AWS_KEY_ID",
+     "AWS_SECRET_ACCESS_KEY": "YOUR_AWS_SECRET_KEY",
+     "LOCAL_MODEL_PATH": "/path/to/your/local/models"
+   }
+   ```
+   
+LOCAL_MODEL_PATH is required. The two AWS access variables are required unless spacer is running on an AWS instance which has been set up with `aws configure`.
 
 #### Docker build
 The docker build is the preferred build and the one used in deployment.
@@ -66,18 +78,15 @@ The last step will run the default CMD command specified in the dockerfile
 (unit-test with coverage). If you want to enter the docker container 
 run the same command but append `bash` in the end.
 
-To publish to staging run
-`sh scripts/release.sh staging`
-and to production
-`sh scripts/release.sh production`
-
 #### Pip install
-* `pip install spacer`
+* `pip install pyspacer`
 * Set environmental variables.
 
 #### Local clone
 * Clone this repo
 * `pip install -r requirements.txt`
+
+If using Windows: turn Git's `autocrlf` setting off before your initial checkout. Otherwise, pickled classifiers in `spacer/tests/fixtures` will get checked out with `\r\n` newlines, and the pickle module will fail to load them, leading to test failures. However, autocrlf should be left on when adding any new non-pickle files.
 
 ### Code coverage
 If you are using the docker build or local install, 

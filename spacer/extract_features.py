@@ -66,7 +66,7 @@ class VGG16CaffeExtractor(FeatureExtractor):
         # Cache models and prototxt locally.
         self.modeldef_path, _ = download_model(
             'vgg16_coralnet_ver1.deploy.prototxt')
-        self.modelweighs_path, self.model_was_cashed = download_model(
+        self.modelweighs_path, self.model_was_cached = download_model(
             'vgg16_coralnet_ver1.caffemodel')
 
     def __call__(self, im, rowcols):
@@ -105,7 +105,7 @@ class VGG16CaffeExtractor(FeatureExtractor):
                 feature_dim=len(feats[0]),
                 npoints=len(feats)
             ), ExtractFeaturesReturnMsg(
-                model_was_cashed=self.model_was_cashed,
+                model_was_cached=self.model_was_cached,
                 runtime=time.time() - start_time
             )
 
@@ -119,7 +119,7 @@ class EfficientNetExtractor(FeatureExtractor):
     def __init__(self):
 
         # Cache models locally.
-        self.modelweighs_path, self.model_was_cashed = download_model(
+        self.modelweighs_path, self.model_was_cached = download_model(
            'efficientnet_b0_ver1.pt')
 
     def __call__(self, im, rowcols):
@@ -147,7 +147,7 @@ class EfficientNetExtractor(FeatureExtractor):
                             for rc, ft in zip(rowcols, feats)],
             valid_rowcol=True, feature_dim=len(feats[0]), npoints=len(feats)
         ), ExtractFeaturesReturnMsg(
-            model_was_cashed=self.model_was_cashed,
+            model_was_cached=self.model_was_cached,
             runtime=time.time() - start_time
         )
 

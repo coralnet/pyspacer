@@ -28,7 +28,7 @@ class TestClassifyFromPatchList(unittest.TestCase):
         config.filter_warnings()
         self.modeldef_path, _ = download_model(
             'vgg16_coralnet_ver1.deploy.prototxt')
-        self.modelweighs_path, self.model_was_cashed = download_model(
+        self.modelweighs_path, self.model_was_cached = download_model(
             'vgg16_coralnet_ver1.caffemodel')
 
     def test_rgb(self):

@@ -24,8 +24,8 @@ from spacer.tasks import \
     train_classifier, \
     classify_features, \
     classify_image
-from spacer.train_utils import make_random_data
-from spacer.train_utils import train
+from spacer.tests.utils import cn_beta_fixture_location
+from spacer.train_utils import make_random_data, train
 
 TEST_URL = \
     'https://upload.wikimedia.org/wikipedia/commons/7/7b/Red_sea_coral_reef.jpg'
@@ -295,22 +295,18 @@ class TestClassifyFeatures(ClassifyReturnMsgTest):
     def setUp(self):
         config.filter_warnings()
 
-    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to tests')
+    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
     def test_legacy(self):
         msg = ClassifyFeaturesMsg(
             job_token='my_job',
-            feature_loc=DataLocation(storage_type='s3',
-                                     bucket_name=config.TEST_BUCKET,
-                                     key='legacy.jpg.feats'),
-            classifier_loc=DataLocation(storage_type='s3',
-                                        key='legacy.model',
-                                        bucket_name=config.TEST_BUCKET)
+            feature_loc=cn_beta_fixture_location('example.jpg.feats'),
+            classifier_loc=cn_beta_fixture_location('example.model')
         )
 
         return_msg = classify_features(msg)
         self._validate_return_msg(return_msg, False)
 
-    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to tests')
+    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
     def test_new(self):
 
         feats = ImageFeatures.make_random([1, 2, 3, 2], feature_dim=4096)
@@ -318,9 +314,7 @@ class TestClassifyFeatures(ClassifyReturnMsgTest):
                                    key='new.jpg.feats')
         feats.store(feature_loc)
 
-        model_loc = DataLocation(storage_type='s3',
-                                 key='legacy.model',
-                                 bucket_name=config.TEST_BUCKET)
+        model_loc = cn_beta_fixture_location('example.model')
 
         msg = ClassifyFeaturesMsg(
             job_token='my_job',
@@ -338,7 +332,7 @@ class TestClassifyImage(ClassifyReturnMsgTest):
     def setUp(self):
         config.filter_warnings()
 
-    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to tests')
+    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
     def test_deploy_simple(self):
         msg = ClassifyImageMsg(
             job_token='my_job',
@@ -346,9 +340,7 @@ class TestClassifyImage(ClassifyReturnMsgTest):
                                    key=TEST_URL),
             feature_extractor_name='dummy',
             rowcols=[(100, 100), (200, 200)],
-            classifier_loc=DataLocation(storage_type='s3',
-                                        key='legacy.model',
-                                        bucket_name=config.TEST_BUCKET)
+            classifier_loc=cn_beta_fixture_location('example.model')
         )
         return_msg = classify_image(msg)
         self._validate_return_msg(return_msg, True)
@@ -359,7 +351,7 @@ class TestClassifyImageCache(unittest.TestCase):
     def setUp(self):
         config.filter_warnings()
 
-    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to tests')
+    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
     def test_classify_image_with_caching(self):
         """ Call classify_image three times.
         The first 2 time with same message.
@@ -374,9 +366,7 @@ class TestClassifyImageCache(unittest.TestCase):
                                    key=TEST_URL),
             feature_extractor_name='dummy',
             rowcols=[(100, 100), (200, 200)],
-            classifier_loc=DataLocation(storage_type='s3',
-                                        key='legacy.model',
-                                        bucket_name=config.TEST_BUCKET)
+            classifier_loc=cn_beta_fixture_location('example.model')
         )
 
         msg2 = ClassifyImageMsg(
@@ -385,9 +375,7 @@ class TestClassifyImageCache(unittest.TestCase):
                                    key=TEST_URL),
             feature_extractor_name='dummy',
             rowcols=[(100, 100), (200, 200)],
-            classifier_loc=DataLocation(storage_type='s3',
-                                        key='legacy_model2.pkl',
-                                        bucket_name=config.TEST_BUCKET)
+            classifier_loc=cn_beta_fixture_location('example_model2.pkl')
         )
 
         return_msg1 = classify_image(msg)
@@ -406,9 +394,7 @@ class TestBadRowcols(unittest.TestCase):
                                    key=TEST_URL),
             feature_extractor_name='dummy',
             rowcols=[(-1, -1)],
-            classifier_loc=DataLocation(storage_type='s3',
-                                        key='legacy.model',
-                                        bucket_name=config.TEST_BUCKET)
+            classifier_loc=cn_beta_fixture_location('example.model')
         )
 
         try:

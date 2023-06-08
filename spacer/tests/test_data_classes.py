@@ -10,6 +10,7 @@ from spacer.data_classes import \
     ImageLabels, \
     ValResults
 from spacer.messages import DataLocation
+from .utils import temp_filesystem_data_location
 
 
 class TestDataClass(unittest.TestCase):
@@ -28,7 +29,7 @@ class TestImageFeatures(unittest.TestCase):
         Loads a legacy feature file and make sure it's parsed correctly.
         """
         with open(os.path.join(config.LOCAL_FIXTURE_DIR,
-                               'legacy.jpg.feats')) as fp:
+                               'cnbeta.jpg.feats')) as fp:
             feats = ImageFeatures.deserialize(json.load(fp))
         self.assertEqual(feats.valid_rowcol, False)
 
@@ -61,42 +62,31 @@ class TestImageFeatures(unittest.TestCase):
         self.assertRaises(ValueError, msg.__getitem__, (100, 100))
 
 
-@unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
 class TestImageFeaturesNumpyStore(unittest.TestCase):
 
-    def setUp(self) -> None:
-        self.fs_loc = DataLocation(
-                storage_type='filesystem',
-                key='tmp/tmp_feats',
-                bucket_name='')
-        self.s3_loc = DataLocation(
+    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
+    def test_s3(self):
+        s3_loc = DataLocation(
             storage_type='s3',
             key='tmp_feats',
             bucket_name=config.TEST_BUCKET
         )
-        self.mem_loc = DataLocation(
+
+        self._test_numpy_store(s3_loc)
+
+        s3 = config.get_s3_conn()
+        s3.Object(config.TEST_BUCKET, s3_loc.key).delete()
+
+    def test_fs(self):
+        with temp_filesystem_data_location() as fs_loc:
+            self._test_numpy_store(fs_loc)
+
+    def test_mem(self):
+        mem_loc = DataLocation(
             storage_type='memory',
             key='tmp_feats'
         )
-
-    def tearDown(self):
-
-        if os.path.exists(self.fs_loc.key):
-            os.remove(self.fs_loc.key)
-        dirname = os.path.abspath(os.path.dirname(self.fs_loc.key))
-        if os.path.exists(dirname):
-            os.rmdir(dirname)
-        s3 = config.get_s3_conn()
-        s3.Object(config.TEST_BUCKET, self.s3_loc.key).delete()
-
-    def test_s3(self):
-        self._test_numpy_store(self.s3_loc)
-
-    def test_fs(self):
-        self._test_numpy_store(self.fs_loc)
-
-    def test_mem(self):
-        self._test_numpy_store(self.mem_loc)
+        self._test_numpy_store(mem_loc)
 
     def _test_numpy_store(self, feat_loc):
 

@@ -43,7 +43,7 @@ class TestTransformation(unittest.TestCase):
 class TestExtractFeatures(unittest.TestCase):
 
     def setUp(self):
-        self.modelweighs_path, self.model_was_cashed = download_model(
+        self.modelweighs_path, self.model_was_cached = download_model(
             'efficientnet_b0_ver1.pt')
 
     def test_rgb(self):
