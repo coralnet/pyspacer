@@ -96,7 +96,7 @@ class TestExtractFeatures(unittest.TestCase):
         """
         Note that we use a png image here to avoid the inconsistencies
         with libjpeg versions.
-        See discussion in https://github.com/beijbom/pyspacer/pull/10 for
+        See discussion in https://github.com/coralnet/pyspacer/pull/10 for
         more details on libjpeg.
         """
 

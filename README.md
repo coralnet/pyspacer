@@ -1,11 +1,11 @@
 # PySpacer
 
-[![CI Status](https://github.com/beijbom/pyspacer/actions/workflows/python-app.yml/badge.svg)](https://github.com/beijbom/pyspacer/actions/workflows/python-app.yml)
+[![CI Status](https://github.com/coralnet/pyspacer/actions/workflows/python-app.yml/badge.svg)](https://github.com/coralnet/pyspacer/actions/workflows/python-app.yml)
 [![PyPI version](https://badge.fury.io/py/pyspacer.svg)](https://badge.fury.io/py/pyspacer)
 
 This repository provide utilities to extract features from random point 
 locations in images and then training classifiers over those features.
-It is used in the vision backend of `https://github.com/beijbom/coralnet`.
+It is used in the vision backend of `https://github.com/coralnet/coralnet`.
 
 Spacer currently supports python >=3.8.
 
