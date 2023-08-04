@@ -34,7 +34,7 @@ The spacer repo can be installed in three ways.
 * Using pip install -- for integration in other code-bases.
 
 #### Config
-Spacer has three config variables. They can be set in any of the following ways:
+Spacer's config variables can be set in any of the following ways:
 
 1. As environment variables; recommended if you `pip install` the package. Each variable name must be prefixed with `SPACER_`:
    - `export SPACER_AWS_ACCESS_KEY_ID='YOUR_AWS_KEY_ID'`
@@ -57,7 +57,9 @@ Spacer has three config variables. They can be set in any of the following ways:
    }
    ```
    
-LOCAL_MODEL_PATH is required. The two AWS access variables are required unless spacer is running on an AWS instance which has been set up with `aws configure`.
+LOCAL_MODEL_PATH is required. The two AWS access variables are required unless spacer is running on an AWS instance which has been set up with `aws configure`. The rest of the config variables are optional; see `CONFIGURABLE_VARS` in `config.py` for a full list.
+
+To debug your configuration, try opening a Python shell and run `from spacer import config`, then `config.check()`.
 
 #### Docker build
 The docker build is the preferred build and the one used in deployment.
