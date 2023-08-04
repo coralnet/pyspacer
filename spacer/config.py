@@ -6,11 +6,12 @@ import importlib
 import json
 import logging
 import os
+import sys
 import time
 import warnings
 from contextlib import ContextDecorator
 from pathlib import Path
-from typing import Optional, Tuple, Union
+from typing import Any, Optional
 
 import boto3
 import botocore.exceptions
@@ -32,67 +33,95 @@ APP_DIR = Path(__file__).resolve().parent
 REPO_DIR = APP_DIR.parent
 
 
-def get_secret(key):
-    """ Try to load settings from secrets.json file """
-    secrets_path = REPO_DIR / 'secrets.json'
-    if not secrets_path.exists():  # pragma: no cover
-        RuntimeWarning('secrets.json not found')
-        return None
+# One way to specify settings is through a secrets.json file. Example:
+# {
+#     "AWS_ACCESS_KEY_ID": "...",
+#     "AWS_SECRET_ACCESS_KEY": "..."
+# }
+SECRETS_PATH = REPO_DIR / 'secrets.json'
+SECRETS = None
+if SECRETS_PATH.exists():
+    with open(SECRETS_PATH) as fp:
+        SECRETS = json.load(fp)
+
+
+# Another way is through Django settings. Example:
+# SPACER = {
+#     'AWS_ACCESS_KEY_ID': '...',
+#     'AWS_SECRET_ACCESS_KEY': '...',
+# }
+SETTINGS_FROM_DJANGO: Optional[dict] = None
+try:
+    from django.core.exceptions import ImproperlyConfigured
+except ImportError:
+    pass
+else:
+    # This by itself shouldn't get errors.
+    from django.conf import settings
+
+    # If settings module can't be found, this gets ImproperlyConfigured.
+    # If the module can be found, but the SPACER setting is absent, this
+    # gets AttributeError.
+    try:
+        SETTINGS_FROM_DJANGO = settings.SPACER
+    except (ImproperlyConfigured, AttributeError):
+        pass
+
+
+def get_config_detection_result():
+    result = ""
+
+    if SECRETS:
+        result += "Secrets file found."
     else:
-        try:
-            with open(secrets_path) as fp:
-                secrets = json.load(fp)
-            return secrets[key]
-        except Exception as err_:  # pragma: no cover
-            RuntimeWarning(
-                'Unable to parse secrets.json: {}'.format(repr(err_)))
-            return None
+        result += "Secrets file not found."
+
+    if SETTINGS_FROM_DJANGO:
+        result += " SPACER Django setting found."
+    else:
+        result += " SPACER Django setting not found."
+
+    return result
 
 
-def get_config_value(key: str, required: bool) -> Optional[Union[str, Path]]:
+def get_config_value(key: str, default: Any = 'NO_DEFAULT') -> Any:
+
+    def is_valid_value(value_):
+        # Treat an empty string the same as not specifying a setting.
+        return value_ not in ['', None]
+
     # Try environment variables. Each should be prefixed with 'SPACER_'.
     value = os.getenv('SPACER_' + key)
-    if value:
+    if is_valid_value(value):
         return value
 
-    # Try secrets file. Example:
-    # {
-    #     "AWS_ACCESS_KEY_ID": "...",
-    #     "AWS_SECRET_ACCESS_KEY": "..."
-    # }
-    value = get_secret(key)
-    if value:
-        return value
+    def handle_unspecified_setting():
+        if default == 'NO_DEFAULT':
+            raise RuntimeError(
+                f"{key} setting is required."
+                f" (Debug info: {get_config_detection_result()})"
+            )
+        return default
 
-    # Try Django settings. Example:
-    # SPACER = {
-    #     'AWS_ACCESS_KEY_ID': '...',
-    #     'AWS_SECRET_ACCESS_KEY': '...',
-    # }
-    try:
-        from django.conf import settings
-        from django.core.exceptions import ImproperlyConfigured
+    # Try secrets file.
+    if SECRETS:
+        value = SECRETS.get(key)
+        if is_valid_value(value):
+            return value
+        return handle_unspecified_setting()
 
+    # Try Django settings.
+    if SETTINGS_FROM_DJANGO:
         try:
-            spacer_settings: dict = getattr(settings, 'SPACER')
-            value = spacer_settings[key]
-        except (ImproperlyConfigured, AttributeError, KeyError):
-            value = None
-    except ImportError:
-        value = None
+            value = SETTINGS_FROM_DJANGO[key]
+        except KeyError:
+            return handle_unspecified_setting()
+        else:
+            if is_valid_value(value):
+                return value
+            return handle_unspecified_setting()
 
-    if required and not value:
-        raise RuntimeError(f"{key} setting is required.")
-
-    # Ensure we don't return an empty string
-    return value or None
-
-
-def get_aws_credentials() -> Tuple[Optional[str], Optional[str]]:
-    return (
-        get_config_value('AWS_ACCESS_KEY_ID', required=False),
-        get_config_value('AWS_SECRET_ACCESS_KEY', required=False),
-    )
+    return handle_unspecified_setting()
 
 
 def get_s3_conn():
@@ -101,12 +130,10 @@ def get_s3_conn():
     - It first looks for credentials in spacer config.
     - If not found there it will default to credentials in ~/.aws/credentials
     """
-    aws_key_id, aws_key_secret = get_aws_credentials()
-
     return boto3.resource('s3',
                           region_name="us-west-2",
-                          aws_access_key_id=aws_key_id,
-                          aws_secret_access_key=aws_key_secret)
+                          aws_access_key_id=AWS_ACCESS_KEY_ID,
+                          aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
 
 
 class log_entry_and_exit(ContextDecorator):
@@ -123,7 +150,10 @@ class log_entry_and_exit(ContextDecorator):
                      time.time() - self.start_time)
 
 
-LOCAL_MODEL_PATH = get_config_value('LOCAL_MODEL_PATH', required=True)
+AWS_ACCESS_KEY_ID = get_config_value('AWS_ACCESS_KEY_ID', default=None)
+AWS_SECRET_ACCESS_KEY = get_config_value('AWS_SECRET_ACCESS_KEY', default=None)
+
+LOCAL_MODEL_PATH = get_config_value('LOCAL_MODEL_PATH')
 
 TASKS = [
     'extract_features',
@@ -164,13 +194,13 @@ STORAGE_TYPES = [
     'url'
 ]
 
-MAX_IMAGE_PIXELS = 10000 * 10000  # 100 mega pixels is max we allow.
-MAX_POINTS_PER_IMAGE = 1000
+MAX_IMAGE_PIXELS = get_config_value('MAX_IMAGE_PIXELS', default=10000*10000)
+MAX_POINTS_PER_IMAGE = get_config_value('MAX_POINTS_PER_IMAGE', default=1000)
 
 LOCAL_FIXTURE_DIR = str(APP_DIR / 'tests' / 'fixtures')
 
-# The train_classifier task require as least this many images.
-MIN_TRAINIMAGES = 10
+# The train_classifier task requires as least this many images.
+MIN_TRAINIMAGES = get_config_value('MIN_TRAINIMAGES', default=10)
 
 # Check access to select which tests to run.
 HAS_CAFFE = importlib.util.find_spec("caffe") is not None
@@ -203,3 +233,32 @@ Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS + 20000
 # data from the last block).
 # https://stackoverflow.com/a/23575424/
 ImageFile.LOAD_TRUNCATED_IMAGES = True
+
+
+CONFIGURABLE_VARS = [
+    'AWS_ACCESS_KEY_ID',
+    'AWS_SECRET_ACCESS_KEY',
+    'LOCAL_MODEL_PATH',
+    'MAX_IMAGE_PIXELS',
+    'MAX_POINTS_PER_IMAGE',
+    'MIN_TRAINIMAGES',
+]
+
+
+def check():
+    """
+    Print values of all configurable variables.
+    """
+    print(get_config_detection_result())
+
+    for var_name in CONFIGURABLE_VARS:
+        # Get the var_name attribute in the current module
+        var_value = getattr(sys.modules[__name__], var_name)
+
+        if '_KEY' in var_name:
+            # Treat this as a sensitive value; don't print the entire thing
+            value_display = f'{var_value[:6]} ... {var_value[-6:]}'
+        else:
+            value_display = str(var_value)
+
+        print(f"{var_name}: {value_display}")
