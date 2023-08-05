@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.1
+
+- Allow configuration of `MAX_IMAGE_PIXELS`, `MAX_POINTS_PER_IMAGE`, and `MIN_TRAINIMAGES`.
+
+- Previously, if `secrets.json` was present but missing a config value, then pyspacer would go on to look for that config value in Django settings. This is no longer the case; pyspacer now only respects at most one of secrets.json or Django settings (secrets take precedence).
+
+- Update repo URL from `beijbom/pyspacer` to `coralnet/pyspacer`.
+
 ## 0.4.0
 
 - PySpacer now supports Python 3.8+ (testing against 3.8 - 3.10). Support for 3.6 and 3.7 has been dropped.

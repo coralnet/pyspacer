@@ -13,7 +13,7 @@ The run method runs the regression tests. This test
 runs both feature extraction and classification.
 Since the libjpeg version was changed the results will not be identical.
 However, the scores should be close. See discussion in
-(https://github.com/beijbom/pyspacer/pull/10)
+(https://github.com/coralnet/pyspacer/pull/10)
 for more details.
 
 We also run a subset of these tests as part of the standard test suite.
@@ -84,7 +84,7 @@ def get_rowcol(key, storage):
     coralnet/project/vision_backend/management/commands/
     vb_export_spacer_data.py
 
-    https://github.com/beijbom/coralnet/blob/
+    https://github.com/coralnet/coralnet/blob/
     e08afaa0164425fc16ae4ed60841d70f2eff59a6/project/vision_backend/
     management/commands/vb_export_spacer_data.py
     """

@@ -28,7 +28,7 @@ def train(source_id: int,
     It assumes read permission on the "spacer-trainingdata" bucket.
 
     All data is formatted per the management command in
-    https://github.com/beijbom/coralnet/blob/107257fd34cd2c16714b369ec7146ae7222af2c6/project/vision_backend/management/commands/vb_export_spacer_data.py
+    https://github.com/coralnet/coralnet/blob/107257fd34cd2c16714b369ec7146ae7222af2c6/project/vision_backend/management/commands/vb_export_spacer_data.py
     ...
     """
 
