@@ -9,77 +9,6 @@ It is used in the vision backend of `https://github.com/coralnet/coralnet`.
 
 Spacer currently supports python >=3.8.
 
-## Code overview
-
-Spacer executes tasks as defined in messages. The message types are defined
-in `messages.py` and the tasks in `tasks.py`. Several data types which can be used for input and output serialization are defined
-in `data_classes.py`.
-
-Refer to the unit tests in `test_tasks.py` for examples on how to create tasks.
-
-Tasks can be executed directly by calling the methods in tasks.py. 
-However, spacer also supports an interface with AWS Batch 
-handled by `env_job()` in `mailman.py`. 
-
-Spacer supports four storage types: `s3`, `filesystem`, `memory` and `url`.
- Refer to `storage.py` for details. The memory storage is mostly used for 
- testing, and the url storage is read only.
-
-`config.py` defines configurable variables/settings and various constants.
-
-## Core API
-
-The `tasks.py` module has four functions which comprise the main interface of pyspacer:
-
-### extract_features
-
-Takes an image, and a list of pixel locations on that image. Produces a single feature vector out of the image-data at those pixel locations. Example:
-
-```python
-from spacer.messages import DataLocation, ExtractFeaturesMsg
-from spacer.tasks import extract_features
-
-message = ExtractFeaturesMsg(
-    # Identifier to set this extraction job apart from others. Makes sense
-    # to use something that uniquely identifies the image.
-    job_token='image_123',
-    # Extractors available:
-    # 1. 'efficientnet_b0_ver1': Generally recommended
-    # 2. 'vgg16_coralnet_ver1': Legacy, requires Caffe
-    # 3. 'dummy': Produces feature vectors which are in the correct format but
-    # don't have meaningful data. The fastest extractor; can help for testing.
-    feature_extractor_name='efficientnet_b0_ver1',
-    # (row, column) tuples specifying pixel locations in the image.
-    # Note that row is y, column is x.
-    rowcols=[(2200, 1000), (1400, 1500), (3000, 450)],
-    # Where the input image should be read from.
-    image_loc=DataLocation(
-        storage_type='filesystem',
-        key='/path/to/image',
-    ),
-    # Where the feature vector should be output to.
-    feature_loc=DataLocation(
-        storage_type='filesystem',
-        key='/path/to/feature/vector',
-    ),
-)
-return_message = extract_features(message)
-print("Feature vector stored at:")
-print(f"Runtime: {return_message.runtime}")
-```
-
-### train_classifier
-
-TODO
-
-### classify_features
-
-TODO
-
-### classify_image
-
-TODO
-
 ## Installation
 
 The spacer repo can be installed in three ways.
@@ -144,7 +73,82 @@ run the same command but append `bash` in the end.
 * `pip install -r requirements.txt`
 * Set up configuration
 
+
+## Code overview
+
+Spacer executes tasks as defined in messages. The message types are defined
+in `messages.py` and the tasks in `tasks.py`. Several data types which can be used for input and output serialization are defined
+in `data_classes.py`.
+
+Refer to the unit tests in `test_tasks.py` for examples on how to create tasks.
+
+Tasks can be executed directly by calling the methods in tasks.py. 
+However, spacer also supports an interface with AWS Batch 
+handled by `env_job()` in `mailman.py`. 
+
+Spacer supports four storage types: `s3`, `filesystem`, `memory` and `url`.
+ Refer to `storage.py` for details. The memory storage is mostly used for 
+ testing, and the url storage is read only.
+
+`config.py` defines configurable variables/settings and various constants.
+
+
+## Core API
+
+The `tasks.py` module has four functions which comprise the main interface of pyspacer:
+
+### extract_features
+
+Takes an image, and a list of pixel locations on that image. Produces a single feature vector out of the image-data at those pixel locations. Example:
+
+```python
+from spacer.messages import DataLocation, ExtractFeaturesMsg
+from spacer.tasks import extract_features
+
+message = ExtractFeaturesMsg(
+    # Identifier to set this extraction job apart from others. Makes sense
+    # to use something that uniquely identifies the image.
+    job_token='image_123',
+    # Extractors available:
+    # 1. 'efficientnet_b0_ver1': Generally recommended
+    # 2. 'vgg16_coralnet_ver1': Legacy, requires Caffe
+    # 3. 'dummy': Produces feature vectors which are in the correct format but
+    # don't have meaningful data. The fastest extractor; can help for testing.
+    feature_extractor_name='efficientnet_b0_ver1',
+    # (row, column) tuples specifying pixel locations in the image.
+    # Note that row is y, column is x.
+    rowcols=[(2200, 1000), (1400, 1500), (3000, 450)],
+    # Where the input image should be read from.
+    image_loc=DataLocation(
+        storage_type='filesystem',
+        key='/path/to/image',
+    ),
+    # Where the feature vector should be output to.
+    feature_loc=DataLocation(
+        storage_type='filesystem',
+        key='/path/to/feature/vector',
+    ),
+)
+return_message = extract_features(message)
+print("Feature vector stored at:")
+print(f"Runtime: {return_message.runtime}")
+```
+
+### train_classifier
+
+TODO
+
+### classify_features
+
+TODO
+
+### classify_image
+
+TODO
+
+
 ## Code coverage
+
 If you are using the docker build or local install, 
 you can check code coverage like so:
 ```
