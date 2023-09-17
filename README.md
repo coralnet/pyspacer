@@ -80,7 +80,7 @@ Spacer executes tasks as defined in messages. The message types are defined
 in `messages.py` and the tasks in `tasks.py`. Several data types which can be used for input and output serialization are defined
 in `data_classes.py`.
 
-Refer to the unit tests in `test_tasks.py` for examples on how to create tasks.
+For examples on how to create spacer tasks, refer to the Core API section below, and the unit tests in `test_tasks.py`.
 
 Tasks can be executed directly by calling the methods in tasks.py. 
 However, spacer also supports an interface with AWS Batch 
@@ -108,7 +108,7 @@ from spacer.tasks import extract_features
 message = ExtractFeaturesMsg(
     # Identifier to set this extraction job apart from others. Makes sense
     # to use something that uniquely identifies the image.
-    job_token='image_123',
+    job_token='image1',
     # Extractors available:
     # 1. 'efficientnet_b0_ver1': Generally recommended
     # 2. 'vgg16_coralnet_ver1': Legacy, requires Caffe
@@ -119,32 +119,154 @@ message = ExtractFeaturesMsg(
     # Note that row is y, column is x.
     rowcols=[(2200, 1000), (1400, 1500), (3000, 450)],
     # Where the input image should be read from.
-    image_loc=DataLocation(
-        storage_type='filesystem',
-        key='/path/to/image',
-    ),
+    image_loc=DataLocation('filesystem', '/path/to/image1.jpg'),
     # Where the feature vector should be output to.
-    feature_loc=DataLocation(
-        storage_type='filesystem',
-        key='/path/to/feature/vector',
-    ),
+    # CoralNet uses a custom .featurevector extension for these, but the
+    # format is just JSON.
+    feature_loc=DataLocation('filesystem', '/path/to/image1.featurevector'),
 )
 return_message = extract_features(message)
-print("Feature vector stored at:")
+print("Feature vector stored at: /path/to/image1.featurevector")
 print(f"Runtime: {return_message.runtime}")
 ```
 
 ### train_classifier
 
-TODO
+Takes:
+
+- Feature vectors, each vector corresponding to a set of pixel locations in one image
+- Ground-truth (typically human-confirmed) annotations corresponding to those feature vectors
+- Optionally, previously-created classifiers to re-evaluate with these annotations
+- Training parameters
+
+Produces a classifier (model) loadable in scikit-learn, and classifier evaluation results. Example:
+
+```python
+from spacer.data_classes import ImageLabels
+from spacer.messages import DataLocation, TrainClassifierMsg
+from spacer.tasks import train_classifier
+
+message = TrainClassifierMsg(
+    # Identifier to set this training job apart from others. Should be
+    # unique for each classifier.
+    job_token='classifier1',
+    # 'minibatch' is currently the only trainer available.
+    trainer_name='minibatch',
+    # How many iterations the training algorithm should run; more epochs
+    # = more opportunity to converge to a better fit, but slower.
+    nbr_epochs=10,
+    # Classifier types available:
+    # 1. 'MLP': multi-layer perceptron; newer classifier type for CoralNet
+    # 2. 'LR': logistic regression; older classifier type for CoralNet
+    clf_type='MLP',
+    # Point-locations to ground-truth-labels (annotations) mapping. Used for
+    # training the classifier.
+    # The data dict-keys must be the same as the `key` used in the
+    # extract-features task's `feature_loc`.
+    # The data dict-values are lists of tuples of
+    # (row, column, label ID). You'll need to be tracking a mapping of
+    # integer label IDs to the labels you use.
+    train_labels=ImageLabels(data={
+        '/path/to/image1.featurevector': [(1000, 2000, 1), (3000, 2000, 2)],
+        '/path/to/image2.featurevector': [(1000, 2000, 3), (3000, 2000, 1)],
+        '/path/to/image3.featurevector': [(1234, 2857, 11), (3094, 2262, 25)],
+    }),
+    # Point-locations to ground-truth-labels mapping. Used for evaluating
+    # the classifier's accuracy. Should be disjoint from train_labels.
+    # CoralNet uses a 7-to-1 ratio of train_labels to val_labels.
+    val_labels=ImageLabels(data={
+        '/path/to/image4.featurevector': [(500, 2500, 1), (2500, 1500, 3)],
+        '/path/to/image5.featurevector': [(4321, 5582, 25), (4903, 2622, 19)],
+    }),
+    # Partially-filled-in DataLocation which specifies the storage type
+    # and S3 bucket (if applicable) that all the feature vectors are
+    # stored at, but doesn't specify a key.
+    features_loc=DataLocation('filesystem', ''),
+    # List of previously-created models (classifiers) to also evaluate
+    # using this dataset, for informational purposes only.
+    # A classifier is stored as a pickled CalibratedClassifierCV.
+    previous_model_locs=[
+        DataLocation('filesystem', '/path/to/oldclassifier1.pkl'),
+        DataLocation('filesystem', '/path/to/oldclassifier2.pkl'),
+    ],
+    # Where the new model (classifier) should be output to.
+    model_loc=DataLocation('filesystem', '/path/to/classifier1.pkl'),
+    # Where the detailed evaluation results of the new model should be stored.
+    valresult_loc=DataLocation('filesystem', '/path/to/valresult.json'),
+)
+return_message = train_classifier(message)
+print("Classifier stored at: /path/to/classifier1.pkl")
+print("Evaluation results stored at: /path/to/valresult.json")
+print(f"New model's accuracy: {return_message.acc}")
+print(f"Previous models' accuracies: {return_message.pc_accs}")
+print(
+    "New model's accuracy progression (calculated on part of train_labels)"
+    f"after each epoch of training: {return_message.ref_accs}")
+print(f"Runtime: {return_message.runtime}")
+```
 
 ### classify_features
 
-TODO
+Takes a feature vector (representing points in an image) to classify, and a classifier trained on the same type of features (EfficientNet or VGG16). Produces prediction results (scores) for the image points, as posterior probabilities for each class. Example:
+
+```python
+from spacer.messages import DataLocation, ClassifyFeaturesMsg
+from spacer.tasks import classify_features
+
+message = ClassifyFeaturesMsg(
+    # Identifier to set this classification job apart from others. Makes sense
+    # to use something that uniquely identifies the image.
+    job_token='image1',
+    # Where the input feature-vector should be read from.
+    feature_loc=DataLocation('filesystem', '/path/to/image1.featurevector'),
+    # Where the classifier should be read from.
+    classifier_loc=DataLocation('filesystem', '/path/to/classifier1.pkl'),
+)
+return_message = classify_features(message)
+print(f"Runtime: {return_message.runtime}")
+print(f"Classes (recognized labels): {return_message.classes}")
+print(
+    "Scores (prediction results) for each point in the feature vector;"
+    " scores are posterior probabilities of each class, with classes"
+    " ordered as above:")
+for row, col, scores in return_message.scores:
+    print(f"{row}, {col}: {scores}")
+```
 
 ### classify_image
 
-TODO
+This basically does extract_features and classify_features together in one go, without needing to specify a storage location for the feature vector.
+
+Takes an image, a list of pixel locations on that image, and a classifier. Produces prediction results (scores) for the image points, as posterior probabilities for each class. Example:
+
+```python
+from spacer.messages import DataLocation, ClassifyImageMsg
+from spacer.tasks import classify_image
+
+message = ClassifyImageMsg(
+    # Identifier to set this classification job apart from others. Makes sense
+    # to use something that uniquely identifies the image.
+    job_token='image1',
+    # Where the input image should be read from.
+    image_loc=DataLocation('filesystem', '/path/to/image1.jpg'),
+    # Choice of extractor; same choices available as in extract_features.
+    feature_extractor_name='efficientnet_b0_ver1',
+    # (row, column) tuples specifying pixel locations in the image.
+    # Note that row is y, column is x.
+    rowcols=[(2200, 1000), (1400, 1500), (3000, 450)],
+    # Where the classifier should be read from.
+    classifier_loc=DataLocation('filesystem', '/path/to/classifier1.pkl'),
+)
+return_message = classify_image(message)
+print(f"Runtime: {return_message.runtime}")
+print(f"Classes (recognized labels): {return_message.classes}")
+print(
+    "Scores (prediction results) for each point in rowcols;"
+    " scores are posterior probabilities of each class, with classes"
+    " ordered as above:")
+for row, col, scores in return_message.scores:
+    print(f"{row}, {col}: {scores}")
+```
 
 
 ## Code coverage
