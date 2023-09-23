@@ -154,7 +154,7 @@ message = TrainClassifierMsg(
     # Identifier to set this training job apart from others. Should be
     # unique for each classifier.
     job_token='classifier1',
-    # 'minibatch' is currently the only trainer available.
+    # 'minibatch' is currently the only trainer that spacer defines.
     trainer_name='minibatch',
     # How many iterations the training algorithm should run; more epochs
     # = more opportunity to converge to a better fit, but slower.
