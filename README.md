@@ -22,13 +22,13 @@ Spacer's config variables can be set in any of the following ways:
 1. As environment variables; recommended if you `pip install` the package. Each variable name must be prefixed with `SPACER_`:
    - `export SPACER_AWS_ACCESS_KEY_ID='YOUR_AWS_KEY_ID'`
    - `export SPACER_AWS_SECRET_ACCESS_KEY='YOUR_AWS_SECRET_KEY'`
-   - `export SPACER_LOCAL_MODEL_PATH='/path/to/your/local/models'`
+   - `export SPACER_LOCAL_MODEL_PATH='/your/local/models'`
 2. In a `secrets.json` file in the same directory as this README; recommended for Docker builds and local clones. Example `secrets.json` contents:
    ```json
    {
      "AWS_ACCESS_KEY_ID": "YOUR_AWS_KEY_ID",
      "AWS_SECRET_ACCESS_KEY": "YOUR_AWS_SECRET_KEY",
-     "LOCAL_MODEL_PATH": "/path/to/your/local/models"
+     "LOCAL_MODEL_PATH": "/your/local/models"
    }
    ```
 3. As a Django setting; recommended for a Django project that uses spacer. Example code in a Django settings module:
@@ -36,7 +36,7 @@ Spacer's config variables can be set in any of the following ways:
    SPACER = {
        'AWS_ACCESS_KEY_ID': 'YOUR_AWS_KEY_ID',
        'AWS_SECRET_ACCESS_KEY': 'YOUR_AWS_SECRET_KEY',
-       'LOCAL_MODEL_PATH': '/path/to/your/local/models',
+       'LOCAL_MODEL_PATH': '/your/local/models',
    }
    ```
    
@@ -54,19 +54,16 @@ To debug your configuration, try opening a Python shell and run `from spacer imp
 ### Docker build
 The docker build is used in coralnet's deployment.
 * Install docker on your system
+* Clone this repo to a local folder; let's say it's `/your/local/pyspacer`
 * Set up configuration as detailed above.
-* Create folder `/path/to/your/local/models` for caching model files.
-* Build image: `docker build -t spacer:test .`
-* Run: `docker run -v /path/to/your/local/models:/workspace/models -v ${PWD}:/workspace/spacer/ -it spacer:test`
-
-The `-v /path/to/your/local/models:/workspace/models` part will make sure 
-the downloaded models are cached to your host storage. 
-which makes rerunning stuff much faster.
-
-The `-v ${PWD}:/workspace/spacer/` mounts your current folder (including 
+* Choose a local folder for caching model files; let's say it's `/your/local/models`
+* Build image: `docker build -f /your/local/pyspacer/Dockerfile -t myimagename`
+* Run: `docker run -v /your/local/models:/workspace/models -v /your/local/pyspacer:/workspace/spacer -it myimagename`
+  * The `-v /your/local/models:/workspace/models` part ensures 
+that all build attempts use the same models-cache folder of your host storage.
+  * The `-v /your/local/pyspacer:/workspace/spacer` mounts your local spacer clone (including 
 `secrets.json`, if used) so that the container has the right permissions.
-
-The last step will run the default CMD command specified in the dockerfile 
+  * Overall, this runs the default CMD command specified in the dockerfile 
 (unit-test with coverage). If you want to enter the docker container, 
 run the same command but append `bash` in the end.
 
