@@ -23,15 +23,7 @@ Spacer's config variables can be set in any of the following ways:
    - `export SPACER_AWS_ACCESS_KEY_ID='YOUR_AWS_KEY_ID'`
    - `export SPACER_AWS_SECRET_ACCESS_KEY='YOUR_AWS_SECRET_KEY'`
    - `export SPACER_LOCAL_MODEL_PATH='/path/to/your/local/models'`
-2. As a Django setting; recommended for a Django project that uses spacer. Example code in a Django settings module:
-   ```python
-   SPACER = {
-       'AWS_ACCESS_KEY_ID': 'YOUR_AWS_KEY_ID',
-       'AWS_SECRET_ACCESS_KEY': 'YOUR_AWS_SECRET_KEY',
-       'LOCAL_MODEL_PATH': '/path/to/your/local/models',
-   }
-   ```
-3. In a `secrets.json` file in the same directory as this README; recommended for Docker builds and local clones. Example `secrets.json` contents:
+2. In a `secrets.json` file in the same directory as this README; recommended for Docker builds and local clones. Example `secrets.json` contents:
    ```json
    {
      "AWS_ACCESS_KEY_ID": "YOUR_AWS_KEY_ID",
@@ -39,8 +31,23 @@ Spacer's config variables can be set in any of the following ways:
      "LOCAL_MODEL_PATH": "/path/to/your/local/models"
    }
    ```
+3. As a Django setting; recommended for a Django project that uses spacer. Example code in a Django settings module:
+   ```python
+   SPACER = {
+       'AWS_ACCESS_KEY_ID': 'YOUR_AWS_KEY_ID',
+       'AWS_SECRET_ACCESS_KEY': 'YOUR_AWS_SECRET_KEY',
+       'LOCAL_MODEL_PATH': '/path/to/your/local/models',
+   }
+   ```
    
 LOCAL_MODEL_PATH is required. The two AWS access variables are required unless spacer is running on an AWS instance which has been set up with `aws configure`. The rest of the config variables are optional; see `CONFIGURABLE_VARS` in `config.py` for a full list.
+
+Spacer supports the following schemes of using multiple settings sources:
+
+- Check environment variables first, then use secrets.json as a fallback.
+- Check environment variables first, then use Django settings as a fallback.
+
+However, spacer will not read from multiple file-based settings sources; so if a secrets.json file is present, then spacer will not check for Django settings as a fallback.
 
 To debug your configuration, try opening a Python shell and run `from spacer import config`, then `config.check()`.
 
