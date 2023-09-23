@@ -110,8 +110,9 @@ from spacer.messages import DataLocation, ExtractFeaturesMsg
 from spacer.tasks import extract_features
 
 message = ExtractFeaturesMsg(
-    # Identifier to set this extraction job apart from others. Makes sense
-    # to use something that uniquely identifies the image.
+    # This token is purely for your bookkeeping; you may find it useful if you
+    # choose to track tasks by saving these task messages. For example, you
+    # can make the token something that uniquely identifies the input image.
     job_token='image1',
     # Extractors available:
     # 1. 'efficientnet_b0_ver1': Generally recommended
@@ -151,8 +152,7 @@ from spacer.messages import DataLocation, TrainClassifierMsg
 from spacer.tasks import train_classifier
 
 message = TrainClassifierMsg(
-    # Identifier to set this training job apart from others. Should be
-    # unique for each classifier.
+    # For your bookkeeping.
     job_token='classifier1',
     # 'minibatch' is currently the only trainer that spacer defines.
     trainer_name='minibatch',
@@ -219,8 +219,7 @@ from spacer.messages import DataLocation, ClassifyFeaturesMsg
 from spacer.tasks import classify_features
 
 message = ClassifyFeaturesMsg(
-    # Identifier to set this classification job apart from others. Makes sense
-    # to use something that uniquely identifies the image.
+    # For your bookkeeping.
     job_token='image1',
     # Where the input feature-vector should be read from.
     feature_loc=DataLocation('filesystem', '/path/to/image1.featurevector'),
@@ -249,8 +248,7 @@ from spacer.messages import DataLocation, ClassifyImageMsg
 from spacer.tasks import classify_image
 
 message = ClassifyImageMsg(
-    # Identifier to set this classification job apart from others. Makes sense
-    # to use something that uniquely identifies the image.
+    # For your bookkeeping.
     job_token='image1',
     # Where the input image should be read from.
     image_loc=DataLocation('filesystem', '/path/to/image1.jpg'),
