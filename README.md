@@ -182,9 +182,10 @@ message = TrainClassifierMsg(
         '/path/to/image4.featurevector': [(500, 2500, 1), (2500, 1500, 3)],
         '/path/to/image5.featurevector': [(4321, 5582, 25), (4903, 2622, 19)],
     }),
-    # Partially-filled-in DataLocation which specifies the storage type
-    # and S3 bucket (if applicable) that all the feature vectors are
-    # stored at, but doesn't specify a key.
+    # All the feature vectors should use the same storage_type, and the same
+    # S3 bucket_name if applicable. This DataLocation's purpose is to describe
+    # those common storage details. The key arg is ignored, because that will
+    # be different for each feature vector.
     features_loc=DataLocation('filesystem', ''),
     # List of previously-created models (classifiers) to also evaluate
     # using this dataset, for informational purposes only.
