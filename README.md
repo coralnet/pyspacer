@@ -132,7 +132,7 @@ message = ExtractFeaturesMsg(
 )
 return_message = extract_features(message)
 print("Feature vector stored at: /path/to/image1.featurevector")
-print(f"Runtime: {return_message.runtime}")
+print(f"Extraction runtime: {return_message.runtime:.1f} s")
 ```
 
 ### train_classifier
@@ -202,13 +202,23 @@ message = TrainClassifierMsg(
 return_message = train_classifier(message)
 print("Classifier stored at: /path/to/classifier1.pkl")
 print("Evaluation results stored at: /path/to/valresult.json")
-print(f"New model's accuracy: {return_message.acc}")
+print(f"New model's accuracy (0.0 = 0%, 1.0 = 100%): {return_message.acc}")
 print(f"Previous models' accuracies: {return_message.pc_accs}")
 print(
     "New model's accuracy progression (calculated on part of train_labels)"
-    f"after each epoch of training: {return_message.ref_accs}")
-print(f"Runtime: {return_message.runtime}")
+    f" after each epoch of training: {return_message.ref_accs}")
+print(f"Training runtime: {return_message.runtime:.1f} s")
 ```
+
+Evaluation results consist of three arrays:
+
+- `gt`: Ground-truth label IDs (which were passed in as `val_labels`) for each point.
+- `est`: Estimated (classifier-predicted) label IDs for each point.
+- `scores`: Classifier's confidence scores (0.0 = 0%, 1.0 = 100%) for each estimated label ID.
+
+The *i*th element of `gt`, *i*th element of `est`, and *i*th element of `scores` correspond to each other. But the elements are otherwise in an undefined order.
+
+Accuracy is defined as the percentage of `gt` labels that match the corresponding `est` labels.
 
 ### classify_features
 
@@ -227,19 +237,23 @@ message = ClassifyFeaturesMsg(
     classifier_loc=DataLocation('filesystem', '/path/to/classifier1.pkl'),
 )
 return_message = classify_features(message)
-print(f"Runtime: {return_message.runtime}")
+print(f"Classification runtime: {return_message.runtime:.1f} s")
 print(f"Classes (recognized labels): {return_message.classes}")
 print(
-    "Scores (prediction results) for each point in the feature vector;"
+    "Classifier's scores for each point in the feature vector;"
     " scores are posterior probabilities of each class, with classes"
     " ordered as above:")
 for row, col, scores in return_message.scores:
-    print(f"{row}, {col}: {scores}")
+    print(f"Row {row}, column {col}: {scores}")
 ```
+
+The label which has the highest score for a particular point (row-column position) can be considered the classifier's predicted label for that point.
+
+One possible usage strategy is to trust the classifier's predictions for points where the highest confidence score is above a certain threshold, such as 0.8 (80%), and have human annotators check all other points.
 
 ### classify_image
 
-This basically does extract_features and classify_features together in one go, without needing to specify a storage location for the feature vector.
+This basically does `extract_features` and `classify_features` together in one go, without needing to specify a storage location for the feature vector.
 
 Takes an image, a list of pixel locations on that image, and a classifier. Produces prediction results (scores) for the image points, as posterior probabilities for each class. Example:
 
@@ -261,14 +275,14 @@ message = ClassifyImageMsg(
     classifier_loc=DataLocation('filesystem', '/path/to/classifier1.pkl'),
 )
 return_message = classify_image(message)
-print(f"Runtime: {return_message.runtime}")
+print(f"Runtime: {return_message.runtime:.1f} s")
 print(f"Classes (recognized labels): {return_message.classes}")
 print(
-    "Scores (prediction results) for each point in rowcols;"
+    "Classifier's scores for each point in rowcols;"
     " scores are posterior probabilities of each class, with classes"
     " ordered as above:")
 for row, col, scores in return_message.scores:
-    print(f"{row}, {col}: {scores}")
+    print(f"Row {row}, column {col}: {scores}")
 ```
 
 
