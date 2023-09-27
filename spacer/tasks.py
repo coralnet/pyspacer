@@ -7,7 +7,6 @@ import traceback
 
 from spacer import config
 from spacer.data_classes import ImageFeatures
-from spacer.extract_features import feature_extractor_factory
 from spacer.messages import \
     ExtractFeaturesMsg, \
     ExtractFeaturesReturnMsg, \
@@ -23,7 +22,6 @@ from spacer.train_classifier import trainer_factory
 
 def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
 
-    extractor = feature_extractor_factory(msg.feature_extractor_name)
     img = load_image(msg.image_loc)
 
     assert img.width * img.height <= config.MAX_IMAGE_PIXELS, \
@@ -38,7 +36,7 @@ def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
     check_rowcols(msg.rowcols, img)
 
     with config.log_entry_and_exit('actual extraction'):
-        features, return_msg = extractor(img, msg.rowcols)
+        features, return_msg = msg.extractor(img, msg.rowcols)
 
     with config.log_entry_and_exit('storing features'):
         features.store(msg.feature_loc)
@@ -95,8 +93,7 @@ def classify_image(msg: ClassifyImageMsg) -> ClassifyReturnMsg:
     check_rowcols(msg.rowcols, img)
 
     # Extract features
-    extractor = feature_extractor_factory(msg.feature_extractor_name)
-    features, _ = extractor(img, msg.rowcols)
+    features, _ = msg.extractor(img, msg.rowcols)
 
     # Classify
     clf = load_classifier(msg.classifier_loc)

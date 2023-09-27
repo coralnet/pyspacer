@@ -3,7 +3,6 @@ import unittest
 
 import torch
 
-from spacer import config
 from spacer import models
 from spacer.models.effcientnet_utils import \
     round_filters, \
@@ -15,7 +14,6 @@ from spacer.models.effcientnet_utils import \
     get_model_params
 
 
-@unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
 class TestGetModels(unittest.TestCase):
 
     def test_invalid_model(self):
@@ -25,7 +23,6 @@ class TestGetModels(unittest.TestCase):
                                  num_classes=1000)
 
 
-@unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
 class TestEfficientNet(unittest.TestCase):
 
     def test_efficientnet(self):
@@ -49,7 +46,6 @@ class TestEfficientNet(unittest.TestCase):
                              override_params=None)
 
 
-@unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
 class TestEfficientNetUtils(unittest.TestCase):
 
     GlobalParams = collections.namedtuple(
@@ -100,7 +96,6 @@ class TestEfficientNetUtils(unittest.TestCase):
         self.assertEqual(cls.__name__, 'Conv2dDynamicSamePadding')
 
 
-@unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
 class TestConv2dDynamicSamePadding(unittest.TestCase):
 
     def test_dynamic_padding(self):
@@ -112,7 +107,6 @@ class TestConv2dDynamicSamePadding(unittest.TestCase):
         self.assertEqual(conv.stride, (1, 1))
 
 
-@unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
 class TestBlockDecoder(unittest.TestCase):
 
     def test_encode(self):

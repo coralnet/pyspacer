@@ -4,6 +4,7 @@ from PIL import Image
 
 from spacer import config
 from spacer.data_classes import ImageFeatures, ValResults, ImageLabels
+from spacer.extract_features import DummyExtractor
 from spacer.messages import \
     ExtractFeaturesMsg, \
     ExtractFeaturesReturnMsg, \
@@ -26,6 +27,7 @@ from spacer.tasks import \
     classify_image
 from spacer.tests.utils import cn_beta_fixture_location
 from spacer.train_utils import make_random_data, train
+from .decorators import require_test_fixtures
 
 TEST_URL = \
     'https://upload.wikimedia.org/wikipedia/commons/7/7b/Red_sea_coral_reef.jpg'
@@ -40,7 +42,7 @@ class TestImageAndPointLimitsAsserts(unittest.TestCase):
         store_image(img_loc, Image.new('RGB', (10001, 10000)))
         msg = ExtractFeaturesMsg(
             job_token='test',
-            feature_extractor_name='dummy',
+            extractor=DummyExtractor(),
             image_loc=img_loc,
             rowcols=[(1, 1)],
             feature_loc=DataLocation(storage_type='memory',
@@ -58,7 +60,7 @@ class TestImageAndPointLimitsAsserts(unittest.TestCase):
         store_image(img_loc, Image.new('RGB', (10000, 10000)))
         msg = ExtractFeaturesMsg(
             job_token='test',
-            feature_extractor_name='dummy',
+            extractor=DummyExtractor(),
             image_loc=img_loc,
             rowcols=[(1, 1)],
             feature_loc=DataLocation(storage_type='memory',
@@ -76,7 +78,7 @@ class TestImageAndPointLimitsAsserts(unittest.TestCase):
         store_image(img_loc, Image.new('RGB', (1000, 1000)))
         msg = ExtractFeaturesMsg(
             job_token='test',
-            feature_extractor_name='dummy',
+            extractor=DummyExtractor(),
             image_loc=img_loc,
             rowcols=[(i, i) for i in range(config.MAX_POINTS_PER_IMAGE + 1)],
             feature_loc=DataLocation(storage_type='memory',
@@ -94,7 +96,7 @@ class TestImageAndPointLimitsAsserts(unittest.TestCase):
         store_image(img_loc, Image.new('RGB', (1000, 1000)))
         msg = ExtractFeaturesMsg(
             job_token='test',
-            feature_extractor_name='dummy',
+            extractor=DummyExtractor(),
             image_loc=img_loc,
             rowcols=[(i, i) for i in range(config.MAX_POINTS_PER_IMAGE)],
             feature_loc=DataLocation(storage_type='memory',
@@ -102,7 +104,7 @@ class TestImageAndPointLimitsAsserts(unittest.TestCase):
         )
         try:
             extract_features(msg)
-        except AssertionError as err:
+        except AssertionError:
             self.fail("Point count assert tripped unexpectedly.")
 
 
@@ -116,7 +118,7 @@ class TestExtractFeatures(unittest.TestCase):
         store_image(img_loc, Image.new('RGB', (100, 100)))
         msg = ExtractFeaturesMsg(
             job_token='test',
-            feature_extractor_name='dummy',
+            extractor=DummyExtractor(),
             image_loc=img_loc,
             rowcols=[(1, 1), (2, 2)],
             feature_loc=DataLocation(storage_type='memory',
@@ -131,7 +133,7 @@ class TestExtractFeatures(unittest.TestCase):
 
         msg = ExtractFeaturesMsg(
             job_token='job_nbr_1',
-            feature_extractor_name='dummy',
+            extractor=DummyExtractor(),
             rowcols=[(100, 100), (50, 50), (100, 100)],
             image_loc=DataLocation(storage_type='memory',
                                    key='tmp_img'),
@@ -211,7 +213,7 @@ class TestTrainClassifier(unittest.TestCase):
         for i in range(config.MIN_TRAINIMAGES):
             msg = ExtractFeaturesMsg(
                 job_token='dummy',
-                feature_extractor_name='dummy',
+                extractor=DummyExtractor(),
                 rowcols=[(100, 100), (50, 50)],
                 image_loc=DataLocation(storage_type='memory',
                                        key='{}.jpg'.format(i)),
@@ -245,7 +247,7 @@ class TestTrainClassifier(unittest.TestCase):
             model_loc=DataLocation(storage_type='memory', key='model'),
             valresult_loc=DataLocation(storage_type='memory', key='result')
         )
-        return_msg = train_classifier(msg)
+        train_classifier(msg)
 
         # Basically make sure this doesn't raise any errors
         self.assertTrue(True)
@@ -295,7 +297,7 @@ class TestClassifyFeatures(ClassifyReturnMsgTest):
     def setUp(self):
         config.filter_warnings()
 
-    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
+    @require_test_fixtures
     def test_legacy(self):
         msg = ClassifyFeaturesMsg(
             job_token='my_job',
@@ -306,7 +308,7 @@ class TestClassifyFeatures(ClassifyReturnMsgTest):
         return_msg = classify_features(msg)
         self._validate_return_msg(return_msg, False)
 
-    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
+    @require_test_fixtures
     def test_new(self):
 
         feats = ImageFeatures.make_random([1, 2, 3, 2], feature_dim=4096)
@@ -332,13 +334,13 @@ class TestClassifyImage(ClassifyReturnMsgTest):
     def setUp(self):
         config.filter_warnings()
 
-    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
+    @require_test_fixtures
     def test_deploy_simple(self):
         msg = ClassifyImageMsg(
             job_token='my_job',
             image_loc=DataLocation(storage_type='url',
                                    key=TEST_URL),
-            feature_extractor_name='dummy',
+            extractor=DummyExtractor(),
             rowcols=[(100, 100), (200, 200)],
             classifier_loc=cn_beta_fixture_location('example.model')
         )
@@ -351,7 +353,7 @@ class TestClassifyImageCache(unittest.TestCase):
     def setUp(self):
         config.filter_warnings()
 
-    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
+    @require_test_fixtures
     def test_classify_image_with_caching(self):
         """ Call classify_image three times.
         The first 2 time with same message.
@@ -364,7 +366,7 @@ class TestClassifyImageCache(unittest.TestCase):
             job_token='my_job',
             image_loc=DataLocation(storage_type='url',
                                    key=TEST_URL),
-            feature_extractor_name='dummy',
+            extractor=DummyExtractor(),
             rowcols=[(100, 100), (200, 200)],
             classifier_loc=cn_beta_fixture_location('example.model')
         )
@@ -373,7 +375,7 @@ class TestClassifyImageCache(unittest.TestCase):
             job_token='my_job',
             image_loc=DataLocation(storage_type='url',
                                    key=TEST_URL),
-            feature_extractor_name='dummy',
+            extractor=DummyExtractor(),
             rowcols=[(100, 100), (200, 200)],
             classifier_loc=cn_beta_fixture_location('example_model2.pkl')
         )
@@ -387,12 +389,13 @@ class TestClassifyImageCache(unittest.TestCase):
 
 class TestBadRowcols(unittest.TestCase):
 
+    @require_test_fixtures
     def test_image_classify(self):
         msg = ClassifyImageMsg(
             job_token='my_job',
             image_loc=DataLocation(storage_type='url',
                                    key=TEST_URL),
-            feature_extractor_name='dummy',
+            extractor=DummyExtractor(),
             rowcols=[(-1, -1)],
             classifier_loc=cn_beta_fixture_location('example.model')
         )

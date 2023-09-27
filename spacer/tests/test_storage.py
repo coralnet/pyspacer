@@ -15,7 +15,6 @@ from spacer.exceptions import SpacerInputError
 from spacer.messages import DataLocation
 from spacer.storage import \
     storage_factory, \
-    download_model, \
     load_image, \
     load_classifier, \
     store_image, \
@@ -23,6 +22,7 @@ from spacer.storage import \
     clear_memory_storage
 from spacer.tests.utils import cn_beta_fixture_location
 from spacer.train_utils import make_random_data, train
+from .decorators import require_test_fixtures
 from .utils import temp_filesystem_data_location
 
 
@@ -77,19 +77,26 @@ class BaseStorageTest(unittest.TestCase, abc.ABC):
         self.assertTrue(isinstance(clf2, CalibratedClassifierCV))
 
 
+@require_test_fixtures
 class TestURLStorage(unittest.TestCase):
 
     INVALID_URL = 'not_even_a_url'
     UNREACHABLE_DOMAIN = 'https://not-a-real-domain/'
     UNREACHABLE_URL = 'https://coralnet.ucsd.edu/not-a-real-page/'
 
-    def setUp(self):
-        self.storage = storage_factory('url')
+    @classmethod
+    def setUpClass(cls):
+        cls.storage = storage_factory('url')
+        cls.s3_url_pattern = (
+            'https://'
+            f'{config.TEST_BUCKET}.s3-{config.AWS_REGION}.amazonaws.com/'
+            '{filepath}'
+        )
 
     def test_load_image(self):
         loc = DataLocation(
             storage_type='url',
-            key='https://spacer-test.s3-us-west-2.amazonaws.com/08bfc10v7t.png'
+            key=self.s3_url_pattern.format(filepath='08bfc10v7t.png'),
         )
         img = load_image(loc)
         self.assertTrue(isinstance(img, Image.Image))
@@ -97,8 +104,8 @@ class TestURLStorage(unittest.TestCase):
     def test_load_classifier(self):
         loc = DataLocation(
             storage_type='url',
-            key='https://spacer-test.s3-us-west-2.amazonaws.com/'
-                'legacy_compat/coralnet_beta/example.model'
+            key=self.s3_url_pattern.format(
+                filepath='legacy_compat/coralnet_beta/example.model'),
         )
         clf = load_classifier(loc)
         self.assertTrue(isinstance(clf, CalibratedClassifierCV))
@@ -106,15 +113,15 @@ class TestURLStorage(unittest.TestCase):
     def test_load_string(self):
         loc = DataLocation(
             storage_type='url',
-            key='https://spacer-test.s3-us-west-2.amazonaws.com/'
-                '08bfc10v7t.png.featurevector'
+            key=self.s3_url_pattern.format(
+                filepath='08bfc10v7t.png.featurevector'),
         )
         feats = ImageFeatures.load(loc)
         self.assertTrue(isinstance(feats, ImageFeatures))
 
     def test_exists(self):
         self.assertTrue(self.storage.exists(
-            'https://spacer-test.s3-us-west-2.amazonaws.com/08bfc10v7t.png'))
+            self.s3_url_pattern.format(filepath='08bfc10v7t.png')))
         self.assertFalse(self.storage.exists(self.INVALID_URL))
         self.assertFalse(self.storage.exists(self.UNREACHABLE_DOMAIN))
         self.assertFalse(self.storage.exists(self.UNREACHABLE_URL))
@@ -147,7 +154,7 @@ class TestURLStorage(unittest.TestCase):
             self.storage.load(self.UNREACHABLE_URL)
 
 
-@unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
+@require_test_fixtures
 class TestS3Storage(BaseStorageTest):
 
     def setUp(self):
@@ -301,25 +308,6 @@ class TestFactory(unittest.TestCase):
         self.assertRaises(AssertionError,
                           storage_factory,
                           'not_a_valid_storage')
-
-
-class TestDownloadModel(unittest.TestCase):
-
-    @unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
-    def test_ok(self):
-        keyname = 'vgg16_coralnet_ver1.deploy.prototxt'
-        destination = os.path.join(config.LOCAL_MODEL_PATH, keyname)
-        storage = storage_factory('filesystem')
-        if storage.exists(destination):
-            storage.delete(destination)
-
-        destination_, was_cached = download_model(keyname)
-        self.assertFalse(was_cached)
-        self.assertTrue(storage.exists(destination))
-        self.assertEqual(destination_, destination)
-
-        destination_, was_cached = download_model(keyname)
-        self.assertTrue(was_cached)
 
 
 class TestLRUCache(unittest.TestCase):

@@ -9,7 +9,6 @@ from spacer.train_classifier import trainer_factory
 from spacer.train_utils import make_random_data, train
 
 
-@unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
 class TestDefaultTrainerDummyData(unittest.TestCase):
 
     def setUp(self):

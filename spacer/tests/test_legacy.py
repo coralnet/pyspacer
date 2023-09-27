@@ -9,6 +9,7 @@ import numpy as np
 
 from spacer import config
 from spacer.data_classes import ImageFeatures
+from spacer.extract_features import FeatureExtractor
 from spacer.messages import \
     DataLocation, \
     ExtractFeaturesMsg, \
@@ -17,6 +18,9 @@ from spacer.messages import \
 from spacer.storage import storage_factory
 from spacer.tasks import classify_features, extract_features
 from spacer.tests.utils import cn_beta_fixture_location
+from .common import TEST_EXTRACTORS
+from .decorators import \
+    require_caffe, require_test_extractors, require_test_fixtures
 
 
 cn_beta_fixtures = {
@@ -59,7 +63,7 @@ def extract_and_classify(im_key, clf_key, rowcol):
 
     msg = ExtractFeaturesMsg(
         job_token='beta_reg_test',
-        feature_extractor_name='vgg16_coralnet_ver1',
+        extractor=FeatureExtractor.deserialize(TEST_EXTRACTORS['vgg16']),
         image_loc=cn_beta_fixture_location(im_key + '.jpg'),
         rowcols=rowcol,
         feature_loc=new_feats_loc
@@ -79,9 +83,9 @@ def extract_and_classify(im_key, clf_key, rowcol):
     return new_return, legacy_return
 
 
-@unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
-@unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
-@unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
+@require_caffe
+@require_test_extractors
+@require_test_fixtures
 class TestExtractFeatures(unittest.TestCase):
     """
     Test pyspacer's Caffe extractor and compare to features extracted using
@@ -109,7 +113,7 @@ class TestExtractFeatures(unittest.TestCase):
 
         msg = ExtractFeaturesMsg(
             job_token='beta_reg_test',
-            feature_extractor_name='vgg16_coralnet_ver1',
+            extractor=FeatureExtractor.deserialize(TEST_EXTRACTORS['vgg16']),
             image_loc=cn_beta_fixture_location(im_key + '.png'),
             rowcols=rowcols,
             feature_loc=new_feats_loc
@@ -137,7 +141,7 @@ class TestExtractFeatures(unittest.TestCase):
                                         atol=1e-5))
 
 
-@unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
+@require_test_fixtures
 class TestClassifyFeatures(unittest.TestCase):
     """
     Get scores from the current classify_features task using previous
@@ -218,9 +222,9 @@ class TestClassifyFeatures(unittest.TestCase):
                 )
 
 
-@unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
-@unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
-@unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
+@require_caffe
+@require_test_extractors
+@require_test_fixtures
 class TestExtractClassify(unittest.TestCase):
     """ Tests new feature extractor and a classification against legacy.
     Test passes if the same class is assigned in both cases for each

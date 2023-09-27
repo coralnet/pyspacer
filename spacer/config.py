@@ -14,8 +14,9 @@ from pathlib import Path
 from typing import Any, Optional
 
 import boto3
-import botocore.exceptions
 from PIL import Image, ImageFile
+
+from spacer.exceptions import ConfigError
 
 
 def filter_warnings():
@@ -97,7 +98,7 @@ def get_config_value(key: str, default: Any = 'NO_DEFAULT') -> Any:
 
     def handle_unspecified_setting():
         if default == 'NO_DEFAULT':
-            raise RuntimeError(
+            raise ConfigError(
                 f"{key} setting is required."
                 f" (Debug info: {get_config_detection_result()})"
             )
@@ -130,8 +131,12 @@ def get_s3_conn():
     - It first looks for credentials in spacer config.
     - If not found there it will default to credentials in ~/.aws/credentials
     """
+    if not all([AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY]):
+        raise ConfigError(
+            "All AWS config variables must be specified to use S3.")
+
     return boto3.resource('s3',
-                          region_name="us-west-2",
+                          region_name=AWS_REGION,
                           aws_access_key_id=AWS_ACCESS_KEY_ID,
                           aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
 
@@ -152,8 +157,11 @@ class log_entry_and_exit(ContextDecorator):
 
 AWS_ACCESS_KEY_ID = get_config_value('AWS_ACCESS_KEY_ID', default=None)
 AWS_SECRET_ACCESS_KEY = get_config_value('AWS_SECRET_ACCESS_KEY', default=None)
+AWS_REGION = get_config_value('AWS_REGION', default=None)
 
-LOCAL_MODEL_PATH = get_config_value('LOCAL_MODEL_PATH')
+# Filesystem directory to use for caching downloaded feature-extractor data.
+# This will be used whenever there is s3 or url based extractor data.
+EXTRACTORS_CACHE_DIR = get_config_value('EXTRACTORS_CACHE_DIR', default=None)
 
 TASKS = [
     'extract_features',
@@ -161,19 +169,6 @@ TASKS = [
     'classify_features',
     'classify_image'
 ]
-
-FEATURE_EXTRACTOR_NAMES = [
-    'dummy',
-    'vgg16_coralnet_ver1',
-    'efficientnet_b0_ver1'
-]
-
-MODEL_WEIGHTS_SHA = {
-    'vgg16':
-        'fb83781de0e207ded23bd42d7eb6e75c1e915a6fbef74120f72732984e227cca',
-    'efficientnet-b0':
-        'c3dc6d304179c6729c0a0b3d4e60c728bdcf0d82687deeba54af71827467204c',
-}
 
 CLASSIFIER_TYPES = [
     'LR',
@@ -184,8 +179,20 @@ TRAINER_NAMES = [
     'minibatch'
 ]
 
-MODELS_BUCKET = 'spacer-tools'
-TEST_BUCKET = 'spacer-test'
+# For extractors used in unit tests.
+TEST_EXTRACTORS_BUCKET = get_config_value(
+    'TEST_EXTRACTORS_BUCKET', default=None)
+# For other fixtures used in unit tests.
+#
+# At least for now, the main reason these bucket names are pulled from
+# config is to not expose the bucket names used by the PySpacer core devs.
+# However, since these test files are not publicly linked and need to
+# live in an S3 bucket with specific filenames (specified by TEST_EXTRACTORS
+# and individual tests), the tests are still onerous to set up for anyone
+# besides the core devs. This should be addressed sometime.
+TEST_BUCKET = get_config_value('TEST_BUCKET', default=None)
+# A few other fixtures live here.
+LOCAL_FIXTURE_DIR = str(APP_DIR / 'tests' / 'fixtures')
 
 STORAGE_TYPES = [
     's3',
@@ -197,34 +204,12 @@ STORAGE_TYPES = [
 MAX_IMAGE_PIXELS = get_config_value('MAX_IMAGE_PIXELS', default=10000*10000)
 MAX_POINTS_PER_IMAGE = get_config_value('MAX_POINTS_PER_IMAGE', default=1000)
 
-LOCAL_FIXTURE_DIR = str(APP_DIR / 'tests' / 'fixtures')
-
 # The train_classifier task requires as least this many images.
 MIN_TRAINIMAGES = get_config_value('MIN_TRAINIMAGES', default=10)
 
 # Check access to select which tests to run.
 HAS_CAFFE = importlib.util.find_spec("caffe") is not None
 
-
-try:
-    s3 = get_s3_conn()
-    s3.meta.client.head_bucket(Bucket=TEST_BUCKET)
-    HAS_S3_TEST_ACCESS = True
-except (botocore.exceptions.ClientError,
-        botocore.exceptions.NoCredentialsError):  # pragma: no cover
-    logging.info("No connection to spacer-test bucket, "
-                 "can't run remote tests")
-    HAS_S3_TEST_ACCESS = False
-
-try:
-    s3 = get_s3_conn()
-    s3.meta.client.head_bucket(Bucket=MODELS_BUCKET)
-    HAS_S3_MODEL_ACCESS = True
-except (botocore.exceptions.ClientError,
-        botocore.exceptions.NoCredentialsError):  # pragma: no cover
-    logging.info("No connection to spacer-tools bucket, "
-                 "can't run remote tests")
-    HAS_S3_MODEL_ACCESS = False
 
 # Add margin to avoid warnings when running unit-test.
 Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS + 20000
@@ -236,9 +221,21 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
 CONFIGURABLE_VARS = [
+    # These two variables are required if you're using AWS S3 storage,
+    # unless spacer is running on an AWS instance which has been set up with
+    # `aws configure`.
     'AWS_ACCESS_KEY_ID',
     'AWS_SECRET_ACCESS_KEY',
-    'LOCAL_MODEL_PATH',
+    # This is required if you're using S3 storage.
+    'AWS_REGION',
+    # This is required if you're loading feature extractors from a remote
+    # source (S3 or URL).
+    'EXTRACTORS_CACHE_DIR',
+    # These are required to run certain unit tests. They're also not really
+    # usable by anyone besides spacer's core devs at the moment.
+    'TEST_EXTRACTORS_BUCKET',
+    'TEST_BUCKET',
+    # These can just be configured as needed, or left as defaults.
     'MAX_IMAGE_PIXELS',
     'MAX_POINTS_PER_IMAGE',
     'MIN_TRAINIMAGES',
@@ -255,7 +252,7 @@ def check():
         # Get the var_name attribute in the current module
         var_value = getattr(sys.modules[__name__], var_name)
 
-        if '_KEY' in var_name:
+        if var_value and '_KEY' in var_name:
             # Treat this as a sensitive value; don't print the entire thing
             value_display = f'{var_value[:6]} ... {var_value[-6:]}'
         else:
