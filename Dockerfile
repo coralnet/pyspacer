@@ -102,14 +102,8 @@ RUN pip3 install scikit-learn==1.1.3
 RUN pip3 install torch==1.13.1
 RUN pip3 install torchvision==0.14.1
 RUN pip3 install boto3==1.26.122
-RUN pip3 install awscli==1.27.122
 
-ENV SPACER_LOCAL_MODEL_PATH=/workspace/models
-WORKDIR /workspace/models
-RUN aws s3 cp --no-sign-request s3://spacer-tools/efficientnet_b0_ver1.pt ${SPACER_LOCAL_MODEL_PATH}/
-RUN aws s3 cp --no-sign-request s3://spacer-tools/vgg16_coralnet_ver1.deploy.prototxt ${SPACER_LOCAL_MODEL_PATH}/
-RUN aws s3 cp --no-sign-request s3://spacer-tools/vgg16_coralnet_ver1.caffemodel ${SPACER_LOCAL_MODEL_PATH}/
-
+ENV SPACER_EXTRACTORS_CACHE_DIR=/workspace/models
 ENV PYTHONPATH="/workspace/spacer:${PYTHONPATH}"
 WORKDIR /workspace
 RUN mkdir spacer

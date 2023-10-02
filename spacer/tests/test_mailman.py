@@ -1,6 +1,7 @@
 import unittest
 
 from spacer import config
+from spacer.extract_features import DummyExtractor
 from spacer.tasks import process_job
 from spacer.messages import \
     JobMsg, \
@@ -32,7 +33,7 @@ class TestProcessJobErrorHandling(unittest.TestCase):
         msg = JobMsg(task_name='extract_features',
                      tasks=[ExtractFeaturesMsg(
                          job_token='test_job',
-                         feature_extractor_name='dummy',
+                         extractor=DummyExtractor(),
                          rowcols=[(1, 1)],
                          image_loc=DataLocation(storage_type='memory',
                                                 key='missing_image'),
@@ -50,8 +51,8 @@ class TestProcessJobErrorHandling(unittest.TestCase):
                      tasks=[ClassifyImageMsg(
                          job_token='my_job',
                          image_loc=DataLocation(storage_type='url',
-                                                key='http://invalid_url.com'),
-                         feature_extractor_name='invalid_name',
+                                                key='http::/invalid_url.com'),
+                         extractor=DummyExtractor(),
                          rowcols=[(1, 1)],
                          classifier_loc=DataLocation(storage_type='memory',
                                                      key='doesnt_matter'))])
@@ -61,24 +62,6 @@ class TestProcessJobErrorHandling(unittest.TestCase):
         self.assertIn("SpacerInputError", return_msg.error_message)
         self.assertEqual(type(return_msg), JobReturnMsg)
 
-    def test_img_classify_feature_extractor_name(self):
-
-        msg = JobMsg(task_name='classify_image',
-                     tasks=[ClassifyImageMsg(
-                         job_token='my_job',
-                         image_loc=DataLocation(storage_type='url',
-                                                key=TEST_URL),
-                         feature_extractor_name='invalid_name',
-                         rowcols=[(1, 1)],
-                         classifier_loc=DataLocation(storage_type='memory',
-                                                     key='doesnt_matter'))])
-        return_msg = process_job(msg)
-        self.assertFalse(return_msg.ok)
-        self.assertIn("AssertionError", return_msg.error_message)
-        self.assertIn("Model name invalid_name not registered",
-                      return_msg.error_message)
-        self.assertEqual(type(return_msg), JobReturnMsg)
-
     def test_img_classify_classifier_key(self):
 
         msg = JobMsg(task_name='classify_image',
@@ -86,7 +69,7 @@ class TestProcessJobErrorHandling(unittest.TestCase):
                          job_token='my_job',
                          image_loc=DataLocation(storage_type='url',
                                                 key=TEST_URL),
-                         feature_extractor_name='dummy',
+                         extractor=DummyExtractor(),
                          rowcols=[(1, 1)],
                          classifier_loc=DataLocation(storage_type='memory',
                                                      key='no_classifier_here')
@@ -138,7 +121,7 @@ class TestProcessJobMultiple(unittest.TestCase):
     def test_multiple_feature_extract(self):
         extract_msg = ExtractFeaturesMsg(
             job_token='test_job',
-            feature_extractor_name='dummy',
+            extractor=DummyExtractor(),
             rowcols=[(1, 1)],
             image_loc=DataLocation(storage_type='url',
                                    key=TEST_URL),
@@ -156,7 +139,7 @@ class TestProcessJobMultiple(unittest.TestCase):
     def test_multiple_feature_extract_one_fail(self):
         good_extract_msg = ExtractFeaturesMsg(
             job_token='test_job',
-            feature_extractor_name='dummy',
+            extractor=DummyExtractor(),
             rowcols=[(1, 1)],
             image_loc=DataLocation(storage_type='url',
                                    key=TEST_URL),
@@ -165,7 +148,7 @@ class TestProcessJobMultiple(unittest.TestCase):
 
         fail_extract_msg = ExtractFeaturesMsg(
             job_token='test_job',
-            feature_extractor_name='dummy',
+            extractor=DummyExtractor(),
             rowcols=[(1, 1)],
             image_loc=DataLocation(storage_type='url',
                                    key='bad_url'),

@@ -176,30 +176,6 @@ def storage_factory(storage_type: str, bucketname: Union[str, None] = None):
         return URLStorage()
 
 
-def download_model(keyname: str) -> Tuple[str, bool]:
-    """
-    Utility method to download model to local cache.
-    This is not part of the storage interface since it is a special case,
-    and models need to be downloaded to a specific destination folder to be
-    shared with host filesystem.
-    """
-    assert config.HAS_S3_MODEL_ACCESS, "Need access to model bucket."
-    destination = os.path.join(config.LOCAL_MODEL_PATH, keyname)
-
-    with config.log_entry_and_exit('fetching of model to ' + destination):
-        if not os.path.isfile(destination):
-            with config.log_entry_and_exit('downloading from ' + keyname):
-                s3 = config.get_s3_conn()
-                s3.Bucket(config.MODELS_BUCKET).download_file(keyname,
-                                                              destination)
-                was_cashed = False
-        else:
-            # Already cached, no need to download
-            was_cashed = True
-
-    return destination, was_cashed
-
-
 def store_image(loc: 'DataLocation', img: Image):
     storage = storage_factory(loc.storage_type, loc.bucket_name)
     with BytesIO() as stream:

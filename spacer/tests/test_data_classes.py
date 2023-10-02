@@ -10,6 +10,7 @@ from spacer.data_classes import \
     ImageLabels, \
     ValResults
 from spacer.messages import DataLocation
+from .decorators import require_test_fixtures
 from .utils import temp_filesystem_data_location
 
 
@@ -37,7 +38,7 @@ class TestImageFeatures(unittest.TestCase):
         self.assertEqual(feats.npoints, len(feats.point_features))
         self.assertEqual(feats.feature_dim, len(feats.point_features[0].data))
 
-    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
+    @require_test_fixtures
     def test_legacy_from_s3(self):
         legacy_feat_loc = DataLocation(storage_type='s3',
                                        key='08bfc10v7t.png.featurevector',
@@ -64,7 +65,7 @@ class TestImageFeatures(unittest.TestCase):
 
 class TestImageFeaturesNumpyStore(unittest.TestCase):
 
-    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
+    @require_test_fixtures
     def test_s3(self):
         s3_loc = DataLocation(
             storage_type='s3',
@@ -176,7 +177,7 @@ class TestValResults(unittest.TestCase):
         self.assertRaises(AssertionError, ValResults,
                           gt=gt, est=est, scores=scores, classes=classes)
 
-    @unittest.skipUnless(config.HAS_S3_TEST_ACCESS, 'No access to test bucket')
+    @require_test_fixtures
     def test_legacy(self):
         legacy_loc = DataLocation(storage_type='s3',
                                   key='beta.valresult',

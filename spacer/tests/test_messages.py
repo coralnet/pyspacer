@@ -43,12 +43,6 @@ class TestExtractFeaturesMsg(unittest.TestCase):
 
     def test_asserts(self):
         msg = ExtractFeaturesMsg.example()
-        msg.feature_extractor_name = 'invalid_modelname'
-        self.assertRaises(AssertionError,
-                          ExtractFeaturesMsg.deserialize,
-                          msg.serialize())
-
-        msg = ExtractFeaturesMsg.example()
         msg.rowcols = []
         self.assertRaises(AssertionError,
                           ExtractFeaturesMsg.deserialize,
@@ -56,6 +50,12 @@ class TestExtractFeaturesMsg(unittest.TestCase):
 
         msg = ExtractFeaturesMsg.example()
         msg.rowcols = [(120, 101, 121)]
+        self.assertRaises(AssertionError,
+                          ExtractFeaturesMsg.deserialize,
+                          msg.serialize())
+
+        msg = ExtractFeaturesMsg.example()
+        msg.feature_loc = DataLocation('url', 'https://...')
         self.assertRaises(AssertionError,
                           ExtractFeaturesMsg.deserialize,
                           msg.serialize())

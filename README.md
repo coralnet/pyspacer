@@ -3,7 +3,7 @@
 [![CI Status](https://github.com/coralnet/pyspacer/actions/workflows/python-app.yml/badge.svg)](https://github.com/coralnet/pyspacer/actions/workflows/python-app.yml)
 [![PyPI version](https://badge.fury.io/py/pyspacer.svg)](https://badge.fury.io/py/pyspacer)
 
-This repository provides utilities to extract features from random point 
+PySpacer (AKA spacer) provides utilities to extract features from random point 
 locations in images and then train classifiers over those features.
 It is used in the vision backend of `https://github.com/coralnet/coralnet`.
 
@@ -17,18 +17,25 @@ The spacer repo can be installed in three ways.
 * From Dockerfile -- the only option that supports Caffe, which is used for the legacy feature-extractor.
 
 ### Config
+
+Setting spacer config variables is only necessary when using certain features. If you don't need S3 storage, and you won't load extractors remotely, you can skip this section.
+
+See `CONFIGURABLE_VARS` in `config.py` for a full list of available variables, and for an explanation of when each variable must be configured or not.
+
 Spacer's config variables can be set in any of the following ways:
 
 1. As environment variables; recommended if you `pip install` the package. Each variable name must be prefixed with `SPACER_`:
    - `export SPACER_AWS_ACCESS_KEY_ID='YOUR_AWS_KEY_ID'`
    - `export SPACER_AWS_SECRET_ACCESS_KEY='YOUR_AWS_SECRET_KEY'`
-   - `export SPACER_LOCAL_MODEL_PATH='/your/local/models'`
+   - `export SPACER_AWS_REGION='us-west-2'`
+   - `export SPACER_EXTRACTORS_CACHE_DIR='/your/cache'`
 2. In a `secrets.json` file in the same directory as this README; recommended for Docker builds and local clones. Example `secrets.json` contents:
    ```json
    {
      "AWS_ACCESS_KEY_ID": "YOUR_AWS_KEY_ID",
      "AWS_SECRET_ACCESS_KEY": "YOUR_AWS_SECRET_KEY",
-     "LOCAL_MODEL_PATH": "/your/local/models"
+     "AWS_REGION": "us-west-2",
+     "EXTRACTORS_CACHE_DIR": "/your/cache"
    }
    ```
 3. As a Django setting; recommended for a Django project that uses spacer. Example code in a Django settings module:
@@ -36,11 +43,10 @@ Spacer's config variables can be set in any of the following ways:
    SPACER = {
        'AWS_ACCESS_KEY_ID': 'YOUR_AWS_KEY_ID',
        'AWS_SECRET_ACCESS_KEY': 'YOUR_AWS_SECRET_KEY',
-       'LOCAL_MODEL_PATH': '/your/local/models',
+       'AWS_REGION': 'us-west-2',
+       'EXTRACTORS_CACHE_DIR': '/your/cache',
    }
    ```
-   
-LOCAL_MODEL_PATH is required. The two AWS access variables are required unless spacer is running on an AWS instance which has been set up with `aws configure`. The rest of the config variables are optional; see `CONFIGURABLE_VARS` in `config.py` for a full list.
 
 Spacer supports the following schemes of using multiple settings sources:
 
@@ -56,11 +62,11 @@ The docker build is used in coralnet's deployment.
 * Install docker on your system
 * Clone this repo to a local folder; let's say it's `/your/local/pyspacer`
 * Set up configuration as detailed above.
-* Choose a local folder for caching model files; let's say it's `/your/local/models`
+* Choose a local folder for caching extractor files; let's say it's `/your/local/cache`
 * Build image: `docker build -f /your/local/pyspacer/Dockerfile -t myimagename`
-* Run: `docker run -v /your/local/models:/workspace/models -v /your/local/pyspacer:/workspace/spacer -it myimagename`
-  * The `-v /your/local/models:/workspace/models` part ensures 
-that all build attempts use the same models-cache folder of your host storage.
+* Run: `docker run -v /your/local/cache:/workspace/cache -v /your/local/pyspacer:/workspace/spacer -it myimagename`
+  * The `-v /your/local/cache:/workspace/cache` part ensures 
+that all build attempts use the same cache folder of your host storage.
   * The `-v /your/local/pyspacer:/workspace/spacer` mounts your local spacer clone (including 
 `secrets.json`, if used) so that the container has the right permissions.
   * Overall, this runs the default CMD command specified in the dockerfile 
@@ -97,15 +103,27 @@ Spacer supports four storage types: `s3`, `filesystem`, `memory` and `url`.
 `config.py` defines configurable variables/settings and various constants.
 
 
+## Feature extractors
+
+The first step when analyzing an image, or preparing an image as training data, is extracting [features](https://en.wikipedia.org/wiki/Feature_(computer_vision)) from the image. Therefore, you need a feature extractor to use spacer, but spacer does not provide one out of the box.
+
+Spacer's `extract_features.py` provides the Python classes `EfficientNetExtractor` for loading EfficientNet extractors in PyTorch format (CoralNet 1.0's default extraction scheme), and `VGG16CaffeExtractor` for loading VGG16 extractors in Caffe format (CoralNet's legacy extraction scheme).
+
+You'll either want to match one of these schemes so you can use the provided classes, or you'll have to write your own extractor class which inherits from the base class `FeatureExtractor`. Between the provided classes, the easier one to use will probably be `EfficientNetExtractor`, because Caffe is old software which is more complicated to install.
+
+If you're loading the extractor files remotely (from S3 or from a URL), the files will be automatically cached to your configured `EXTRACTORS_CACHE_DIR` for faster subsequent loads.
+
+
 ## Core API
 
 The `tasks.py` module has four functions which comprise the main interface of pyspacer:
 
 ### extract_features
 
-Takes an image, and a list of pixel locations on that image. Produces a single feature vector out of the image-data at those pixel locations. Example:
+Takes an image, a list of pixel locations on that image, and a feature extractor. Produces a single feature vector out of the image-data at those pixel locations. Example:
 
 ```python
+from spacer.extract_features import EfficientNetExtractor
 from spacer.messages import DataLocation, ExtractFeaturesMsg
 from spacer.tasks import extract_features
 
@@ -114,12 +132,14 @@ message = ExtractFeaturesMsg(
     # choose to track tasks by saving these task messages. For example, you
     # can make the token something that uniquely identifies the input image.
     job_token='image1',
-    # Extractors available:
-    # 1. 'efficientnet_b0_ver1': Generally recommended
-    # 2. 'vgg16_coralnet_ver1': Legacy, requires Caffe
-    # 3. 'dummy': Produces feature vectors which are in the correct format but
-    # don't have meaningful data. The fastest extractor; can help for testing.
-    feature_extractor_name='efficientnet_b0_ver1',
+    # Instantiated feature extractor. Each extractor class defines the
+    # data_locations which must be specified. In EfficientNetExtractor's case,
+    # a PyTorch 'weights' file is required.
+    extractor=EfficientNetExtractor(
+        data_locations=dict(
+            weights=DataLocation('filesystem', '/path/to/weights.pt'),
+        ),
+    ),
     # (row, column) tuples specifying pixel locations in the image.
     # Note that row is y, column is x.
     rowcols=[(2200, 1000), (1400, 1500), (3000, 450)],
@@ -255,9 +275,10 @@ One possible usage strategy is to trust the classifier's predictions for points 
 
 This basically does `extract_features` and `classify_features` together in one go, without needing to specify a storage location for the feature vector.
 
-Takes an image, a list of pixel locations on that image, and a classifier. Produces prediction results (scores) for the image points, as posterior probabilities for each class. Example:
+Takes an image, a list of pixel locations on that image, a feature extractor, and a classifier. Produces prediction results (scores) for the image points, as posterior probabilities for each class. Example:
 
 ```python
+from spacer.extract_features import EfficientNetExtractor
 from spacer.messages import DataLocation, ClassifyImageMsg
 from spacer.tasks import classify_image
 
@@ -266,8 +287,12 @@ message = ClassifyImageMsg(
     job_token='image1',
     # Where the input image should be read from.
     image_loc=DataLocation('filesystem', '/path/to/image1.jpg'),
-    # Choice of extractor; same choices available as in extract_features.
-    feature_extractor_name='efficientnet_b0_ver1',
+    # Instantiated feature extractor.
+    extractor=EfficientNetExtractor(
+        data_locations=dict(
+            weights=DataLocation('filesystem', '/path/to/weights.pt'),
+        ),
+    ),
     # (row, column) tuples specifying pixel locations in the image.
     # Note that row is y, column is x.
     rowcols=[(2200, 1000), (1400, 1500), (3000, 450)],

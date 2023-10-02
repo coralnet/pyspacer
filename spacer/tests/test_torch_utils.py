@@ -5,13 +5,12 @@ import torch
 from PIL import Image
 from torchvision import transforms
 
-from spacer import config
-from spacer.storage import download_model
-from spacer.torch_utils import extract_feature
-from spacer.torch_utils import transformation
+from spacer.extract_features import FeatureExtractor
+from spacer.torch_utils import extract_feature, transformation
+from .common import TEST_EXTRACTORS
+from .decorators import require_test_extractors
 
 
-@unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
 class TestTransformation(unittest.TestCase):
 
     def test_transformer(self):
@@ -39,18 +38,20 @@ class TestTransformation(unittest.TestCase):
         self.assertTrue(np.allclose(output.numpy(), expected_output))
 
 
-@unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'No access to models')
+@require_test_extractors
 class TestExtractFeatures(unittest.TestCase):
 
-    def setUp(self):
-        self.modelweighs_path, self.model_was_cached = download_model(
-            'efficientnet_b0_ver1.pt')
+    @classmethod
+    def setUpClass(cls):
+        cls.extractor = FeatureExtractor.deserialize(
+            TEST_EXTRACTORS['efficientnet-b0'])
 
     def test_rgb(self):
 
+        weights_data, _ = self.extractor.load_data('weights')
         torch_params = {'model_type': 'efficientnet',
                         'model_name': 'efficientnet-b0',
-                        'weights_path': self.modelweighs_path,
+                        'weights_data': weights_data,
                         'num_class': 1275,
                         'crop_size': 224,
                         'batch_size': 10}

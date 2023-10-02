@@ -4,7 +4,10 @@ Each data-class can serialize itself to a structure of JSON-friendly
 python-native data-structures such that it can be stored.
 """
 
+from __future__ import annotations
+from pathlib import Path
 from typing import List, Tuple, Dict, Union, Optional
+from urllib.parse import urlparse
 
 from spacer import config
 from spacer.data_classes import DataClass, ImageLabels
@@ -32,6 +35,23 @@ class DataLocation(DataClass):
     def example(cls) -> 'DataLocation':
         return DataLocation('memory', 'my_blob')
 
+    @property
+    def filename(self) -> str:
+        if self.storage_type == 'url':
+            # This is a basic implementation which just gets the last
+            # part of the URL 'path', even if that part isn't filename-like.
+            return Path(urlparse(self.key).path).name
+        else:
+            return Path(self.key).name
+
+    @property
+    def is_remote(self) -> bool:
+        return self.storage_type in ['url', 's3']
+
+    @property
+    def is_writable(self) -> bool:
+        return self.storage_type != 'url'
+
     @classmethod
     def deserialize(cls, data: Dict) -> 'DataLocation':
         return DataLocation(**data)
@@ -41,57 +61,62 @@ class DataLocation(DataClass):
 
 
 class ExtractFeaturesMsg(DataClass):
-    """ Input message for extract features class. """
+    """ Input message for extract-features task. """
 
     def __init__(self,
                  job_token: str,  # Token for caller DB reference.
-                 feature_extractor_name: str,  # Which extractor to use.
-                 rowcols: List[Tuple[int, int]],  # List of [row, col] entries.
+                 extractor: 'FeatureExtractor',
+                 rowcols: list[tuple[int, int]],  # List of (row, col) entries.
                  image_loc: DataLocation,  # Where to fetch image.
                  feature_loc: DataLocation,  # Where to store output.
                  ):
 
-        assert feature_extractor_name in config.FEATURE_EXTRACTOR_NAMES
-        assert isinstance(rowcols, List)
+        assert isinstance(rowcols, list)
         assert len(rowcols) > 0, "Invalid message, rowcols entry is empty."
         assert len(rowcols[0]) == 2
-        assert feature_loc.storage_type != 'url', \
-            "Write not supported for url storage type."
+        assert feature_loc.is_writable, (
+            f"Write not supported for"
+            f" '{feature_loc.storage_type}' storage type.")
 
         self.job_token = job_token
-        self.feature_extractor_name = feature_extractor_name
+        self.extractor = extractor
         self.rowcols = rowcols
         self.image_loc = image_loc
         self.feature_loc = feature_loc
 
+    @classmethod
+    def example(cls) -> 'ExtractFeaturesMsg':
+        from spacer.extract_features import EfficientNetExtractor
+        return ExtractFeaturesMsg(
+            job_token='123abc',
+            extractor=EfficientNetExtractor(
+                data_locations=dict(
+                    weights=DataLocation('filesystem', '/path/to/weights.pt'),
+                )
+            ),
+            rowcols=[(100, 100)],
+            image_loc=DataLocation('memory', 'my_image.jpg'),
+            feature_loc=DataLocation('memory', 'my_feats.json'),
+        )
+
     def serialize(self) -> Dict:
         return {
             'job_token': self.job_token,
-            'feature_extractor_name': self.feature_extractor_name,
-            'rowcols': list(self.rowcols),
+            'extractor': self.extractor.serialize(),
+            'rowcols': self.rowcols,
             'image_loc': self.image_loc.serialize(),
             'feature_loc': self.feature_loc.serialize()
         }
 
     @classmethod
     def deserialize(cls, data: Dict) -> 'ExtractFeaturesMsg':
-        """ Custom deserializer required to convert back to tuples. """
+        from spacer.extract_features import FeatureExtractor
         return ExtractFeaturesMsg(
             job_token=data['job_token'],
-            feature_extractor_name=data['feature_extractor_name'],
+            extractor=FeatureExtractor.deserialize(data['extractor']),
             rowcols=[tuple(rc) for rc in data['rowcols']],
             image_loc=DataLocation.deserialize(data['image_loc']),
             feature_loc=DataLocation.deserialize(data['feature_loc'])
-        )
-
-    @classmethod
-    def example(cls) -> 'ExtractFeaturesMsg':
-        return ExtractFeaturesMsg(
-            job_token='123abc',
-            feature_extractor_name='vgg16_coralnet_ver1',
-            rowcols=[(100, 100)],
-            image_loc=DataLocation('memory', 'my_image.jpg'),
-            feature_loc=DataLocation('memory', 'my_feats.json'),
         )
 
 
@@ -99,16 +124,16 @@ class ExtractFeaturesReturnMsg(DataClass):
     """ Return message for extract_features task. """
 
     def __init__(self,
-                 model_was_cached: bool,
+                 extractor_loaded_remotely: bool,
                  runtime: float):
 
-        self.model_was_cached = model_was_cached
+        self.extractor_loaded_remotely = extractor_loaded_remotely
         self.runtime = runtime
 
     @classmethod
     def example(cls) -> 'ExtractFeaturesReturnMsg':
         return ExtractFeaturesReturnMsg(
-            model_was_cached=True,
+            extractor_loaded_remotely=True,
             runtime=2.1
         )
 
@@ -270,26 +295,31 @@ class ClassifyImageMsg(DataClass):
 
     def __init__(self,
                  job_token: str,  # Primary key of job, not used in spacer.
-                 image_loc: DataLocation,  # Location of image to classify.
-                 feature_extractor_name: str,  # Feature extractor name.
+                 extractor: 'FeatureExtractor',
                  rowcols: List[Tuple[int, int]],
+                 image_loc: DataLocation,  # Location of image to classify.
                  classifier_loc: DataLocation,  # Location of classifier.
                  ):
         self.job_token = job_token
-        self.image_loc = image_loc
-        self.feature_extractor_name = feature_extractor_name
+        self.extractor = extractor
         self.rowcols = rowcols
+        self.image_loc = image_loc
         self.classifier_loc = classifier_loc
 
     @classmethod
     def example(cls):
+        from spacer.extract_features import EfficientNetExtractor
         return ClassifyImageMsg(
             job_token='my_job',
+            extractor=EfficientNetExtractor(
+                data_locations=dict(
+                    weights=DataLocation('filesystem', '/path/to/weights.pt'),
+                )
+            ),
+            rowcols=[(1, 1), (2, 2)],
             image_loc=DataLocation(storage_type='url',
                                    key='https://my-bucket.s3-my-region.'
                                    'amazonaws.com/01234aeiou.png'),
-            feature_extractor_name='vgg16_coralnet_ver1',
-            rowcols=[(1, 1), (2, 2)],
             classifier_loc=DataLocation(storage_type='url',
                                         key='https://my-bucket.s3-my-region.'
                                         'amazonaws.com/my_model_id.model')
@@ -298,20 +328,20 @@ class ClassifyImageMsg(DataClass):
     def serialize(self):
         return {
             'job_token': self.job_token,
-            'image_loc': self.image_loc.serialize(),
-            'feature_extractor_name': self.feature_extractor_name,
+            'extractor': self.extractor.serialize(),
             'rowcols': self.rowcols,
+            'image_loc': self.image_loc.serialize(),
             'classifier_loc': self.classifier_loc.serialize()
         }
 
     @classmethod
     def deserialize(cls, data: Dict) -> 'ClassifyImageMsg':
-        """ Custom deserializer to convert back to tuples. """
+        from spacer.extract_features import FeatureExtractor
         return ClassifyImageMsg(
             job_token=data['job_token'],
+            extractor=FeatureExtractor.deserialize(data['extractor']),
+            rowcols=[tuple(rc) for rc in data['rowcols']],
             image_loc=DataLocation.deserialize(data['image_loc']),
-            feature_extractor_name=data['feature_extractor_name'],
-            rowcols=[(row, col) for row, col in data['rowcols']],
             classifier_loc=DataLocation.deserialize(data['classifier_loc'])
         )
 

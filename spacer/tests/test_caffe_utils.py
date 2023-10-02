@@ -5,10 +5,12 @@ import numpy as np
 from PIL import Image
 
 from spacer import config
-from spacer.storage import download_model
+from spacer.extract_features import FeatureExtractor
+from .common import TEST_EXTRACTORS
+from .decorators import require_caffe, require_test_extractors
 
 
-@unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
+@require_caffe
 class TestTransformer(unittest.TestCase):
 
     def test_process(self):
@@ -20,16 +22,19 @@ class TestTransformer(unittest.TestCase):
         self.assertTrue(np.array_equal(im_arr, im_arr2))
 
 
-@unittest.skipUnless(config.HAS_CAFFE, 'Caffe not installed')
-@unittest.skipUnless(config.HAS_S3_MODEL_ACCESS, 'Need model access')
+@require_caffe
+@require_test_extractors
 class TestClassifyFromPatchList(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         config.filter_warnings()
-        self.modeldef_path, _ = download_model(
-            'vgg16_coralnet_ver1.deploy.prototxt')
-        self.modelweighs_path, self.model_was_cached = download_model(
-            'vgg16_coralnet_ver1.caffemodel')
+
+        extractor = FeatureExtractor.deserialize(TEST_EXTRACTORS['vgg16'])
+        cls.definition_filepath, _ = \
+            extractor.load_data_into_filesystem('definition')
+        cls.weights_filepath, _ = \
+            extractor.load_data_into_filesystem('weights')
 
     def test_rgb(self):
         from spacer.caffe_utils import classify_from_patchlist
@@ -42,8 +47,8 @@ class TestClassifyFromPatchList(unittest.TestCase):
         feats = classify_from_patchlist(
             [np.array(Image.new('RGB', (224, 224)))],
             caffe_params,
-            self.modeldef_path,
-            self.modelweighs_path,
+            self.definition_filepath,
+            self.weights_filepath,
             scorelayer='fc7')
         self.assertEqual(len(feats), 1)
         self.assertEqual(len(feats[0]), 4096)
@@ -57,11 +62,11 @@ class TestClassifyFromPatchList(unittest.TestCase):
         # Clear cache to make sure it's not set from previous test.
         load_net.cache_clear()
         t0 = time.time()
-        _ = load_net(self.modeldef_path, self.modelweighs_path)
+        _ = load_net(self.definition_filepath, self.weights_filepath)
         t1 = time.time() - t0
 
         t0 = time.time()
-        _ = load_net(self.modeldef_path, self.modelweighs_path)
+        _ = load_net(self.definition_filepath, self.weights_filepath)
         t2 = time.time() - t0
         self.assertLess(t2, t1)
 
