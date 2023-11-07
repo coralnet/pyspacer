@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.0 (WIP)
+
+- Fixed `DummyExtractor` constructor so that `data_locations` defaults to an empty dict, not an empty list. This fixes serialization of an `ExtractFeaturesMsg` containing `DummyExtractor`.
+
 ## 0.5.0
 
 - Generalized feature extractor support by allowing use of any `FeatureExtractor` subclass instance, and extractor files loaded from anywhere (not just from CoralNet's S3 bucket, which requires CoralNet auth).

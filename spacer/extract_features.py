@@ -201,7 +201,7 @@ class DummyExtractor(FeatureExtractor):
                  data_locations: dict[str, DataLocation] = None,
                  feature_dim: int = 4096,
                  **kwargs):
-        super().__init__(data_locations or [], **kwargs)
+        super().__init__(data_locations or dict(), **kwargs)
 
         # If you want these features to be compatible with an actual
         # classifier, you should make this match the feature_dim that
