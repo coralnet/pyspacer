@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.0 (WIP)
+## 0.6.0
 
 - Fixed `DummyExtractor` constructor so that `data_locations` defaults to an empty dict, not an empty list. This fixes serialization of an `ExtractFeaturesMsg` containing `DummyExtractor`.
 
