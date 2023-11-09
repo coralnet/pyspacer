@@ -1,8 +1,12 @@
 # Changelog
 
-## 0.6.0 (WIP)
+## 0.6.0
 
 - Fixed `DummyExtractor` constructor so that `data_locations` defaults to an empty dict, not an empty list. This fixes serialization of an `ExtractFeaturesMsg` containing `DummyExtractor`.
+
+- Updates to pip-install dependencies:
+
+  - Pillow: >=9.0.1 to >=10.0.1
 
 ## 0.5.0
 

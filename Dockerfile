@@ -97,7 +97,7 @@ FROM caffe AS spacer
 RUN pip3 install coverage==7.0.5
 RUN pip3 install tqdm==4.65.0
 RUN pip3 install fire==0.5.0
-RUN pip3 install Pillow==9.4.0
+RUN pip3 install Pillow==10.1.0
 RUN pip3 install scikit-learn==1.1.3
 RUN pip3 install torch==1.13.1
 RUN pip3 install torchvision==0.14.1
