@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.1
+
+- In 0.5.0, the hash check when loading a feature extractor was broken in two ways. First, it got an error when trying to check the hash. Second, if the hash check failed for a remote-loaded extractor file, then a second attempt at loading would still allow extraction to proceed. This release fixes both problems.
+
 ## 0.6.0
 
 - Fixed `DummyExtractor` constructor so that `data_locations` defaults to an empty dict, not an empty list. This fixes serialization of an `ExtractFeaturesMsg` containing `DummyExtractor`.
