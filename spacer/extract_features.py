@@ -118,6 +118,16 @@ class FeatureExtractor(abc.ABC):
         loc = self.data_locations[key]
         return Path(config.EXTRACTORS_CACHE_DIR) / loc.filename
 
+    def decache_remote_loaded_file(self, key: str):
+        loc = self.data_locations[key]
+        if not loc.is_remote:
+            return
+
+        file_storage = storage_factory('filesystem')
+        filepath_for_cache = str(self.data_filepath_for_cache(key))
+        if file_storage.exists(filepath_for_cache):
+            file_storage.delete(filepath_for_cache)
+
     def load_data_into_filesystem(self, key: str) -> tuple[str, bool]:
         """
         Ensure the data file/blob of the given key is loaded into the
@@ -144,19 +154,18 @@ class FeatureExtractor(abc.ABC):
         remote_loaded = not already_in_filesystem and loc.is_remote
         return str(filepath_for_cache), remote_loaded
 
-    def load_data(self, key: str) -> tuple[BytesIO, bool]:
+    def load_datastream(self, key: str) -> tuple[BytesIO, bool]:
         """
         Loads extractor data from the DataLocation
         `self.data_locations[key]`.
+        Returns:
+        - Byte stream of the data file/blob.
+        - True if it had to be loaded from remote storage, else False.
 
         If the location is remote, caches the data to the filesystem.
         Cached files are identified by the source location's filename. So
         be sure that you don't have distinct files with the same filename,
         or they'll collide with each other.
-
-        Returns:
-        - Byte stream of the data file/blob.
-        - True if it had to be loaded from remote storage, else False.
 
         Windows beware: behavior is undefined when there are distinct files
         to cache whose filenames differ only in upper/lowercase.
@@ -167,7 +176,7 @@ class FeatureExtractor(abc.ABC):
 
             data_filepath, remote_loaded = self.load_data_into_filesystem(key)
             file_storage = storage_factory('filesystem')
-            data = file_storage.load(data_filepath)
+            datastream = file_storage.load(data_filepath)
 
             if remote_loaded:
                 # Cache miss.
@@ -182,14 +191,29 @@ class FeatureExtractor(abc.ABC):
         else:
 
             storage = storage_factory(loc.storage_type, loc.bucket_name)
-            data = storage.load(loc.key)
+            datastream = storage.load(loc.key)
 
             remote_loaded = False
             check_hash = True
 
         if check_hash:
-            self._check_data_hash(data, key)
-        return data, remote_loaded
+            data = datastream.read()
+            try:
+                self._check_data_hash(data, key)
+            except HashMismatchError as e:
+                # If the hash doesn't match, we don't want to proceed
+                # as if the extractor is OK to use.
+                # For the remote case, that means we must decache,
+                # because loading from cache next time would allow the
+                # hash check to be skipped.
+                if loc.is_remote:
+                    self.decache_remote_loaded_file(key)
+                raise e
+            # Reset the stream so another function (like torch.load()) can
+            # read it later.
+            datastream.seek(0)
+
+        return datastream, remote_loaded
 
 
 class DummyExtractor(FeatureExtractor):
@@ -299,12 +323,12 @@ class EfficientNetExtractor(FeatureExtractor):
 
         start_time = time.time()
 
-        weights_data, remote_loaded = self.load_data('weights')
+        weights_datastream, remote_loaded = self.load_datastream('weights')
 
         # Set torch parameters
         torch_params = {'model_type': 'efficientnet',
                         'model_name': 'efficientnet-b0',
-                        'weights_data': weights_data,
+                        'weights_datastream': weights_datastream,
                         'num_class': 1275,
                         'crop_size': 224,
                         'batch_size': 10}

@@ -48,10 +48,10 @@ class TestExtractFeatures(unittest.TestCase):
 
     def test_rgb(self):
 
-        weights_data, _ = self.extractor.load_data('weights')
+        weights_datastream, _ = self.extractor.load_datastream('weights')
         torch_params = {'model_type': 'efficientnet',
                         'model_name': 'efficientnet-b0',
-                        'weights_data': weights_data,
+                        'weights_datastream': weights_datastream,
                         'num_class': 1275,
                         'crop_size': 224,
                         'batch_size': 10}

@@ -28,16 +28,16 @@ def transformation():
 
 
 def load_weights(model: Any,
-                 weights_data: BytesIO) -> Any:
+                 weights_datastream: BytesIO) -> Any:
     """
     Load model weights, original weight saved with DataParallel
     Create new OrderedDict that does not contain `module`.
     :param model: Currently support EfficientNet
-    :param weights_data: model weights, already loaded from storage
+    :param weights_datastream: model weights, already loaded from storage
     :return: well trained model
     """
     # Load weights
-    state_dicts = torch.load(weights_data,
+    state_dicts = torch.load(weights_datastream,
                              map_location=torch.device('cpu'))
 
     with config.log_entry_and_exit('model initialization'):
@@ -64,7 +64,7 @@ def extract_feature(patch_list: List,
     net = models.get_model(model_type=pyparams['model_type'],
                            model_name=pyparams['model_name'],
                            num_classes=pyparams['num_class'])
-    net = load_weights(net, pyparams['weights_data'])
+    net = load_weights(net, pyparams['weights_datastream'])
     net.eval()
 
     transformer = transformation()
