@@ -22,7 +22,10 @@ TEST_EXTRACTORS = {
             ),
         ),
         data_hashes=dict(
-            weights='fb83781de0e207ded23bd42d7eb6e75c1e915a6fbef74120f72732984e227cca',
+            definition='7e0d1f6626da0dcfd00cbe62291b2c20'
+                       '626eb7dacf2ba08c5eafa8a6539fad19',
+            weights='fb83781de0e207ded23bd42d7eb6e75c'
+                    '1e915a6fbef74120f72732984e227cca',
         ),
     ),
     'efficientnet-b0': dict(
@@ -35,7 +38,8 @@ TEST_EXTRACTORS = {
             ),
         ),
         data_hashes=dict(
-            weights='c3dc6d304179c6729c0a0b3d4e60c728bdcf0d82687deeba54af71827467204c',
+            weights='c3dc6d304179c6729c0a0b3d4e60c728'
+                    'bdcf0d82687deeba54af71827467204c',
         ),
     ),
 }
