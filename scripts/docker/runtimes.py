@@ -7,14 +7,15 @@ from spacer.tasks import process_job
 
 
 def make_job(nbr_rowcols: int,
+             image_key: str,
              image_size: int = 1000,
-             extractor_name: str = 'efficientnet_b0_ver1'):
+             extractor: str = 'efficientnet_b0_ver1'):
 
     """ Submits job_cnt jobs. """
     jobs = []
     # Load up an old image and resize it to desired size.
     org_img_loc = DataLocation(storage_type='s3',
-                               key='08bfc10v7t.png',
+                               key=image_key,
                                bucket_name=config.TEST_BUCKET)
     org_img = load_image(org_img_loc)
 
@@ -32,7 +33,7 @@ def make_job(nbr_rowcols: int,
         task_name='extract_features',
         tasks = [ExtractFeaturesMsg(
             job_token='regression_job',
-            feature_extractor_name=extractor_name,
+            extractor=extractor,
             rowcols=[(i, i) for i in list(range(nbr_rowcols))],
             image_loc=img_loc,
             feature_loc=feat_loc
