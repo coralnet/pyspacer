@@ -1,4 +1,4 @@
-from spacer.messages import JobReturnMsg, DataLocation, JobMsg
+from spacer.messages import DataLocation, JobMsg
 from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg
 from spacer.storage import store_image, load_image
 from spacer import config
@@ -12,7 +12,6 @@ def make_job(nbr_rowcols: int,
              extractor: str = 'efficientnet_b0_ver1'):
 
     """ Submits job_cnt jobs. """
-    jobs = []
     # Load up an old image and resize it to desired size.
     org_img_loc = DataLocation(storage_type='s3',
                                key=image_key,
