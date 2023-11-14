@@ -1,3 +1,4 @@
+from io import BytesIO
 import unittest
 
 import numpy as np
@@ -5,7 +6,9 @@ from PIL import Image
 
 from spacer import config
 from spacer.data_classes import ImageFeatures
-from spacer.extract_features import DummyExtractor, FeatureExtractor
+from spacer.exceptions import HashMismatchError
+from spacer.extract_features import \
+    DummyExtractor, EfficientNetExtractor, FeatureExtractor
 from spacer.messages import ExtractFeaturesReturnMsg, DataLocation
 from spacer.storage import load_image, storage_factory
 from .common import TEST_EXTRACTORS
@@ -285,29 +288,149 @@ class TestEfficientNetExtractor(unittest.TestCase):
             self.assertTrue(pf_new.row is not None)
 
 
-@require_test_extractors
-class TestExtractorCache(unittest.TestCase):
+class TestExtractorLoad(unittest.TestCase):
 
-    def test(self):
+    @classmethod
+    def setUpClass(cls):
+        cls.file_storage = storage_factory('filesystem')
+        cls.memory_storage = storage_factory('memory')
+
+    @require_test_extractors
+    def test_remote_filesystem_load(self):
+        """
+        Extractor caching only happens for extractors downloaded
+        remotely (from S3 or URL).
+        We test with the VGG16 definition file because that's the
+        smallest of the test-extractor files, and thus quickest
+        to download.
+        """
         extractor = FeatureExtractor.deserialize(TEST_EXTRACTORS['vgg16'])
-        file_storage = storage_factory('filesystem')
         key = 'definition'
 
-        # Empty the cache.
+        extractor.decache_remote_loaded_file(key)
         filepath_for_cache = str(extractor.data_filepath_for_cache(key))
-        if file_storage.exists(filepath_for_cache):
-            file_storage.delete(filepath_for_cache)
+        self.assertFalse(
+            self.file_storage.exists(filepath_for_cache),
+            msg="decache call should've worked")
 
         # Test cache miss.
         filepath_loaded, remote_loaded = \
             extractor.load_data_into_filesystem(key)
         self.assertTrue(remote_loaded)
-        self.assertTrue(file_storage.exists(filepath_loaded))
+        self.assertTrue(
+            self.file_storage.exists(filepath_loaded),
+            msg="Should be loaded into cache after a cache miss")
         self.assertEqual(filepath_for_cache, filepath_loaded)
 
         # Test cache hit.
         _, remote_loaded = extractor.load_data_into_filesystem(key)
         self.assertFalse(remote_loaded)
+
+    @require_test_extractors
+    def test_remote_datastream_load(self):
+        extractor = FeatureExtractor.deserialize(TEST_EXTRACTORS['vgg16'])
+        key = 'definition'
+
+        extractor.decache_remote_loaded_file(key)
+        filepath_for_cache = str(extractor.data_filepath_for_cache(key))
+
+        # Test cache miss.
+        datastream, remote_loaded = \
+            extractor.load_datastream(key)
+        self.assertTrue(remote_loaded)
+        self.assertTrue(
+            self.file_storage.exists(filepath_for_cache),
+            msg="Should be loaded into cache after a cache miss")
+        self.assertEqual(
+            datastream.tell(), 0,
+            msg="datastream should be at the start of the file")
+
+        # Test cache hit.
+        _, remote_loaded = extractor.load_data_into_filesystem(key)
+        self.assertFalse(remote_loaded)
+
+    @require_test_extractors
+    def test_remote_hash_mismatch(self):
+        serialized_extractor = TEST_EXTRACTORS['vgg16'].copy()
+        serialized_extractor['data_hashes']['definition'] = '1'*64
+        extractor = FeatureExtractor.deserialize(serialized_extractor)
+        key = 'definition'
+
+        extractor.decache_remote_loaded_file(key)
+
+        with self.assertRaises(HashMismatchError):
+            extractor.load_datastream(key)
+
+        filepath_for_cache = str(extractor.data_filepath_for_cache(key))
+        self.assertFalse(
+            self.file_storage.exists(filepath_for_cache),
+            msg="Should not keep in cache after a hash mismatch")
+
+    @require_test_extractors
+    def test_remote_no_hash(self):
+        serialized_extractor = TEST_EXTRACTORS['vgg16'].copy()
+        del serialized_extractor['data_hashes']['definition']
+        extractor = FeatureExtractor.deserialize(serialized_extractor)
+        key = 'definition'
+
+        extractor.decache_remote_loaded_file(key)
+        filepath_for_cache = str(extractor.data_filepath_for_cache(key))
+
+        # Test cache miss.
+        datastream, remote_loaded = \
+            extractor.load_datastream(key)
+        self.assertTrue(remote_loaded)
+        self.assertTrue(
+            self.file_storage.exists(filepath_for_cache),
+            msg="Should be loaded into cache after a cache miss")
+        self.assertEqual(
+            datastream.tell(), 0,
+            msg="datastream should be at the start of the file")
+
+        # Test cache hit.
+        _, remote_loaded = extractor.load_data_into_filesystem(key)
+        self.assertFalse(remote_loaded)
+
+    def test_local(self):
+        key = 'weights'
+        with BytesIO(b'test bytes') as stream:
+            self.memory_storage.store(key, stream)
+
+        extractor = EfficientNetExtractor(
+            data_locations=dict(
+                weights=DataLocation('memory', key),
+            ),
+            data_hashes=dict(
+                # This is the result of
+                # hashlib.sha256(b'test bytes').hexdigest()
+                weights='4be66ea6f5222861df37e88d4635bffb'
+                        '99e183435f79fba13055b835b5dc420b',
+            ),
+        )
+
+        datastream, remote_loaded = \
+            extractor.load_datastream(key)
+        self.assertFalse(remote_loaded)
+        self.assertEqual(
+            datastream.tell(), 0,
+            msg="datastream should be at the start of the file")
+
+    def test_local_hash_mismatch(self):
+        key = 'weights'
+        with BytesIO(b'test bytes') as stream:
+            self.memory_storage.store(key, stream)
+
+        extractor = EfficientNetExtractor(
+            data_locations=dict(
+                weights=DataLocation('memory', key),
+            ),
+            data_hashes=dict(
+                weights='1'*64,
+            ),
+        )
+
+        with self.assertRaises(HashMismatchError):
+            extractor.load_datastream(key)
 
 
 if __name__ == '__main__':

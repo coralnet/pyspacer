@@ -8,7 +8,7 @@ tqdm==4.65.0
 fire==0.5.0
 
 # https://pillow.readthedocs.io/en/stable/releasenotes/index.html
-Pillow==9.4.0
+Pillow==10.1.0
 
 # https://numpy.org/devdocs/release.html
 numpy==1.24.1
