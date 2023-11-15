@@ -138,3 +138,10 @@ dmypy.json
 *secrets*
 .DS_Store
 scratchpad.py
+
+# Ignore folders from git
+# Ignore images-annotated folder
+images-annotated/
+images-unannotated/
+tmp/
+output/
