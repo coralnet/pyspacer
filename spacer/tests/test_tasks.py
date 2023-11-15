@@ -27,7 +27,7 @@ from spacer.tasks import \
     classify_image
 from spacer.tests.utils import cn_beta_fixture_location
 from spacer.train_utils import make_random_data, train
-from .decorators import require_test_fixtures
+from spacer.tests.decorators import require_test_fixtures
 
 TEST_URL = \
     'https://upload.wikimedia.org/wikipedia/commons/7/7b/Red_sea_coral_reef.jpg'

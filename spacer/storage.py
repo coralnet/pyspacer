@@ -12,8 +12,8 @@ from pickle import Unpickler
 from typing import Union, Tuple
 from urllib.error import URLError
 import urllib.request
-
-import botocore.exceptions
+import boto3
+from botocore.exceptions import NoCredentialsError, ClientError
 from PIL import Image
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.linear_model import SGDClassifier
@@ -79,29 +79,42 @@ class S3Storage(Storage):
     """ Stores objects on AWS S3 """
 
     def __init__(self, bucketname: str):
+        if not bucketname:
+            raise ValueError("Bucket name must be provided")
         self.bucketname = bucketname
+        self.s3 = config.get_s3_conn()
 
     def store(self, key: str, stream: BytesIO):
-        s3 = config.get_s3_conn()
-        s3.Bucket(self.bucketname).put_object(Body=stream, Key=key)
-
-    def load(self, key: str):
-        s3 = config.get_s3_conn()
+        self.s3.Bucket(self.bucketname).put_object(Body=stream, Key=key)     
+    
+    def load(self, key: str)-> BytesIO:
         stream = BytesIO()
-        s3.Object(self.bucketname, key).download_fileobj(stream)
-        return stream
+        try:
+            obj = self.s3.Object(self.bucketname, key)
+            obj.download_fileobj(stream)
+            stream.seek(0)
+            return stream
+        except ClientError as e:
+            # Handle specific S3 client errors
+            raise SpacerInputError(f"Error loading object from S3: {str(e)}")
 
     def delete(self, key: str) -> None:
-        s3 = config.get_s3_conn()
-        s3.Object(self.bucketname, key).delete()
-
-    def exists(self, key: str):
-        s3 = config.get_s3_conn()
         try:
-            s3.Object(self.bucketname, key).load()
+            self.s3.Object(self.bucketname, key).delete()
+        except ClientError as e:
+            raise SpacerInputError(f"Error deleting object from S3: {str(e)}")
+    def exists(self, key: str)-> bool:
+        try:
+            self.s3.Object(self.bucketname, key).load()
             return True
-        except botocore.exceptions.ClientError:
+        except NoSuchKey:
             return False
+        except ClientError as e:
+        # Other ClientErrors indicate issues with the S3 service or connection.
+            if e.response['Error']['Code'] == 'NoSuchKey':
+        # Handle a corner case where NoSuchKey is wrapped in a ClientError.
+                return False
+            raise SpacerInputError(f"Error checking existence in S3: {str(e)}")
 
 
 class FileSystemStorage(Storage):
@@ -165,34 +178,47 @@ def storage_factory(storage_type: str, bucketname: Union[str, None] = None):
 
     if storage_type == 's3':
         return S3Storage(bucketname=bucketname)
-    if storage_type == 'filesystem':
+    elif storage_type == 'filesystem':
         return FileSystemStorage()
-    if storage_type == 'memory':
+    elif storage_type == 'memory':
         global _memorystorage
         if _memorystorage is None:
             _memorystorage = MemoryStorage()
         return _memorystorage
-    if storage_type == 'url':
+    elif storage_type == 'url':
         return URLStorage()
+    else:
+        raise ValueError(f"Unsupported storage type: {storage_type}")
 
 
 def store_image(loc: 'DataLocation', img: Image):
-    storage = storage_factory(loc.storage_type, loc.bucket_name)
+    storage = storage_factory(loc.storage_type, loc.bucketname)
     with BytesIO() as stream:
-        img.save(stream, 'JPEG')
-        stream.seek(0)
-        storage.store(loc.key, stream)
+        try:
+            img.save(stream, 'JPEG')
+            stream.seek(0)
+            storage.store(loc.key, stream)
+        except Exception as e:
+            raise SpacerInputError(f"Error storing image: {str(e)}")
 
 
 def load_image(loc: 'DataLocation'):
-    storage = storage_factory(loc.storage_type, loc.bucket_name)
-    return Image.open(storage.load(loc.key))
+    try:
+        # Determine if bucketname is needed based on storage_type.
+        if loc.storage_type == 's3':
+            storage = storage_factory(loc.storage_type, loc.bucketname)
+        else:
+            storage = storage_factory(loc.storage_type)
+
+        return Image.open(storage.load(loc.key))
+    except Exception as e:
+        raise SpacerInputError(f"Error loading image: {str(e)}")
 
 
 def store_classifier(loc: 'DataLocation', clf: CalibratedClassifierCV):
     if not hasattr(clf, 'calibrated_classifiers_'):
         raise ValueError("Only fitted classifiers can be stored.")
-    storage = storage_factory(loc.storage_type, loc.bucket_name)
+    storage = storage_factory(loc.storage_type, loc.bucketname)
     storage.store(loc.key, BytesIO(pickle.dumps(clf, protocol=2)))
 
 
@@ -296,7 +322,7 @@ class ClassifierUnpickler(Unpickler):
 @lru_cache(maxsize=3)
 def load_classifier(loc: 'DataLocation'):
 
-    storage = storage_factory(loc.storage_type, loc.bucket_name)
+    storage = storage_factory(loc.storage_type, loc.bucketname)
     stream = storage.load(loc.key)
     stream.seek(0)
 

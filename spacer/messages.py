@@ -22,14 +22,14 @@ class DataLocation(DataClass):
     def __init__(self,
                  storage_type: str,
                  key: str,
-                 bucket_name: Optional[str] = None):
+                 bucketname: Optional[str] = None):
 
         assert storage_type in config.STORAGE_TYPES, "Storage type not valid."
         if storage_type == 's3':
-            assert bucket_name is not None, "Need bucket_name to use s3."
+            assert bucketname is not None, "Need bucketname to use s3."
         self.storage_type = storage_type
         self.key = key
-        self.bucket_name = bucket_name
+        self.bucketname = bucketname
 
     @classmethod
     def example(cls) -> 'DataLocation':
@@ -57,7 +57,7 @@ class DataLocation(DataClass):
         return DataLocation(**data)
 
     def __hash__(self):
-        return hash((self.storage_type, self.key, self.bucket_name))
+        return hash((self.storage_type, self.key, self.bucketname))
 
 
 class ExtractFeaturesMsg(DataClass):

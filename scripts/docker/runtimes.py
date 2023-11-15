@@ -15,7 +15,7 @@ def make_job(nbr_rowcols: int,
     # Load up an old image and resize it to desired size.
     org_img_loc = DataLocation(storage_type='s3',
                                key=image_key,
-                               bucket_name=config.TEST_BUCKET)
+                               bucketname=config.TEST_BUCKET)
     org_img = load_image(org_img_loc)
 
     img = org_img.resize((image_size, image_size)).convert("RGB")

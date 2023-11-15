@@ -22,8 +22,8 @@ from spacer.storage import \
     clear_memory_storage
 from spacer.tests.utils import cn_beta_fixture_location
 from spacer.train_utils import make_random_data, train
-from .decorators import require_test_fixtures
-from .utils import temp_filesystem_data_location
+from spacer.tests.decorators import require_test_fixtures
+from spacer.tests.utils import temp_filesystem_data_location
 
 
 class TestGlobalMemoryStorage(unittest.TestCase):
