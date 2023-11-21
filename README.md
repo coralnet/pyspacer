@@ -65,6 +65,7 @@ The docker build is used in coralnet's deployment.
 * Choose a local folder for caching extractor files; let's say it's `/your/local/cache`
 * Build image: `docker build -f /your/local/pyspacer/Dockerfile -t myimagename`
 * Run: `docker run -v /your/local/cache:/workspace/cache -v /your/local/pyspacer:/workspace/spacer -it myimagename`
+`docker run -v $(pwd)/cache:/workspace/cache -v $(pwd)/spacer:/workspace/spacer -it pyspacer-docker bash`
   * The `-v /your/local/cache:/workspace/cache` part ensures 
 that all build attempts use the same cache folder of your host storage.
   * The `-v /your/local/pyspacer:/workspace/spacer` mounts your local spacer clone (including 
