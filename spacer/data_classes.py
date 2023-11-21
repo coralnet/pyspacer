@@ -18,12 +18,12 @@ class DataClass(ABC):  # pragma: no cover
 
     @classmethod
     def load(cls, loc: 'DataLocation'):
-        storage = storage_factory(loc.storage_type, loc.bucket_name)
+        storage = storage_factory(loc.storage_type, loc.bucketname)
         return cls.deserialize(json.loads(
             storage.load(loc.key).getvalue().decode('utf-8')))
 
     def store(self, loc: 'DataLocation'):
-        storage = storage_factory(loc.storage_type, loc.bucket_name)
+        storage = storage_factory(loc.storage_type, loc.bucketname)
         storage.store(loc.key, BytesIO(
             json.dumps(self.serialize()).encode('utf-8')))
 
@@ -231,7 +231,7 @@ class ImageFeatures(DataClass):
     @classmethod
     def load(cls, loc: 'DataLocation'):
 
-        storage = storage_factory(loc.storage_type, loc.bucket_name)
+        storage = storage_factory(loc.storage_type, loc.bucketname)
         stream = storage.load(loc.key)
         stream.seek(0)
         try:
@@ -257,7 +257,7 @@ class ImageFeatures(DataClass):
             return cls.deserialize(data)
 
     def store(self, loc: 'DataLocation'):
-        storage = storage_factory(loc.storage_type, loc.bucket_name)
+        storage = storage_factory(loc.storage_type, loc.bucketname)
         if self.valid_rowcol:
             rows = np.array([p.row for p in self.point_features], dtype=np.uint16)
             cols = np.array([p.col for p in self.point_features], dtype=np.uint16)

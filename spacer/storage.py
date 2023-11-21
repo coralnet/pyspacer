@@ -177,6 +177,8 @@ def storage_factory(storage_type: str, bucketname: Union[str, None] = None):
     assert storage_type in config.STORAGE_TYPES
 
     if storage_type == 's3':
+        if bucketname is None:
+            raise ValueError("bucketname must be a string for s3 storage")
         return S3Storage(bucketname=bucketname)
     elif storage_type == 'filesystem':
         return FileSystemStorage()

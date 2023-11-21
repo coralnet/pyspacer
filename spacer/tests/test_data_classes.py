@@ -42,7 +42,7 @@ class TestImageFeatures(unittest.TestCase):
     def test_legacy_from_s3(self):
         legacy_feat_loc = DataLocation(storage_type='s3',
                                        key='08bfc10v7t.png.featurevector',
-                                       bucket_name=config.TEST_BUCKET)
+                                       bucketname=config.TEST_BUCKET)
 
         feats = ImageFeatures.load(legacy_feat_loc)
         self.assertEqual(feats.valid_rowcol, False)
@@ -70,7 +70,7 @@ class TestImageFeaturesNumpyStore(unittest.TestCase):
         s3_loc = DataLocation(
             storage_type='s3',
             key='tmp_feats',
-            bucket_name=config.TEST_BUCKET
+            bucketname=config.TEST_BUCKET
         )
 
         self._test_numpy_store(s3_loc)
@@ -181,7 +181,7 @@ class TestValResults(unittest.TestCase):
     def test_legacy(self):
         legacy_loc = DataLocation(storage_type='s3',
                                   key='beta.valresult',
-                                  bucket_name=config.TEST_BUCKET)
+                                  bucketname=config.TEST_BUCKET)
 
         res = ValResults.load(legacy_loc)
         self.assertEqual(res, ValResults.deserialize(json.loads(

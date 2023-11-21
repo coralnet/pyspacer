@@ -13,12 +13,12 @@ TEST_EXTRACTORS = {
             definition=dict(
                 storage_type='s3',
                 key='vgg16_coralnet_ver1.deploy.prototxt',
-                bucket_name=config.TEST_EXTRACTORS_BUCKET,
+                bucketname=config.TEST_EXTRACTORS_BUCKET,
             ),
             weights=dict(
                 storage_type='s3',
                 key='vgg16_coralnet_ver1.caffemodel',
-                bucket_name=config.TEST_EXTRACTORS_BUCKET,
+                bucketname=config.TEST_EXTRACTORS_BUCKET,
             ),
         ),
         data_hashes=dict(
@@ -34,7 +34,7 @@ TEST_EXTRACTORS = {
             weights=dict(
                 storage_type='s3',
                 key='efficientnet_b0_ver1.pt',
-                bucket_name=config.TEST_EXTRACTORS_BUCKET,
+                bucketname=config.TEST_EXTRACTORS_BUCKET,
             ),
         ),
         data_hashes=dict(

@@ -4,7 +4,7 @@ Defines the highest level methods for completing tasks.
 import logging
 import time
 import traceback
-
+from typing import Callable
 from spacer import config
 from spacer.data_classes import ImageFeatures
 from spacer.messages import \
@@ -34,9 +34,13 @@ def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
         )
 
     check_rowcols(msg.rowcols, img)
-
+    if not isinstance(msg.extractor, Callable):
+        raise TypeError("msg.extractor must be callable")
+    
     with config.log_entry_and_exit('actual extraction'):
         features, return_msg = msg.extractor(img, msg.rowcols)
+    if not hasattr(features, 'store'):
+        raise TypeError("features object must have a store method")
 
     with config.log_entry_and_exit('storing features'):
         features.store(msg.feature_loc)

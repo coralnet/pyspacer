@@ -76,7 +76,7 @@ class TestCaffeExtractor(unittest.TestCase):
         img = load_image(DataLocation(
             storage_type='s3',
             key='edinburgh3.jpg',
-            bucket_name=config.TEST_BUCKET,
+            bucketname=config.TEST_BUCKET,
         ))
         features, return_msg = self.extractor(
             im=img,
@@ -102,7 +102,7 @@ class TestCaffeExtractor(unittest.TestCase):
         img = load_image(DataLocation(
             storage_type='s3',
             key='kh6dydiix0.jpeg',
-            bucket_name=config.TEST_BUCKET,
+            bucketname=config.TEST_BUCKET,
         ))
         features, return_msg = self.extractor(
             im=img,
@@ -123,7 +123,7 @@ class TestCaffeExtractor(unittest.TestCase):
         img = load_image(DataLocation(
             storage_type='s3',
             key='sfq2mr5qbs.jpeg',
-            bucket_name=config.TEST_BUCKET,
+            bucketname=config.TEST_BUCKET,
         ))
         features, return_msg = self.extractor(
             im=img,
@@ -152,7 +152,7 @@ class TestCaffeExtractor(unittest.TestCase):
         img = load_image(DataLocation(
             storage_type='s3',
             key='08bfc10v7t.png',
-            bucket_name=config.TEST_BUCKET,
+            bucketname=config.TEST_BUCKET,
         ))
         features_new, _ = self.extractor(
             im=img,
@@ -161,7 +161,7 @@ class TestCaffeExtractor(unittest.TestCase):
 
         legacy_feat_loc = DataLocation(storage_type='s3',
                                        key='08bfc10v7t.png.featurevector',
-                                       bucket_name=config.TEST_BUCKET)
+                                       bucketname=config.TEST_BUCKET)
         features_legacy = ImageFeatures.load(legacy_feat_loc)
 
         for pf_new, pf_legacy in zip(features_new.point_features,
@@ -189,7 +189,7 @@ class TestEfficientNetExtractor(unittest.TestCase):
         img = load_image(DataLocation(
             storage_type='s3',
             key='edinburgh3.jpg',
-            bucket_name=config.TEST_BUCKET,
+            bucketname=config.TEST_BUCKET,
         ))
         features, return_msg = self.extractor(
             im=img,
@@ -214,7 +214,7 @@ class TestEfficientNetExtractor(unittest.TestCase):
         img = load_image(DataLocation(
             storage_type='s3',
             key='kh6dydiix0.jpeg',
-            bucket_name=config.TEST_BUCKET,
+            bucketname=config.TEST_BUCKET,
         ))
         features, return_msg = self.extractor(
             im=img,
@@ -234,7 +234,7 @@ class TestEfficientNetExtractor(unittest.TestCase):
         img = load_image(DataLocation(
             storage_type='s3',
             key='sfq2mr5qbs.jpeg',
-            bucket_name=config.TEST_BUCKET,
+            bucketname=config.TEST_BUCKET,
         ))
         features, return_msg = self.extractor(
             im=img,
@@ -259,7 +259,7 @@ class TestEfficientNetExtractor(unittest.TestCase):
         img = load_image(DataLocation(
             storage_type='s3',
             key='08bfc10v7t.png',
-            bucket_name=config.TEST_BUCKET,
+            bucketname=config.TEST_BUCKET,
         ))
         features_new, _ = self.extractor(
             im=img,
@@ -269,7 +269,7 @@ class TestEfficientNetExtractor(unittest.TestCase):
         legacy_feat_loc = DataLocation(storage_type='s3',
                                        key='08bfc10v7t.png.effnet.'
                                            'ver1.featurevector',
-                                       bucket_name=config.TEST_BUCKET)
+                                       bucketname=config.TEST_BUCKET)
         features_legacy = ImageFeatures.load(legacy_feat_loc)
 
         self.assertFalse(features_legacy.valid_rowcol)

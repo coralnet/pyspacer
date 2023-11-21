@@ -110,7 +110,7 @@ def submit_jobs(nbr_rowcols: List[int],
     # Load up an old image and resize it to desired size.
     org_img_loc = DataLocation(storage_type='s3',
                                key='08bfc10v7t.png',
-                               bucket_name=config.TEST_BUCKET)
+                               bucketname=config.TEST_BUCKET)
     org_img = load_image(org_img_loc)
 
     img = org_img.resize((image_size, image_size)).convert("RGB")
@@ -118,7 +118,7 @@ def submit_jobs(nbr_rowcols: List[int],
     img_loc = DataLocation(storage_type='s3',
                            key='tmp/{}.jpg'.
                            format(str(datetime.now()).replace(' ', '_')),
-                           bucket_name=config.TEST_BUCKET)
+                           bucketname=config.TEST_BUCKET)
     store_image(img_loc, img)
     for npts in nbr_rowcols:
 
@@ -127,7 +127,7 @@ def submit_jobs(nbr_rowcols: List[int],
         feat_loc = DataLocation(storage_type='s3',
                                 key='tmp/{}.feats.json'.
                                 format(str(datetime.now()).replace(' ', '_')),
-                                bucket_name=config.TEST_BUCKET)
+                                bucketname=config.TEST_BUCKET)
         job_msg = JobMsg(
             task_name='extract_features',
             tasks=[ExtractFeaturesMsg(
@@ -141,12 +141,12 @@ def submit_jobs(nbr_rowcols: List[int],
         job_msg_loc = DataLocation(
             storage_type='s3',
             key=feat_loc.key + '.job_msg.json',
-            bucket_name=config.TEST_BUCKET
+            bucketname=config.TEST_BUCKET
         )
         job_res_loc = DataLocation(
             storage_type='s3',
             key=feat_loc.key + '.job_res.json',
-            bucket_name=config.TEST_BUCKET
+            bucketname=config.TEST_BUCKET
         )
         job_msg.store(job_msg_loc)
 
