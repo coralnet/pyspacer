@@ -6,6 +6,10 @@ class HashMismatchError(Exception):
     pass
 
 
+class RowColumnMismatchError(Exception):
+    pass
+
+
 class SpacerInputError(Exception):
     """
     This should indicate that the exception was not caused by a spacer bug, but

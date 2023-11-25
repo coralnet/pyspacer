@@ -14,6 +14,7 @@ from sklearn.neural_network import MLPClassifier
 
 from spacer import config
 from spacer.data_classes import ImageLabels, ImageFeatures
+from spacer.exceptions import RowColumnMismatchError
 from spacer.messages import DataLocation
 
 
@@ -138,15 +139,26 @@ def load_image_data(labels: ImageLabels,
     # Sanity check
     if image_features.valid_rowcol:
         # With new data structure just check that the sets of row, col
-        # given by the labels is available in the features.
+        # given by the labels are available in the features.
         rc_features_set = set([(pf.row, pf.col) for pf in
                                image_features.point_features])
         rc_labels_set = set([(row, col) for (row, col, _) in image_labels])
-        assert rc_labels_set.issubset(rc_features_set)
+
+        if not rc_labels_set.issubset(rc_features_set):
+            difference_set = rc_labels_set.difference(rc_features_set)
+            example_rc = next(iter(difference_set))
+            raise RowColumnMismatchError(
+                f"{imkey}: The labels' row-column positions don't match those"
+                f" of the feature vector (example: {example_rc}).")
     else:
         # With legacy data structure check that length is the same.
-        assert len(image_labels) == len(image_features.point_features), \
-            "number of extracted features doesn't match the number of labels!"
+        label_count = len(image_labels)
+        feature_count = len(image_features.point_features)
+
+        if not label_count == feature_count:
+            raise RowColumnMismatchError(
+                f"{imkey}: The number of labels ({label_count}) doesn't match"
+                f" the number of extracted features ({feature_count}).")
 
     x, y = [], []
     if image_features.valid_rowcol:
