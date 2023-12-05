@@ -10,10 +10,23 @@ class RowColumnMismatchError(Exception):
     pass
 
 
-class SpacerInputError(Exception):
+class URLDownloadError(Exception):
     """
-    This should indicate that the exception was not caused by a spacer bug, but
-    by giving inputs that spacer cannot reasonably handle. For example, an
-    unreachable URL given as the image URL to download.
+    This wraps around several different errors that can happen
+    when trying to download from a URLStorage url. This helps to
+    indicate that the exceptions are from a URLStorage url and not
+    some other kind of download/read.
+    The original error's saved in a field in case the handler wants
+    to handle different error causes in different ways.
     """
-    pass
+    def __init__(self, message, original_error):
+        super().__init__(message)
+        self.message = message
+        self.original_error = original_error
+
+    def __str__(self):
+        return (
+            f"{self.message} /"
+            f" Details - {type(self.original_error).__name__}:"
+            f" {self.original_error}"
+        )

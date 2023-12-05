@@ -7,9 +7,10 @@ import os
 import pickle
 import warnings
 from functools import lru_cache
+from http.client import IncompleteRead
 from io import BytesIO
 from pickle import Unpickler
-from typing import Union, Tuple
+from typing import Union
 from urllib.error import URLError
 import urllib.request
 
@@ -19,7 +20,7 @@ from sklearn.calibration import CalibratedClassifierCV
 from sklearn.linear_model import SGDClassifier
 
 from spacer import config
-from spacer.exceptions import SpacerInputError
+from spacer.exceptions import URLDownloadError
 
 
 class Storage(abc.ABC):  # pragma: no cover
@@ -54,8 +55,26 @@ class URLStorage(Storage):
         try:
             download_response = urllib.request.urlopen(url)
         except (URLError, ValueError) as e:
-            raise SpacerInputError(str(e))
-        return BytesIO(download_response.read())
+            # Possible errors include:
+            # ValueError - unknown url type: '<url>'
+            #   - Malformed url
+            # URLError - gaierror(11001, 'getaddrinfo failed')
+            #   - Invalid domain
+            # HTTPError 404 or 500
+            #   - HTTPError inherits from URLError
+            raise URLDownloadError(
+                f"Failed to download from the URL '{url}'.", e)
+
+        try:
+            download_bytes = download_response.read()
+        except IncompleteRead as e:
+            # http.client.IncompleteRead - <num> bytes read, <num> more expected
+            #   - In some cases this seems to just happen randomly?
+            #     But it'll depend on the URL's server.
+            raise URLDownloadError(
+                f"Couldn't read the full response from the URL '{url}'.", e)
+
+        return BytesIO(download_bytes)
 
     def delete(self, url: str) -> None:
         raise TypeError('Delete operation not supported for URL storage.')
