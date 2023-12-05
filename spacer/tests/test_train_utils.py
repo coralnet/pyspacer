@@ -6,6 +6,7 @@ import numpy as np
 
 from spacer import config
 from spacer.data_classes import ImageLabels, PointFeatures, ImageFeatures
+from spacer.exceptions import RowColumnMismatchError
 from spacer.messages import DataLocation
 from spacer.train_utils import train, calc_batch_size, chunkify, calc_acc, \
     load_image_data, load_batch_data, make_random_data, evaluate_classifier
@@ -323,6 +324,37 @@ class TestLoadImageData(unittest.TestCase):
         # vector of point_features list. But it is not.
         self.assertTrue(np.array_equal(x[0], features.point_features[0].data))
         self.assertTrue(np.array_equal(x[1], features.point_features[2].data))
+
+    def test_rowcol_mismatch(self):
+        """
+        Labels has a row-column pair that's not in features.
+        """
+        labels, features = self.fixtures(in_order=True, valid_rowcol=True)
+
+        labels.data[self.feat_key][2] = (300, 299, 1)
+
+        with self.assertRaises(RowColumnMismatchError) as cm:
+            load_image_data(labels, self.feat_key, [1, 2], self.feature_loc)
+        self.assertEqual(
+            str(cm.exception),
+            f"{self.feat_key}: The labels' row-column positions don't match"
+            f" those of the feature vector (example: (300, 299)).")
+
+    def test_legacy_rowcol_mismatch(self):
+        """
+        With legacy features, the best we can do when checking for row-column
+        mismatches is comparing the counts of labels vs. features.
+        """
+        labels, features = self.fixtures(in_order=True, valid_rowcol=False)
+
+        labels.data[self.feat_key].append((400, 400, 2))
+
+        with self.assertRaises(RowColumnMismatchError) as cm:
+            load_image_data(labels, self.feat_key, [1, 2], self.feature_loc)
+        self.assertEqual(
+            str(cm.exception),
+            f"{self.feat_key}: The number of labels (4) doesn't match"
+            f" the number of extracted features (3).")
 
 
 class TestLoadBatchData(unittest.TestCase):

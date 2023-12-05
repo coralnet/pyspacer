@@ -4,6 +4,8 @@ from PIL import Image
 
 from spacer import config
 from spacer.data_classes import ImageFeatures, ValResults, ImageLabels
+from spacer.exceptions import (
+    DataLimitError, RowColumnInvalidError, RowColumnMismatchError)
 from spacer.extract_features import DummyExtractor
 from spacer.messages import \
     ExtractFeaturesMsg, \
@@ -48,10 +50,12 @@ class TestImageAndPointLimitsAsserts(unittest.TestCase):
             feature_loc=DataLocation(storage_type='memory',
                                      key='feats')
         )
-        try:
+        with self.assertRaises(DataLimitError) as context:
             extract_features(msg)
-        except AssertionError as err:
-            assert "too large" in repr(err)
+        self.assertEqual(
+            "Image img has 10001 x 10000 = 100010000 total pixels,"
+            " which is larger than the max allowed of 100000000.",
+            str(context.exception))
 
     def test_image_ok_size(self):
         clear_memory_storage()
@@ -84,10 +88,13 @@ class TestImageAndPointLimitsAsserts(unittest.TestCase):
             feature_loc=DataLocation(storage_type='memory',
                                      key='feats')
         )
-        try:
+        with self.assertRaises(DataLimitError) as context:
             extract_features(msg)
-        except AssertionError as err:
-            assert "Too many rowcol locations" in repr(err)
+        self.assertEqual(
+            f"{config.MAX_POINTS_PER_IMAGE + 1} point locations were specified"
+            f" for image img, and that's larger than"
+            f" the max allowed of {config.MAX_POINTS_PER_IMAGE}.",
+            str(context.exception))
 
     def test_ok_nbr_points(self):
         clear_memory_storage()
@@ -221,7 +228,7 @@ class TestTrainClassifier(unittest.TestCase):
                                          key='{}.json'.format(i))
             )
 
-            # Add a duplicate that was not part of feature extraction.
+            # Add a duplicate point that was not part of feature extraction.
             store_image(msg.image_loc, Image.new('RGB', (101, 101)))
             extract_features(msg)
             rowcols = msg.rowcols
@@ -249,9 +256,6 @@ class TestTrainClassifier(unittest.TestCase):
         )
         train_classifier(msg)
 
-        # Basically make sure this doesn't raise any errors
-        self.assertTrue(True)
-
         # Now change the rowcols in the labels file to include a tuple
         # not extracted.
         faulty_labels = ImageLabels(data={})
@@ -260,7 +264,7 @@ class TestTrainClassifier(unittest.TestCase):
             row, col, label = faulty_labels.data[key][-1]
             faulty_labels.data[key][-1] = (row-1, col-1, label)
 
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(RowColumnMismatchError):
             train_classifier(msg)
 
 
@@ -399,13 +403,13 @@ class TestBadRowcols(unittest.TestCase):
             rowcols=[(-1, -1)],
             classifier_loc=cn_beta_fixture_location('example.model')
         )
-
-        try:
+        with self.assertRaises(RowColumnInvalidError) as context:
             classify_image(msg)
-            raise ValueError("classify_image should raise an error.")
-        except AssertionError as err:
-            self.assertIn('negative', repr(err))
-            self.assertIn('-1', repr(err))
+        self.assertEqual(
+            "https://upload.wikimedia.org/wikipedia/commons/7/7b/"
+            "Red_sea_coral_reef.jpg: Row values must be non-negative."
+            " Given value was: -1",
+            str(context.exception))
 
 
 if __name__ == '__main__':

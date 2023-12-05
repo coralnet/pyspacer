@@ -16,7 +16,7 @@ from spacer.messages import \
     ClassifyImageMsg, \
     ClassifyReturnMsg, JobMsg, JobReturnMsg
 from spacer.storage import load_image, load_classifier, store_classifier
-from spacer.task_utils import check_rowcols
+from spacer.task_utils import check_extract_inputs
 from spacer.train_classifier import trainer_factory
 
 
@@ -24,16 +24,7 @@ def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
 
     img = load_image(msg.image_loc)
 
-    assert img.width * img.height <= config.MAX_IMAGE_PIXELS, \
-        "Image ({}, {}) with {} pixels too large. (max: {})".format(
-            img.width, img.height, img.width * img.height,
-            config.MAX_IMAGE_PIXELS)
-    assert len(msg.rowcols) <= config.MAX_POINTS_PER_IMAGE, \
-        "Too many rowcol locations ({}). Max {} allowed".format(
-            len(msg.rowcols), config.MAX_POINTS_PER_IMAGE
-        )
-
-    check_rowcols(msg.rowcols, img)
+    check_extract_inputs(img, msg.rowcols, msg.image_loc.key)
 
     with config.log_entry_and_exit('actual extraction'):
         features, return_msg = msg.extractor(img, msg.rowcols)
@@ -90,7 +81,7 @@ def classify_image(msg: ClassifyImageMsg) -> ClassifyReturnMsg:
 
     # Download image
     img = load_image(msg.image_loc)
-    check_rowcols(msg.rowcols, img)
+    check_extract_inputs(img, msg.rowcols, msg.image_loc.key)
 
     # Extract features
     features, _ = msg.extractor(img, msg.rowcols)

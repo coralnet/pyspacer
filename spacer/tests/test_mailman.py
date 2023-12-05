@@ -47,19 +47,20 @@ class TestProcessJobErrorHandling(unittest.TestCase):
 
     def test_img_classify_bad_url(self):
 
+        bad_url = 'http::/invalid_url.com'
         msg = JobMsg(task_name='classify_image',
                      tasks=[ClassifyImageMsg(
                          job_token='my_job',
                          image_loc=DataLocation(storage_type='url',
-                                                key='http::/invalid_url.com'),
+                                                key=bad_url),
                          extractor=DummyExtractor(),
                          rowcols=[(1, 1)],
                          classifier_loc=DataLocation(storage_type='memory',
                                                      key='doesnt_matter'))])
         return_msg = process_job(msg)
         self.assertFalse(return_msg.ok)
-        self.assertIn("URLError", return_msg.error_message)
-        self.assertIn("SpacerInputError", return_msg.error_message)
+        self.assertIn("URLDownloadError", return_msg.error_message)
+        self.assertIn(bad_url, return_msg.error_message)
         self.assertEqual(type(return_msg), JobReturnMsg)
 
     def test_img_classify_classifier_key(self):
