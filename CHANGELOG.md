@@ -2,7 +2,7 @@
 
 ## 0.7.0 (WIP)
 
-- Changed the error classes which are raised in various error cases.
+- Replaced all SpacerInputErrors and some AssertionErrors with more descriptive error classes.
 
 ## 0.6.1
 

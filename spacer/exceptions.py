@@ -2,7 +2,15 @@ class ConfigError(Exception):
     pass
 
 
+class DataLimitError(Exception):
+    pass
+
+
 class HashMismatchError(Exception):
+    pass
+
+
+class RowColumnInvalidError(Exception):
     pass
 
 
