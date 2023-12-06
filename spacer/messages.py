@@ -6,7 +6,6 @@ python-native data-structures such that it can be stored.
 
 from __future__ import annotations
 from pathlib import Path
-from typing import List, Tuple, Dict, Union, Optional
 from urllib.parse import urlparse
 
 from spacer import config
@@ -22,7 +21,7 @@ class DataLocation(DataClass):
     def __init__(self,
                  storage_type: str,
                  key: str,
-                 bucket_name: Optional[str] = None):
+                 bucket_name: str | None = None):
 
         assert storage_type in config.STORAGE_TYPES, "Storage type not valid."
         if storage_type == 's3':
@@ -53,7 +52,7 @@ class DataLocation(DataClass):
         return self.storage_type != 'url'
 
     @classmethod
-    def deserialize(cls, data: Dict) -> 'DataLocation':
+    def deserialize(cls, data: dict) -> 'DataLocation':
         return DataLocation(**data)
 
     def __hash__(self):
@@ -99,7 +98,7 @@ class ExtractFeaturesMsg(DataClass):
             feature_loc=DataLocation('memory', 'my_feats.json'),
         )
 
-    def serialize(self) -> Dict:
+    def serialize(self) -> dict:
         return {
             'job_token': self.job_token,
             'extractor': self.extractor.serialize(),
@@ -109,7 +108,7 @@ class ExtractFeaturesMsg(DataClass):
         }
 
     @classmethod
-    def deserialize(cls, data: Dict) -> 'ExtractFeaturesMsg':
+    def deserialize(cls, data: dict) -> 'ExtractFeaturesMsg':
         from spacer.extract_features import FeatureExtractor
         return ExtractFeaturesMsg(
             job_token=data['job_token'],
@@ -149,7 +148,7 @@ class TrainClassifierMsg(DataClass):
                  train_labels: ImageLabels,  # Traindata
                  val_labels: ImageLabels,  # Valdata
                  features_loc: DataLocation,  # Location of features. Key is set from train and val labels during data load.
-                 previous_model_locs: List[DataLocation],  # Previous models to be evaluated on the valdata.
+                 previous_model_locs: list[DataLocation],  # Previous models to be evaluated on the valdata.
                  model_loc: DataLocation,  # Where to store model.
                  valresult_loc: DataLocation,  # Model result on val.
                  ):
@@ -185,7 +184,7 @@ class TrainClassifierMsg(DataClass):
             valresult_loc=DataLocation('memory', 'my_valresult.json')
         )
 
-    def serialize(self) -> Dict:
+    def serialize(self) -> dict:
         return {
             'job_token': self.job_token,
             'trainer_name': self.trainer_name,
@@ -201,8 +200,7 @@ class TrainClassifierMsg(DataClass):
         }
 
     @classmethod
-    def deserialize(cls, data: Dict) -> 'TrainClassifierMsg':
-        """ Redefining to help pycharm typing module """
+    def deserialize(cls, data: dict) -> 'TrainClassifierMsg':
         return TrainClassifierMsg(
             job_token=data['job_token'],
             trainer_name=data['trainer_name'],
@@ -225,9 +223,9 @@ class TrainClassifierReturnMsg(DataClass):
                  # Accuracy of new classifier on the validation set.
                  acc: float,
                  # Accuracy of previous classifiers on the validation set.
-                 pc_accs: List[float],
+                 pc_accs: list[float],
                  # Accuracy on reference set for each epoch of training.
-                 ref_accs: List[float],
+                 ref_accs: list[float],
                  # Runtime for full training execution.
                  runtime: float,
                  ):
@@ -246,7 +244,7 @@ class TrainClassifierReturnMsg(DataClass):
         )
 
     @classmethod
-    def deserialize(cls, data: Dict) -> 'TrainClassifierReturnMsg':
+    def deserialize(cls, data: dict) -> 'TrainClassifierReturnMsg':
         return TrainClassifierReturnMsg(**data)
 
 
@@ -282,7 +280,7 @@ class ClassifyFeaturesMsg(DataClass):
         }
 
     @classmethod
-    def deserialize(cls, data: Dict) -> 'ClassifyFeaturesMsg':
+    def deserialize(cls, data: dict) -> 'ClassifyFeaturesMsg':
         return ClassifyFeaturesMsg(
             job_token=data['job_token'],
             feature_loc=DataLocation.deserialize(data['feature_loc']),
@@ -296,7 +294,7 @@ class ClassifyImageMsg(DataClass):
     def __init__(self,
                  job_token: str,  # Primary key of job, not used in spacer.
                  extractor: 'FeatureExtractor',
-                 rowcols: List[Tuple[int, int]],
+                 rowcols: list[tuple[int, int]],
                  image_loc: DataLocation,  # Location of image to classify.
                  classifier_loc: DataLocation,  # Location of classifier.
                  ):
@@ -335,7 +333,7 @@ class ClassifyImageMsg(DataClass):
         }
 
     @classmethod
-    def deserialize(cls, data: Dict) -> 'ClassifyImageMsg':
+    def deserialize(cls, data: dict) -> 'ClassifyImageMsg':
         from spacer.extract_features import FeatureExtractor
         return ClassifyImageMsg(
             job_token=data['job_token'],
@@ -352,9 +350,9 @@ class ClassifyReturnMsg(DataClass):
     def __init__(self,
                  runtime: float,
                  # Scores is a list of (row, col, [scores]) tuples.
-                 scores: List[Tuple[int, int, List[float]]],
+                 scores: list[tuple[int, int, list[float]]],
                  # Maps the score index to a global class id.
-                 classes: List[int],
+                 classes: list[int],
                  valid_rowcol: bool):
 
         self.runtime = runtime
@@ -362,7 +360,7 @@ class ClassifyReturnMsg(DataClass):
         self.classes = classes
         self.valid_rowcol = valid_rowcol
 
-    def __getitem__(self, rowcol: Tuple[int, int]) -> List[float]:
+    def __getitem__(self, rowcol: tuple[int, int]) -> list[float]:
         """ Returns features at (row, col) location. """
         if not self.valid_rowcol:
             raise ValueError('Method requires valid rows and columns')
@@ -379,7 +377,7 @@ class ClassifyReturnMsg(DataClass):
         )
 
     @classmethod
-    def deserialize(cls, data: Dict) -> 'ClassifyReturnMsg':
+    def deserialize(cls, data: dict) -> 'ClassifyReturnMsg':
         return ClassifyReturnMsg(
             runtime=data['runtime'],
             scores=[(row, col, scores) for
@@ -396,10 +394,10 @@ class JobMsg(DataClass):
 
     def __init__(self,
                  task_name: str,
-                 tasks: List[Union[ExtractFeaturesMsg,
-                                   TrainClassifierMsg,
-                                   ClassifyFeaturesMsg,
-                                   ClassifyImageMsg]]):
+                 tasks: list[ExtractFeaturesMsg
+                             | TrainClassifierMsg
+                             | ClassifyFeaturesMsg
+                             | ClassifyImageMsg]):
 
         assert task_name in config.TASKS
 
@@ -407,7 +405,7 @@ class JobMsg(DataClass):
         self.tasks = tasks
 
     @classmethod
-    def deserialize(cls, data: Dict) -> 'JobMsg':
+    def deserialize(cls, data: dict) -> 'JobMsg':
 
         task_name = data['task_name']
         assert task_name in config.TASKS
@@ -441,10 +439,10 @@ class JobReturnMsg(DataClass):
     def __init__(self,
                  original_job: JobMsg,
                  ok: bool,
-                 results: Optional[List[Union[ExtractFeaturesReturnMsg,
-                                              TrainClassifierReturnMsg,
-                                              ClassifyReturnMsg]]],
-                 error_message: Optional[str]):
+                 results: list[ExtractFeaturesReturnMsg
+                               | TrainClassifierReturnMsg
+                               | ClassifyReturnMsg] | None,
+                 error_message: str | None):
 
         self.original_job = original_job
         self.results = results
@@ -461,7 +459,7 @@ class JobReturnMsg(DataClass):
         )
 
     @classmethod
-    def deserialize(cls, data: Dict) -> 'JobReturnMsg':
+    def deserialize(cls, data: dict) -> 'JobReturnMsg':
 
         original_job = JobMsg.deserialize(data['original_job'])
 

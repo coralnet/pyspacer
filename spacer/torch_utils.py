@@ -2,10 +2,10 @@
 This file contains a set of pytorch utility functions
 """
 
-import hashlib
+from __future__ import annotations
 from collections import OrderedDict
 from io import BytesIO
-from typing import Any, List
+from typing import Any
 
 import numpy as np
 import torch
@@ -52,8 +52,8 @@ def load_weights(model: Any,
     return model
 
 
-def extract_feature(patch_list: List,
-                    pyparams: dict) -> List:
+def extract_feature(patch_list: list,
+                    pyparams: dict) -> list:
     """
     Crop patches and extract features
     :param patch_list: a list of cropped images

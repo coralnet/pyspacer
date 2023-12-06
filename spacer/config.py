@@ -2,6 +2,7 @@
 Contains config and settings for the repo.
 """
 
+from __future__ import annotations
 import importlib
 import json
 import logging
@@ -11,7 +12,7 @@ import time
 import warnings
 from contextlib import ContextDecorator
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import boto3
 from PIL import Image, ImageFile
@@ -51,7 +52,7 @@ if SECRETS_PATH.exists():
 #     'AWS_ACCESS_KEY_ID': '...',
 #     'AWS_SECRET_ACCESS_KEY': '...',
 # }
-SETTINGS_FROM_DJANGO: Optional[dict] = None
+SETTINGS_FROM_DJANGO: dict | None = None
 try:
     from django.core.exceptions import ImproperlyConfigured
 except ImportError:

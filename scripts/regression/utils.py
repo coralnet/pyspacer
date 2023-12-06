@@ -1,8 +1,8 @@
+from __future__ import annotations
 import glob
 import json
 import os
 import random
-from typing import Tuple
 
 import tqdm
 
@@ -50,7 +50,7 @@ def cache_local(source_root: str,
             bucket.Object(obj.key).download_file(local_path)
 
 
-def build_traindata(image_root: str) -> Tuple[ImageLabels, ImageLabels]:
+def build_traindata(image_root: str) -> tuple[ImageLabels, ImageLabels]:
 
     print('Assembling data in {}...'.format(image_root))
     # Create the train and val ImageLabels data structures.

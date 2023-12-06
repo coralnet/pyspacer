@@ -2,13 +2,13 @@
 This script submits 10 jobs to queues and monitors as the
 jobs are completed.
 """
+from __future__ import annotations
 import logging
-from typing import List
 
 from scripts.aws.utils import submit_jobs, monitor_jobs
 
 
-def main(nbr_rowcols: List[int],
+def main(nbr_rowcols: list[int],
          job_queue: str = 'shakeout',
          image_size: int = 1000):
 

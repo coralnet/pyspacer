@@ -4,9 +4,10 @@ simplicity. Since support for Caffe will be deprecate,
 these are only lightly cleaned up from their original state.
 """
 
+from __future__ import annotations
 from copy import copy
 from functools import lru_cache
-from typing import List, Any, Tuple
+from typing import Any
 
 import caffe
 import numpy as np
@@ -21,7 +22,7 @@ class Transformer:
     (scaling and mean subtraction.).
     """
 
-    def __init__(self, mean: Tuple = (0, 0, 0)) -> None:
+    def __init__(self, mean: tuple = (0, 0, 0)) -> None:
         self.mean = np.array(mean, dtype=np.float32)
         self.scale = 1.0
 
@@ -54,12 +55,12 @@ class Transformer:
         return np.uint8(im)
 
 
-def classify_from_imlist(im_list: List,
+def classify_from_imlist(im_list: list,
                          net: Any,
                          transformer: Transformer,
                          batch_size: int,
                          scorelayer: str = 'score',
-                         startlayer: str = 'conv1_1') -> List:
+                         startlayer: str = 'conv1_1') -> list:
     """
     classify_from_imlist classifies a list of images and returns
     estimated labels and scores.
@@ -101,12 +102,12 @@ def load_net(modeldef_path: str,
     return caffe.Net(modeldef_path, modelweighs_path, caffe.TEST)
 
 
-def classify_from_patchlist(patchlist: List,
+def classify_from_patchlist(patchlist: list,
                             pyparams: dict,
                             modeldef_path: str,
                             modelweighs_path: str,
                             scorelayer: str = 'score',
-                            startlayer: str = 'conv1_1') -> List:
+                            startlayer: str = 'conv1_1') -> list:
     """
     extract features of a list of patches
     :param patchlist: a list of patches (cropped images).

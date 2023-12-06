@@ -2,10 +2,10 @@
 Utility methods for training classifiers.
 """
 
+from __future__ import annotations
 import logging
 import random
 import string
-from typing import Tuple, List
 
 import numpy as np
 from sklearn.calibration import CalibratedClassifierCV
@@ -21,7 +21,7 @@ from spacer.messages import DataLocation
 def train(labels: ImageLabels,
           feature_loc: DataLocation,
           nbr_epochs: int,
-          clf_type: str) -> Tuple[CalibratedClassifierCV, List[float]]:
+          clf_type: str) -> tuple[CalibratedClassifierCV, list[float]]:
 
     if len(labels) < config.MIN_TRAINIMAGES:
         raise ValueError('Not enough training samples.')
@@ -91,8 +91,8 @@ def train(labels: ImageLabels,
 
 def evaluate_classifier(clf: CalibratedClassifierCV,
                         labels: ImageLabels,
-                        classes: List[int],
-                        feature_loc: DataLocation) -> Tuple[List, List, List]:
+                        classes: list[int],
+                        feature_loc: DataLocation) -> tuple[list, list, list]:
     """ Evaluates classifier on data """
     scores, gts, ests = [], [], []
     for imkey in labels.image_keys:
@@ -108,13 +108,13 @@ def evaluate_classifier(clf: CalibratedClassifierCV,
     return gts, ests, scores
 
 
-def chunkify(lst: List,
-             nbr_chunks: int) -> List:
+def chunkify(lst: list,
+             nbr_chunks: int) -> list:
     return [lst[i::nbr_chunks] for i in range(nbr_chunks)]
 
 
 def calc_batch_size(max_imgs_in_memory: int,
-                    train_set_size: int) -> Tuple[int, int]:
+                    train_set_size: int) -> tuple[int, int]:
     images_per_batch = min(max_imgs_in_memory, train_set_size)
     batches_per_epoch = int(np.ceil(train_set_size / images_per_batch))
     return images_per_batch, batches_per_epoch
@@ -122,15 +122,17 @@ def calc_batch_size(max_imgs_in_memory: int,
 
 def load_image_data(labels: ImageLabels,
                     imkey: str,
-                    classes: List[int],
+                    classes: list[int],
                     feature_loc: DataLocation) \
-        -> Tuple[List[List[float]], List[int]]:
+        -> tuple[list[list[float]], list[int]]:
     """
-    Loads features and labels for image and matches feature with labels.
+    Loads features and labels for the specified image,
+    and builds element-matching lists for use with methods such as
+    CalibratedClassifierCV.fit().
     """
 
     # Load features for this image.
-    feature_loc.key = imkey  # Set the relevant key here.
+    feature_loc.key = imkey
     image_features = ImageFeatures.load(feature_loc)
 
     # Load row, col, labels for this image.
@@ -183,11 +185,14 @@ def load_image_data(labels: ImageLabels,
 
 
 def load_batch_data(labels: ImageLabels,
-                    imkeylist: List[str],
-                    classes: List[int],
+                    imkeylist: list[str],
+                    classes: list[int],
                     feature_loc: DataLocation) \
-        -> Tuple[List[List[float]], List[int]]:
-    """ Loads features and labels and match them together. """
+        -> tuple[list[list[float]], list[int]]:
+    """
+    Builds element-matching lists of features and labels
+    for multiple images.
+    """
     x, y = [], []
     for imkey in imkeylist:
         x_, y_ = load_image_data(labels, imkey, classes, feature_loc)
@@ -196,7 +201,7 @@ def load_batch_data(labels: ImageLabels,
     return x, y
 
 
-def calc_acc(gt: List[int], est: List[int]) -> float:
+def calc_acc(gt: list[int], est: list[int]) -> float:
     """
     Calculate the accuracy of (agreement between) two integer valued list.
     """
@@ -218,7 +223,7 @@ def calc_acc(gt: List[int], est: List[int]) -> float:
 
 
 def make_random_data(im_count: int,
-                     class_list: List[int],
+                     class_list: list[int],
                      points_per_image: int,
                      feature_dim: int,
                      feature_loc: DataLocation) -> ImageLabels:
