@@ -1,6 +1,6 @@
+from __future__ import annotations
 import itertools
 import unittest
-from typing import Tuple
 
 import numpy as np
 
@@ -217,7 +217,7 @@ class TestLoadImageData(unittest.TestCase):
                                         key=self.feat_key)
 
     def fixtures(self, in_order=True, valid_rowcol=True) \
-            -> Tuple[ImageLabels, ImageFeatures]:
+            -> tuple[ImageLabels, ImageFeatures]:
 
         labels = ImageLabels(
             data={self.feat_key: [(100, 100, 1),
@@ -371,7 +371,7 @@ class TestLoadBatchData(unittest.TestCase):
         self.feat_loc_template = DataLocation(storage_type='memory', key='')
 
     def fixtures(self, valid_rowcol=True) \
-            -> Tuple[ImageLabels, ImageFeatures, ImageFeatures]:
+            -> tuple[ImageLabels, ImageFeatures, ImageFeatures]:
 
         labels = ImageLabels(
             data={self.feat_key1: [(100, 100, 1),

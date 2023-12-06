@@ -2,9 +2,9 @@
 Defines train-classifier ABC; implementations; and factory.
 """
 
+from __future__ import annotations
 import abc
 import time
-from typing import Tuple, List
 
 from sklearn.calibration import CalibratedClassifierCV
 
@@ -21,10 +21,10 @@ class ClassifierTrainer(abc.ABC):  # pragma: no cover
                  train_labels: ImageLabels,
                  val_labels: ImageLabels,
                  nbr_epochs: int,
-                 pc_models: List[CalibratedClassifierCV],
+                 pc_models: list[CalibratedClassifierCV],
                  feature_loc: DataLocation,
                  clf_type: str) \
-            -> Tuple[CalibratedClassifierCV,
+            -> tuple[CalibratedClassifierCV,
                      ValResults,
                      TrainClassifierReturnMsg]:
         pass

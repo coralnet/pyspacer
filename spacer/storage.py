@@ -2,6 +2,7 @@
 Defines storage ABC; implementations; and factory.
 """
 
+from __future__ import annotations
 import abc
 import os
 import pickle
@@ -10,7 +11,6 @@ from functools import lru_cache
 from http.client import IncompleteRead
 from io import BytesIO
 from pickle import Unpickler
-from typing import Union
 from urllib.error import URLError
 import urllib.request
 
@@ -178,7 +178,7 @@ def clear_memory_storage():
     _memorystorage = None
 
 
-def storage_factory(storage_type: str, bucketname: Union[str, None] = None):
+def storage_factory(storage_type: str, bucketname: str | None = None):
 
     assert storage_type in config.STORAGE_TYPES
 

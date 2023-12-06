@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from __future__ import annotations
 
 import numpy as np
 from PIL import Image
@@ -20,8 +20,8 @@ def gray2rgb(im: np.ndarray) -> np.ndarray:
 
 
 def crop_patches(im: Image,
-                 rowcols: List[Tuple[int, int]],
-                 crop_size: int) -> List[np.ndarray]:
+                 rowcols: list[tuple[int, int]],
+                 crop_size: int) -> list[np.ndarray]:
     """
     Crop patches from an image
     :param im: image for cropping
@@ -45,7 +45,7 @@ def crop_patches(im: Image,
 
 
 def crop_simple(im: np.ndarray,
-                center: Tuple[int, int],
+                center: tuple[int, int],
                 crop_size: int) -> np.ndarray:
     """
     Crops an image around the given center

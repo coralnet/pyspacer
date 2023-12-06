@@ -1,10 +1,9 @@
+from __future__ import annotations
 import json
 import logging
 import time
 from collections import defaultdict
 from datetime import datetime
-from typing import List
-from typing import Tuple
 
 import boto3
 import numpy as np
@@ -42,7 +41,7 @@ def aws_batch_submit(job_queue: str,
     return resp['jobId']
 
 
-def aws_batch_job_status(jobs: List[Tuple[str, DataLocation, JobMsg,
+def aws_batch_job_status(jobs: list[tuple[str, DataLocation, JobMsg,
                                           DataLocation, DataLocation, int]]):
     """ Monitor AWS batch status.
     Input should be tuple same as the output of submit_jobs
@@ -96,7 +95,7 @@ def aws_batch_job_status(jobs: List[Tuple[str, DataLocation, JobMsg,
     return state, runtimes
 
 
-def submit_jobs(nbr_rowcols: List[int],
+def submit_jobs(nbr_rowcols: list[int],
                 job_queue: str = 'shakeout',
                 image_size: int = 1000,
                 extractor_name: str = 'efficientnet_b0_ver1'):
