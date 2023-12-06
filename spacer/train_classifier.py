@@ -18,8 +18,7 @@ class ClassifierTrainer(abc.ABC):  # pragma: no cover
 
     @abc.abstractmethod
     def __call__(self,
-                 train_labels: ImageLabels,
-                 val_labels: ImageLabels,
+                 labels: dict[str, ImageLabels],
                  nbr_epochs: int,
                  pc_models: list[CalibratedClassifierCV],
                  feature_loc: DataLocation,
@@ -37,8 +36,7 @@ class MiniBatchTrainer(ClassifierTrainer):
     """
 
     def __call__(self,
-                 train_labels,
-                 val_labels,
+                 labels,
                  nbr_epochs,
                  pc_models,
                  feature_loc,
@@ -47,18 +45,19 @@ class MiniBatchTrainer(ClassifierTrainer):
         assert clf_type in config.CLASSIFIER_TYPES
         # Train.
         t0 = time.time()
-        clf, ref_accs = train(train_labels, feature_loc, nbr_epochs, clf_type)
+        clf, ref_accs = train(
+            labels['train'], labels['ref'], feature_loc, nbr_epochs, clf_type)
         classes = clf.classes_.tolist()
 
         # Evaluate new classifier on validation set.
         val_gts, val_ests, val_scores = evaluate_classifier(
-            clf, val_labels, classes, feature_loc)
+            clf, labels['val'], classes, feature_loc)
 
         # Evaluate previous classifiers on validation set.
         pc_accs = []
         for pc_model in pc_models:
-            pc_gts, pc_ests, _ = evaluate_classifier(pc_model, val_labels,
-                                                     classes, feature_loc)
+            pc_gts, pc_ests, _ = evaluate_classifier(
+                pc_model, labels['val'], classes, feature_loc)
             pc_accs.append(calc_acc(pc_gts, pc_ests))
 
         return \

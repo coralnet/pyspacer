@@ -73,6 +73,7 @@ class ImageLabels(DataClass):
                  # (row, col, label).
                  data: dict[str, list[tuple[int, int, int]]]):
         self.data = data
+        self.label_count = sum([len(labels) for labels in data.values()])
 
     @classmethod
     def example(cls):
@@ -94,14 +95,10 @@ class ImageLabels(DataClass):
     def image_keys(self):
         return list(self.data.keys())
 
-    @property
-    def samples_per_image(self):
-        return len(next(iter(self.data.values())))
-
-    def unique_classes(self, key_list: list[str]) -> set[int]:
-        """ Returns the set of all unique classes in the key_list subset. """
+    def unique_classes(self) -> set[int]:
+        """ Returns the set of all unique classes in the data. """
         labels = set()
-        for im_key in key_list:
+        for im_key in self.image_keys:
             labels |= {label for (row, col, label) in self.data[im_key]}
         return labels
 

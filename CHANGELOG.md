@@ -2,6 +2,12 @@
 
 ## 0.7.0 (WIP)
 
+- `TrainClassifierMsg` labels arguments have changed. Instead of `train_labels` and `val_labels`, it now takes a single argument `labels`, which can be in either of two forms:
+
+  - A single `ImageLabels` object which pyspacer will decide how to split into training (train), reference (ref), and validation (val) sets.
+
+  - A dict which maps each of the keys `train`, `ref`, and `val` to a different `ImageLabels` object.
+
 - Added `LOG_DESTINATION` and `LOG_LEVEL` config vars, providing configurable logging for test-suite runs or quick scripts.
 
 - Logging statements throughout pyspacer's codebase now use module-name loggers rather than the root logger, allowing end-applications to keep their logs organized.

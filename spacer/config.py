@@ -255,6 +255,12 @@ MAX_POINTS_PER_IMAGE = get_config_value('MAX_POINTS_PER_IMAGE', default=1000)
 # The train_classifier task requires as least this many images.
 MIN_TRAINIMAGES = get_config_value('MIN_TRAINIMAGES', default=10)
 
+# Size of training batches. This number of features must be able to fit
+# in memory. Raising this allows the reference set to be larger,
+# which can improve calibration results.
+TRAINING_BATCH_LABEL_COUNT = get_config_value(
+    'TRAINING_BATCH_LABEL_COUNT', default=5000)
+
 # Check access to select which tests to run.
 HAS_CAFFE = importlib.util.find_spec("caffe") is not None
 
