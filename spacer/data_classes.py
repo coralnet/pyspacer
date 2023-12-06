@@ -3,11 +3,11 @@ Defines data-classes for input and output types.
 Each data-class can serialize itself to a structure of JSON-friendly
 python-native data-structures such that it can be stored.
 """
+from __future__ import annotations
 import json
 from abc import ABC, abstractmethod
 from io import BytesIO
 from pprint import pformat
-from typing import Dict, List, Tuple, Set, Optional, Union
 
 import numpy as np
 
@@ -36,14 +36,14 @@ class DataClass(ABC):  # pragma: no cover
         """
 
     @classmethod
-    def deserialize(cls, data: Dict) -> 'DataClass':
+    def deserialize(cls, data: dict) -> 'DataClass':
         """
         Initializes a class instance from input data.
         Input should be a dictionary containing native python data structures.
         """
         return cls(**data)
 
-    def serialize(self) -> Dict:
+    def serialize(self) -> dict:
         """
         Serialized the class content to native data-types, dicts, lists, etc,
         such that it it compatible with json.dumps and json.loads.
@@ -66,12 +66,12 @@ class DataClass(ABC):  # pragma: no cover
 
 
 class ImageLabels(DataClass):
-    """ Contains row, col, label information for an image. """
+    """ Contains row, col, label information for a set of images. """
 
     def __init__(self,
                  # Data maps a feature key (or file path) to a List of
                  # (row, col, label).
-                 data: Dict[str, List[Tuple[int, int, int]]]):
+                 data: dict[str, list[tuple[int, int, int]]]):
         self.data = data
 
     @classmethod
@@ -84,7 +84,7 @@ class ImageLabels(DataClass):
         })
 
     @classmethod
-    def deserialize(cls, data: Dict) -> 'ImageLabels':
+    def deserialize(cls, data: dict) -> 'ImageLabels':
         """ Custom deserializer required to convert back to tuples. """
         return ImageLabels(
             data={key: [tuple(entry) for entry in value] for
@@ -98,7 +98,7 @@ class ImageLabels(DataClass):
     def samples_per_image(self):
         return len(next(iter(self.data.values())))
 
-    def unique_classes(self, key_list: List[str]) -> Set[int]:
+    def unique_classes(self, key_list: list[str]) -> set[int]:
         """ Returns the set of all unique classes in the key_list subset. """
         labels = set()
         for im_key in key_list:
@@ -113,8 +113,8 @@ class PointFeatures(DataClass):
     """ Contains row, col, feature-vector for a single point. """
 
     def __init__(self,
-                 row: Optional[int],  # Row where feature was extracted
-                 col: Optional[int],  # Column where feature was extracted
+                 row: int | None,  # Row where feature was extracted
+                 col: int | None,  # Column where feature was extracted
                  data: np.array,  # Feature vector with 32 bit precision.
                  ):
         self.row = row
@@ -139,7 +139,7 @@ class ImageFeatures(DataClass):
 
     def __init__(self,
                  # List of features for all points in image
-                 point_features: List[PointFeatures],
+                 point_features: list[PointFeatures],
                  # Legacy feature did not store row and column locations.
                  valid_rowcol: bool,
                  # Dimensionality of the feature vectors.
@@ -162,13 +162,13 @@ class ImageFeatures(DataClass):
             self._rchash = {(pf.row, pf.col): enum for
                             enum, pf in enumerate(self.point_features)}
 
-    def __getitem__(self, rowcol: Tuple[int, int]) -> List[float]:
+    def __getitem__(self, rowcol: tuple[int, int]) -> list[float]:
         """ Returns features at (row, col) location. """
         if not self.valid_rowcol:
             raise ValueError('Method not supported for legacy features')
         return self.point_features[self._rchash[rowcol]].data
 
-    def get_array(self, rowcol: Tuple[int, int]) -> np.array:
+    def get_array(self, rowcol: tuple[int, int]) -> np.array:
         """
         Similar to __getitem__ but returns a numpy array formatted
         correctly for classification by a classifier of type
@@ -188,9 +188,9 @@ class ImageFeatures(DataClass):
         )
 
     @classmethod
-    def deserialize(cls, data: Union[Dict, List]) -> 'ImageFeatures':
+    def deserialize(cls, data: dict | list) -> 'ImageFeatures':
 
-        assert isinstance(data, List), \
+        assert isinstance(data, list), \
             "Deserialize only supported for legacy format"
         # Legacy feature were stored as a list of list
         # without row and column information.
@@ -216,7 +216,7 @@ class ImageFeatures(DataClass):
 
     @classmethod
     def make_random(cls,
-                    point_labels: List[int],
+                    point_labels: list[int],
                     feature_dim: int):
         pfs = [PointFeatures(row=itt,
                              col=itt,
@@ -259,8 +259,10 @@ class ImageFeatures(DataClass):
     def store(self, loc: 'DataLocation'):
         storage = storage_factory(loc.storage_type, loc.bucket_name)
         if self.valid_rowcol:
-            rows = np.array([p.row for p in self.point_features], dtype=np.uint16)
-            cols = np.array([p.col for p in self.point_features], dtype=np.uint16)
+            rows = np.array(
+                [p.row for p in self.point_features], dtype=np.uint16)
+            cols = np.array(
+                [p.col for p in self.point_features], dtype=np.uint16)
         else:
             rows = np.array([])
             cols = np.array([])
@@ -277,10 +279,10 @@ class ValResults(DataClass):
     lists points to the index into the classes list."""
 
     def __init__(self,
-                 scores: List[float],
-                 gt: List[int],  # Using singular for backwards compatibility.
-                 est: List[int],  # Using singular for backwards compatibility.
-                 classes: List[int]):
+                 scores: list[float],
+                 gt: list[int],  # Using singular for backwards compatibility.
+                 est: list[int],  # Using singular for backwards compatibility.
+                 classes: list[int]):
 
         assert len(gt) == len(est)
         assert len(gt) == len(scores)
@@ -302,6 +304,6 @@ class ValResults(DataClass):
                    classes=[121, 1222])
 
     @classmethod
-    def deserialize(cls, data: Dict) -> 'ValResults':
+    def deserialize(cls, data: dict) -> 'ValResults':
         """ Redefined here to help the Typing module. """
         return ValResults(**data)
