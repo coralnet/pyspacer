@@ -14,6 +14,8 @@ from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg
 from spacer.messages import JobReturnMsg
 from spacer.storage import store_image, load_image
 
+logger = logging.getLogger(__name__)
+
 
 def aws_batch_submit(job_queue: str,
                      job_msg_loc: DataLocation,
@@ -65,12 +67,12 @@ def aws_batch_job_status(jobs: list[tuple[str, DataLocation, JobMsg,
                 s3.Object(config.TEST_BUCKET, feat_loc.key).load()
             except ClientError as e:
                 if e.response['Error']['Code'] == "404":
-                    logging.info(
+                    logger.info(
                         "JOB: {} marked as SUCCEEDED, but missing key at {}".
                             format(job_id, feat_loc.key)
                     )
                 else:
-                    logging.error(
+                    logger.error(
                         "Something else is wrong: {} {}".format(job_id, str(e))
                     )
 
@@ -80,17 +82,17 @@ def aws_batch_job_status(jobs: list[tuple[str, DataLocation, JobMsg,
                 runtimes[job_id] = job_res.results[0].runtime
             except ClientError as e:
                 if e.response['Error']['Code'] == "404":
-                    logging.info(
+                    logger.info(
                         "JOB: {} marked as SUCCEEDED, but missing key at {}".
                             format(job_id, job_res_loc.key)
                     )
                 else:
-                    logging.error(
+                    logger.error(
                         "Something else is wrong: {} {}".format(job_id, str(e))
                     )
 
         if job_status == 'FAILED':
-            logging.info('JOB: {} failed!'.format(job_id))
+            logger.info('JOB: {} failed!'.format(job_id))
 
     return state, runtimes
 
@@ -103,7 +105,7 @@ def submit_jobs(nbr_rowcols: list[int],
     assert max(nbr_rowcols) <= 1000
     assert max(nbr_rowcols) <= image_size
 
-    logging.info('Submitting {} jobs... '.format(nbr_rowcols))
+    logger.info('Submitting {} jobs... '.format(nbr_rowcols))
     targets = []
 
     # Load up an old image and resize it to desired size.
@@ -154,7 +156,7 @@ def submit_jobs(nbr_rowcols: list[int],
         targets.append((job_id, feat_loc, job_msg, job_msg_loc, job_res_loc,
                         image_size))
 
-    logging.info('{} jobs submitted.'.format(len(targets)))
+    logger.info('{} jobs submitted.'.format(len(targets)))
     return targets
 
 
@@ -163,8 +165,8 @@ def monitor_jobs(targets):
     status = {'SUCCEEDED': 0}
     while status['SUCCEEDED'] < len(targets):
         status, runtimes = aws_batch_job_status(targets)
-        logging.info('Job status: {}, mean runtime: {:.2f} seconds.'.format(
+        logger.info('Job status: {}, mean runtime: {:.2f} seconds.'.format(
             dict(status), np.mean(list(runtimes.values()))))
         time.sleep(3)
-    logging.info("All jobs done.")
+    logger.info("All jobs done.")
     return status, runtimes

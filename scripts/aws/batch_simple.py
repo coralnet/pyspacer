@@ -7,6 +7,8 @@ import logging
 
 from scripts.aws.utils import submit_jobs, monitor_jobs
 
+logger = logging.getLogger(__name__)
+
 
 def main(nbr_rowcols: list[int],
          job_queue: str = 'shakeout',
@@ -14,7 +16,7 @@ def main(nbr_rowcols: list[int],
 
     targets = []
     for name in ['efficientnet_b0_ver1', 'vgg16_coralnet_ver1']:
-        logging.info("Starting scaling test for {}.".format(name))
+        logger.info("Starting scaling test for {}.".format(name))
         targets.extend(submit_jobs(nbr_rowcols, job_queue, image_size, name))
 
     _, runtime = monitor_jobs(targets)

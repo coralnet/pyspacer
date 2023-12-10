@@ -12,6 +12,8 @@ from spacer import config
 from spacer.messages import JobMsg, DataLocation
 from spacer.tasks import process_job
 
+logger = logging.getLogger(__name__)
+
 
 # Configure a simple logger that works with AWS CloudWatch.
 if len(logging.getLogger().handlers) > 0:
@@ -40,7 +42,7 @@ def env_job(): # pragma: no cover
         raise ValueError('JOB_MSG_LOC env. variable not set. '
                          'Can not process job.')
 
-    logging.info(" Received job for ENV {}.".format(job_msg_loc))
+    logger.info(" Received job for ENV {}.".format(job_msg_loc))
 
     with config.log_entry_and_exit('job message location deserialization'):
         job_msg_loc = DataLocation.deserialize(json.loads(job_msg_loc))

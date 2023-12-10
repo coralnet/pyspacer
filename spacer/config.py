@@ -19,6 +19,8 @@ from PIL import Image, ImageFile
 
 from spacer.exceptions import ConfigError
 
+logger = logging.getLogger(__name__)
+
 
 def filter_warnings():
     """ Filters out some verified warnings. """
@@ -149,10 +151,10 @@ class log_entry_and_exit(ContextDecorator):
 
     def __enter__(self):
         self.start_time = time.time()
-        logging.info('Entering: %s', self.name)
+        logger.info('Entering: %s', self.name)
 
     def __exit__(self, exc_type, exc, exc_tb):
-        logging.info('Exiting: %s after %f seconds.', self.name,
+        logger.info('Exiting: %s after %f seconds.', self.name,
                      time.time() - self.start_time)
 
 
