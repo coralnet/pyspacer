@@ -2,6 +2,10 @@
 
 ## 0.7.0 (WIP)
 
+- Added `LOG_DESTINATION` and `LOG_LEVEL` config vars, providing configurable logging for test-suite runs or quick scripts.
+
+- Logging statements throughout pyspacer's codebase now use module-name loggers rather than the root logger, allowing end-applications to keep their logs organized.
+
 - Replaced all SpacerInputErrors and some AssertionErrors with more descriptive error classes.
 
 ## 0.6.1

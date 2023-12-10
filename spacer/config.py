@@ -128,6 +128,28 @@ def get_config_value(key: str, default: Any = 'NO_DEFAULT') -> Any:
     return handle_unspecified_setting()
 
 
+# If your end application/script doesn't configure its own logging,
+# or if you're running unit tests and want log output, you can specify this
+# config value to output logs to console or to a file of your choice.
+# Specify either as 'console', or as an absolute path to the desired file.
+LOG_DESTINATION = get_config_value('LOG_DESTINATION', default=None)
+# And this is the log level to use when logging to that destination.
+# Specify as "INFO", etc.
+LOG_LEVEL = get_config_value('LOG_LEVEL', default=logging.INFO)
+
+if LOG_DESTINATION:
+    if LOG_DESTINATION == 'console':
+        filename = None
+    else:
+        filename = LOG_DESTINATION
+
+    logging.basicConfig(
+        level=LOG_LEVEL,
+        filename=filename,
+        format='%(asctime)s - %(levelname)s:%(name)s\n%(message)s',
+    )
+
+
 def get_s3_conn():
     """
     Returns a boto s3 connection.
@@ -239,6 +261,8 @@ CONFIGURABLE_VARS = [
     'TEST_EXTRACTORS_BUCKET',
     'TEST_BUCKET',
     # These can just be configured as needed, or left as defaults.
+    'LOG_DESTINATION',
+    'LOG_LEVEL',
     'MAX_IMAGE_PIXELS',
     'MAX_POINTS_PER_IMAGE',
     'MIN_TRAINIMAGES',

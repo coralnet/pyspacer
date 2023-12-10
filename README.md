@@ -311,7 +311,15 @@ for row, col, scores in return_message.scores:
 ```
 
 
-## Code coverage
+## Unit tests
+
+Run the test suite by running `python -m unittest` from the `spacer` directory.
+
+- Expect many tests to be skipped, since most test fixtures aren't set up for public access yet.
+
+- Run just a single test module with a command like `python -m unittest tests.test_tasks`, or just `python -m tests.test_tasks` (the latter invokes the `if __name__ == '__main__':` part of the module).
+
+- You can get logging output during test runs with the `LOG_DESTINATION` and `LOG_LEVEL` vars in config.py.
 
 If you are using the docker build or local install, 
 you can check code coverage like so:
