@@ -41,13 +41,13 @@ def train(labels: ImageLabels,
     np.random.shuffle(ref_set)
     ref_set = ref_set[:max_imgs_in_memory]  # Enforce memory limit.
     train_set = list(set(labels.image_keys) - set(ref_set))
-    logger.info("Trainset: {}, valset: {} images".
+    logger.debug("Trainset: {}, valset: {} images".
                  format(len(train_set), len(ref_set)))
 
     # Figure out # images per batch and batches per epoch.
     images_per_batch, batches_per_epoch = \
         calc_batch_size(max_imgs_in_memory, len(train_set))
-    logger.info("Using {} images per mini-batch and {} mini-batches per "
+    logger.debug("Using {} images per mini-batch and {} mini-batches per "
                  "epoch".format(images_per_batch, batches_per_epoch))
 
     # Identify classes common to both train and val.
@@ -55,7 +55,7 @@ def train(labels: ImageLabels,
     trainclasses = labels.unique_classes(train_set)
     refclasses = labels.unique_classes(ref_set)
     classes = list(trainclasses.intersection(refclasses))
-    logger.info("Trainset: {}, valset: {}, common: {} labels".format(
+    logger.debug("Trainset: {}, valset: {}, common: {} labels".format(
         len(trainclasses), len(refclasses), len(classes)))
     if len(classes) == 1:
         raise ValueError('Not enough classes to do training (only 1)')
@@ -82,7 +82,7 @@ def train(labels: ImageLabels,
                 x, y = load_batch_data(labels, mb, classes, feature_loc)
                 clf.partial_fit(x, y, classes=classes)
             ref_acc.append(calc_acc(refy, clf.predict(refx)))
-            logger.info("Epoch {}, acc: {}".format(epoch, ref_acc[-1]))
+            logger.debug("Epoch {}, acc: {}".format(epoch, ref_acc[-1]))
 
     with config.log_entry_and_exit("calibration"):
         clf_calibrated = CalibratedClassifierCV(clf, cv="prefit")

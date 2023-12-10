@@ -173,10 +173,10 @@ class log_entry_and_exit(ContextDecorator):
 
     def __enter__(self):
         self.start_time = time.time()
-        logger.info('Entering: %s', self.name)
+        logger.debug('Entering: %s', self.name)
 
     def __exit__(self, exc_type, exc, exc_tb):
-        logger.info('Exiting: %s after %f seconds.', self.name,
+        logger.debug('Exiting: %s after %f seconds.', self.name,
                      time.time() - self.start_time)
 
 
