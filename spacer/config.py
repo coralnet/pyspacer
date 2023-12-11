@@ -5,12 +5,12 @@ Contains config and settings for the repo.
 from __future__ import annotations
 import importlib
 import json
-import logging
 import os
 import sys
 import time
 import warnings
 from contextlib import ContextDecorator
+from logging import basicConfig, getLogger
 from pathlib import Path
 from typing import Any
 
@@ -19,7 +19,7 @@ from PIL import Image, ImageFile
 
 from spacer.exceptions import ConfigError
 
-logger = logging.getLogger(__name__)
+logger = getLogger(__name__)
 
 
 def filter_warnings():
@@ -135,7 +135,7 @@ def get_config_value(key: str, default: Any = 'NO_DEFAULT') -> Any:
 LOG_DESTINATION = get_config_value('LOG_DESTINATION', default=None)
 # And this is the log level to use when logging to that destination.
 # Specify as "INFO", etc.
-LOG_LEVEL = get_config_value('LOG_LEVEL', default=logging.INFO)
+LOG_LEVEL = get_config_value('LOG_LEVEL', default='INFO')
 
 if LOG_DESTINATION:
     if LOG_DESTINATION == 'console':
@@ -143,7 +143,7 @@ if LOG_DESTINATION:
     else:
         filename = LOG_DESTINATION
 
-    logging.basicConfig(
+    basicConfig(
         level=LOG_LEVEL,
         filename=filename,
         format='%(asctime)s - %(levelname)s:%(name)s\n%(message)s',

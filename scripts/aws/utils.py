@@ -1,9 +1,9 @@
 from __future__ import annotations
 import json
-import logging
 import time
 from collections import defaultdict
 from datetime import datetime
+from logging import getLogger
 
 import boto3
 import numpy as np
@@ -14,7 +14,7 @@ from spacer.messages import ExtractFeaturesMsg, DataLocation, JobMsg
 from spacer.messages import JobReturnMsg
 from spacer.storage import store_image, load_image
 
-logger = logging.getLogger(__name__)
+logger = getLogger(__name__)
 
 
 def aws_batch_submit(job_queue: str,

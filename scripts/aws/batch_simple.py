@@ -3,11 +3,11 @@ This script submits 10 jobs to queues and monitors as the
 jobs are completed.
 """
 from __future__ import annotations
-import logging
+from logging import getLogger
 
 from scripts.aws.utils import submit_jobs, monitor_jobs
 
-logger = logging.getLogger(__name__)
+logger = getLogger()
 
 
 def main(nbr_rowcols: list[int],

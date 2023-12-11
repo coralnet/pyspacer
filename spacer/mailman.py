@@ -3,8 +3,8 @@ Defines the highest-level method for task handling through AWS Batch.
 """
 
 import json
-import logging
 import os
+from logging import getLogger
 from logging.config import dictConfig
 
 import fire
@@ -13,7 +13,8 @@ from spacer import config
 from spacer.messages import JobMsg, DataLocation
 from spacer.tasks import process_job
 
-logger = logging.getLogger(__name__)
+# Root logger. Logging options seem otherwise limited for __main__.
+logger = getLogger()
 
 
 def env_job(): # pragma: no cover
@@ -33,7 +34,7 @@ def env_job(): # pragma: no cover
         raise ValueError('JOB_MSG_LOC env. variable not set. '
                          'Can not process job.')
 
-    logger.info(" Received job for ENV {}.".format(job_msg_loc))
+    logger.info(f"Received job from env var: {job_msg_loc}")
 
     with config.log_entry_and_exit('job message location deserialization'):
         job_msg_loc = DataLocation.deserialize(json.loads(job_msg_loc))

@@ -1,9 +1,9 @@
 """
 Defines the highest level methods for completing tasks.
 """
-import logging
 import time
 import traceback
+from logging import getLogger
 
 from spacer import config
 from spacer.data_classes import ImageFeatures
@@ -19,7 +19,7 @@ from spacer.storage import load_image, load_classifier, store_classifier
 from spacer.task_utils import check_extract_inputs
 from spacer.train_classifier import trainer_factory
 
-logger = logging.getLogger(__name__)
+logger = getLogger(__name__)
 
 
 def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:

@@ -3,9 +3,9 @@ Utility methods for training classifiers.
 """
 
 from __future__ import annotations
-import logging
 import random
 import string
+from logging import getLogger
 
 import numpy as np
 from sklearn.calibration import CalibratedClassifierCV
@@ -17,7 +17,7 @@ from spacer.data_classes import ImageLabels, ImageFeatures
 from spacer.exceptions import RowColumnMismatchError
 from spacer.messages import DataLocation
 
-logger = logging.getLogger(__name__)
+logger = getLogger(__name__)
 
 
 def train(labels: ImageLabels,
