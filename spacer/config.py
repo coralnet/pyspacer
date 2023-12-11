@@ -150,20 +150,39 @@ if LOG_DESTINATION:
     )
 
 
+S3_CONNECTION = None
+
+
 def get_s3_conn():
     """
     Returns a boto s3 connection.
-    - It first looks for credentials in spacer config.
-    - If not found there it will default to credentials in ~/.aws/credentials
+    Each thread only establishes a connection once, saving it to the global
+    S3_CONNECTION and reusing it thereafter.
     """
     if not all([AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY]):
         raise ConfigError(
             "All AWS config variables must be specified to use S3.")
 
-    return boto3.resource('s3',
-                          region_name=AWS_REGION,
-                          aws_access_key_id=AWS_ACCESS_KEY_ID,
-                          aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
+    global S3_CONNECTION
+
+    if S3_CONNECTION is None:
+
+        # This passes credentials from spacer config. If credentials are
+        # None, it will default to using credentials in ~/.aws/credentials
+        S3_CONNECTION = boto3.resource(
+            's3',
+            region_name=AWS_REGION,
+            aws_access_key_id=AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+        )
+
+        # We're interested in confirming:
+        # - That this only gets reached once per thread
+        # - How long a single resource retrieval can be reused before
+        #   expiring (if it ever expires)
+        logger.info("Called boto3.resource() in get_s3_conn()")
+
+    return S3_CONNECTION
 
 
 class log_entry_and_exit(ContextDecorator):
