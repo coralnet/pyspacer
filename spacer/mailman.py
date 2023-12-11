@@ -15,16 +15,6 @@ from spacer.tasks import process_job
 logger = logging.getLogger(__name__)
 
 
-# Configure a simple logger that works with AWS CloudWatch.
-if len(logging.getLogger().handlers) > 0:
-    # The Lambda environment pre-configures a handler logging to stderr.
-    # If a handler is already configured,
-    # `.basicConfig` does not execute. Thus we set the level directly.
-    logging.getLogger().setLevel(logging.INFO)
-else:
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
-
-
 def env_job(): # pragma: no cover
     """
     Runs a job defined in environment variables.
@@ -79,4 +69,42 @@ def env_job(): # pragma: no cover
 
 
 if __name__ == '__main__':
+
+    logging.config.dictConfig({
+        'version': 1,
+        'formatters': {
+            'spacer': {
+                'format': '%(asctime)s %(message)s',
+            },
+            'other': {
+                'format': '%(asctime)s - %(name)s:%(levelname)s - %(message)s',
+            },
+        },
+        'handlers': {
+            'spacer': {
+                # StreamHandler output should end up in AWS CloudWatch logs.
+                'class': 'logging.StreamHandler',
+                'formatter': 'spacer',
+            },
+            'other': {
+                'class': 'logging.StreamHandler',
+                'formatter': 'other',
+            },
+        },
+        'loggers': {
+            # Captures pyspacer logs.
+            'spacer': {
+                'handlers': ['spacer'],
+                'level': 'DEBUG',
+                'propagate': False,
+            }
+        },
+        # Captures other packages' logs, but not pyspacer's logs,
+        # due to the spacer logger having propagate=False.
+        'root': {
+            'handlers': ['other'],
+            'level': 'INFO',
+        }
+    })
+
     fire.Fire()  # pragma: no cover
