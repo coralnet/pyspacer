@@ -5,6 +5,7 @@ Defines the highest-level method for task handling through AWS Batch.
 import json
 import logging
 import os
+from logging.config import dictConfig
 
 import fire
 
@@ -70,7 +71,7 @@ def env_job(): # pragma: no cover
 
 if __name__ == '__main__':
 
-    logging.config.dictConfig({
+    dictConfig({
         'version': 1,
         'formatters': {
             'spacer': {
