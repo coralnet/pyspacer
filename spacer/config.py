@@ -5,12 +5,12 @@ Contains config and settings for the repo.
 from __future__ import annotations
 import importlib
 import json
-import logging
 import os
 import sys
 import time
 import warnings
 from contextlib import ContextDecorator
+from logging import basicConfig, getLogger
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +18,8 @@ import boto3
 from PIL import Image, ImageFile
 
 from spacer.exceptions import ConfigError
+
+logger = getLogger(__name__)
 
 
 def filter_warnings():
@@ -126,6 +128,28 @@ def get_config_value(key: str, default: Any = 'NO_DEFAULT') -> Any:
     return handle_unspecified_setting()
 
 
+# If your end application/script doesn't configure its own logging,
+# or if you're running unit tests and want log output, you can specify this
+# config value to output logs to console or to a file of your choice.
+# Specify either as 'console', or as an absolute path to the desired file.
+LOG_DESTINATION = get_config_value('LOG_DESTINATION', default=None)
+# And this is the log level to use when logging to that destination.
+# Specify as "INFO", etc.
+LOG_LEVEL = get_config_value('LOG_LEVEL', default='INFO')
+
+if LOG_DESTINATION:
+    if LOG_DESTINATION == 'console':
+        filename = None
+    else:
+        filename = LOG_DESTINATION
+
+    basicConfig(
+        level=LOG_LEVEL,
+        filename=filename,
+        format='%(asctime)s - %(levelname)s:%(name)s\n%(message)s',
+    )
+
+
 def get_s3_conn():
     """
     Returns a boto s3 connection.
@@ -149,10 +173,10 @@ class log_entry_and_exit(ContextDecorator):
 
     def __enter__(self):
         self.start_time = time.time()
-        logging.info('Entering: %s', self.name)
+        logger.debug('Entering: %s', self.name)
 
     def __exit__(self, exc_type, exc, exc_tb):
-        logging.info('Exiting: %s after %f seconds.', self.name,
+        logger.debug('Exiting: %s after %f seconds.', self.name,
                      time.time() - self.start_time)
 
 
@@ -237,6 +261,8 @@ CONFIGURABLE_VARS = [
     'TEST_EXTRACTORS_BUCKET',
     'TEST_BUCKET',
     # These can just be configured as needed, or left as defaults.
+    'LOG_DESTINATION',
+    'LOG_LEVEL',
     'MAX_IMAGE_PIXELS',
     'MAX_POINTS_PER_IMAGE',
     'MIN_TRAINIMAGES',

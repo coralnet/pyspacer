@@ -1,9 +1,9 @@
 """
 Defines the highest level methods for completing tasks.
 """
-import logging
 import time
 import traceback
+from logging import getLogger
 
 from spacer import config
 from spacer.data_classes import ImageFeatures
@@ -18,6 +18,8 @@ from spacer.messages import \
 from spacer.storage import load_image, load_classifier, store_classifier
 from spacer.task_utils import check_extract_inputs
 from spacer.train_classifier import trainer_factory
+
+logger = getLogger(__name__)
 
 
 def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
@@ -119,7 +121,7 @@ def process_job(job_msg: JobMsg) -> JobReturnMsg:
                     job_msg.task_name, task.job_token)):
                 results.append(run[job_msg.task_name](task))
         except Exception:
-            logging.error('Error executing job {}: {}'.format(
+            logger.error('Error executing job {}: {}'.format(
                 task.job_token, traceback.format_exc()))
             return_msg = JobReturnMsg(
                 original_job=job_msg,
