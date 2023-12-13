@@ -155,7 +155,6 @@ if LOG_DESTINATION:
 # because they're not thread-safe:
 # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/resources.html
 THREAD_LOCAL = threading.local()
-THREAD_LOCAL.s3_connection = None
 
 
 def get_s3_conn():
@@ -168,8 +167,9 @@ def get_s3_conn():
         raise ConfigError(
             "All AWS config variables must be specified to use S3.")
 
-    if THREAD_LOCAL.s3_connection is None:
-
+    try:
+        THREAD_LOCAL.s3_connection
+    except AttributeError:
         # This passes credentials from spacer config. If credentials are
         # None, it will default to using credentials in ~/.aws/credentials
         THREAD_LOCAL.s3_connection = boto3.resource(
