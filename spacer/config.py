@@ -7,6 +7,7 @@ import importlib
 import json
 import os
 import sys
+import threading
 import time
 import warnings
 from contextlib import ContextDecorator
@@ -150,26 +151,28 @@ if LOG_DESTINATION:
     )
 
 
-S3_CONNECTION = None
+# Save S3 connections (resources) for reuse, but only have one per thread,
+# because they're not thread-safe:
+# https://boto3.amazonaws.com/v1/documentation/api/latest/guide/resources.html
+THREAD_LOCAL = threading.local()
+THREAD_LOCAL.s3_connection = None
 
 
 def get_s3_conn():
     """
     Returns a boto s3 connection.
-    Each thread only establishes a connection once, saving it to the global
-    S3_CONNECTION and reusing it thereafter.
+    Each thread only establishes a connection once, saving it to
+    THREAD_LOCAL.s3_connection and reusing it thereafter.
     """
     if not all([AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY]):
         raise ConfigError(
             "All AWS config variables must be specified to use S3.")
 
-    global S3_CONNECTION
-
-    if S3_CONNECTION is None:
+    if THREAD_LOCAL.s3_connection is None:
 
         # This passes credentials from spacer config. If credentials are
         # None, it will default to using credentials in ~/.aws/credentials
-        S3_CONNECTION = boto3.resource(
+        THREAD_LOCAL.s3_connection = boto3.resource(
             's3',
             region_name=AWS_REGION,
             aws_access_key_id=AWS_ACCESS_KEY_ID,
@@ -177,12 +180,13 @@ def get_s3_conn():
         )
 
         # We're interested in confirming:
-        # - That this only gets reached once per thread
+        # - That this only gets reached once per thread (log with %(thread)d
+        #   in the logging format to confirm this)
         # - How long a single resource retrieval can be reused before
         #   expiring (if it ever expires)
         logger.info("Called boto3.resource() in get_s3_conn()")
 
-    return S3_CONNECTION
+    return THREAD_LOCAL.s3_connection
 
 
 class log_entry_and_exit(ContextDecorator):
