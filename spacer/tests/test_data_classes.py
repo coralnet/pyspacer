@@ -123,9 +123,9 @@ class TestFeatureLabels(unittest.TestCase):
         self.assertEqual(msg, ImageLabels.deserialize(
             json.loads(json.dumps(msg.serialize()))))
 
-    def test_samples_per_image(self):
+    def test_label_count(self):
         msg = ImageLabels.example()
-        self.assertEqual(msg.samples_per_image, 2)
+        self.assertEqual(msg.label_count, 4*2)
 
 
 class TestValResults(unittest.TestCase):

@@ -66,13 +66,21 @@ class BaseStorageTest(unittest.TestCase, abc.ABC):
     def do_test_load_store_model(self):
         features_loc_template = DataLocation(storage_type='memory', key='')
         train_labels = make_random_data(
-            im_count=20,
+            im_count=10,
             class_list=[1, 2],
             points_per_image=5,
             feature_dim=5,
             feature_loc=features_loc_template,
         )
-        clf, _ = train(train_labels, features_loc_template, 1, 'LR')
+        ref_labels = make_random_data(
+            im_count=2,
+            class_list=[1, 2],
+            points_per_image=5,
+            feature_dim=5,
+            feature_loc=features_loc_template,
+        )
+        clf, _ = train(
+            train_labels, ref_labels, features_loc_template, 1, 'LR')
         store_classifier(self.tmp_model_loc, clf)
         self.assertTrue(self.storage.exists(self.tmp_model_loc.key))
 

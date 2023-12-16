@@ -3,7 +3,8 @@ import unittest
 from PIL import Image
 
 from spacer import config
-from spacer.data_classes import ImageFeatures, ValResults, ImageLabels
+from spacer.data_classes import (
+    ImageFeatures, ImageLabels, PointFeatures, ValResults)
 from spacer.exceptions import (
     DataLimitError, RowColumnInvalidError, RowColumnMismatchError)
 from spacer.extract_features import DummyExtractor
@@ -157,31 +158,34 @@ class TestTrainClassifier(unittest.TestCase):
 
     def test_default(self):
 
-        # Set some hyper parameters for data generation
-        n_traindata = 200
+        # Parameters for data generation
+        n_traindata = 160
+        n_refdata = 20
         n_valdata = 20
         points_per_image = 20
         feature_dim = 5
         class_list = [1, 2]
 
-        # Create train and val data.
+        # Create training data.
         features_loc_template = DataLocation(storage_type='memory', key='')
+        train_labels = make_random_data(
+            n_traindata, class_list, points_per_image,
+            feature_dim, features_loc_template,
+        )
+        ref_labels = make_random_data(
+            n_refdata, class_list, points_per_image,
+            feature_dim, features_loc_template,
+        )
+        val_labels = make_random_data(
+            n_valdata, class_list, points_per_image,
+            feature_dim, features_loc_template,
+        )
 
-        train_labels = make_random_data(n_traindata,
-                                        class_list,
-                                        points_per_image,
-                                        feature_dim,
-                                        features_loc_template)
-
-        val_labels = make_random_data(n_valdata,
-                                      class_list,
-                                      points_per_image,
-                                      feature_dim,
-                                      features_loc_template)
-
-        # Train once by calling directly so that we have a previous classifier.
         for clf_type in config.CLASSIFIER_TYPES:
-            clf, _ = train(train_labels, features_loc_template, 1, clf_type)
+            # Train once by calling directly so that we have a
+            # previous classifier.
+            clf, _ = train(
+                train_labels, ref_labels, features_loc_template, 1, clf_type)
 
             previous_classifier_loc = DataLocation(storage_type='memory',
                                                    key='pc')
@@ -194,8 +198,11 @@ class TestTrainClassifier(unittest.TestCase):
                 trainer_name='minibatch',
                 nbr_epochs=1,
                 clf_type=clf_type,
-                train_labels=train_labels,
-                val_labels=val_labels,
+                labels=dict(
+                    train=train_labels,
+                    ref=ref_labels,
+                    val=val_labels,
+                ),
                 features_loc=features_loc_template,
                 previous_model_locs=[previous_classifier_loc],
                 model_loc=DataLocation(storage_type='memory', key='model'),
@@ -210,36 +217,41 @@ class TestTrainClassifier(unittest.TestCase):
             self.assertEqual(len(val_res.gt), len(val_res.est))
             self.assertEqual(len(val_res.gt), len(val_res.scores))
 
-            # Check that the amount of labels correspond to the val_data.
-            self.assertEqual(len(val_res.gt),
-                             len(val_labels) * val_labels.samples_per_image)
+            self.assertEqual(
+                len(val_res.gt), val_labels.label_count,
+                msg="val_res has the correct number of labels")
 
-    def test_duplicates(self):
+    def test_row_column_matching(self):
 
-        labels = ImageLabels(data={})
-        for i in range(config.MIN_TRAINIMAGES):
-            msg = ExtractFeaturesMsg(
-                job_token='dummy',
-                extractor=DummyExtractor(),
-                rowcols=[(100, 100), (50, 50)],
-                image_loc=DataLocation(storage_type='memory',
-                                       key='{}.jpg'.format(i)),
-                feature_loc=DataLocation(storage_type='memory',
-                                         key='{}.json'.format(i))
-            )
+        feature_dim = 5
 
-            # Add a duplicate point that was not part of feature extraction.
-            store_image(msg.image_loc, Image.new('RGB', (101, 101)))
-            extract_features(msg)
-            rowcols = msg.rowcols
-            rowcols.append((100, 100))
-            point_labels = [1, 0, 1]
-            labels.data[msg.feature_loc.key] = [
-                (row, col, pl) for (row, col), pl in
-                zip(rowcols, point_labels)
+        point_features = [
+            PointFeatures(row=100, col=100, data=[1.5]*feature_dim),
+            PointFeatures(row=50, col=50, data=[1.4]*feature_dim),
+        ]
+        features = ImageFeatures(
+            point_features=point_features,
+            valid_rowcol=True,
+            feature_dim=feature_dim,
+            npoints=len(point_features),
+        )
+        feature_loc = DataLocation(storage_type='memory', key='1.feats')
+        features.store(feature_loc)
+        train_labels = ImageLabels({
+            '1.feats': [
+                (100, 100, 1),
+                (50, 50, 2),
+                # Duplicate point; the row/column are still in features,
+                # just not duplicated there
+                (100, 100, 1),
             ]
-
-        # Create train and val data.
+        })
+        ref_labels = make_random_data(
+            1, [1, 2], 2, feature_dim,
+            DataLocation(storage_type='memory', key='2.feats'))
+        val_labels = make_random_data(
+            1, [1, 2], 2, feature_dim,
+            DataLocation(storage_type='memory', key='3.feats'))
         features_loc_template = DataLocation(storage_type='memory', key='')
 
         msg = TrainClassifierMsg(
@@ -247,22 +259,27 @@ class TestTrainClassifier(unittest.TestCase):
             trainer_name='minibatch',
             nbr_epochs=1,
             clf_type='LR',
-            train_labels=labels,
-            val_labels=labels,
+            labels=dict(
+                train=train_labels,
+                ref=ref_labels,
+                val=val_labels,
+            ),
             features_loc=features_loc_template,
             previous_model_locs=[],
             model_loc=DataLocation(storage_type='memory', key='model'),
             valresult_loc=DataLocation(storage_type='memory', key='result')
         )
+        # Shouldn't get an error
         train_classifier(msg)
 
-        # Now change the rowcols in the labels file to include a tuple
-        # not extracted.
-        faulty_labels = ImageLabels(data={})
-        for key, value in labels.data.items():
-            faulty_labels.data[key] = value
-            row, col, label = faulty_labels.data[key][-1]
-            faulty_labels.data[key][-1] = (row-1, col-1, label)
+        msg.labels['train'] = ImageLabels({
+            '1.feats': [
+                (100, 100, 1),
+                (50, 50, 2),
+                # Row/column not in features
+                (25, 25, 1),
+            ]
+        })
 
         with self.assertRaises(RowColumnMismatchError):
             train_classifier(msg)

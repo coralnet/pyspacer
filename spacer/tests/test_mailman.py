@@ -90,14 +90,13 @@ class TestProcessJobErrorHandling(unittest.TestCase):
                              trainer_name='minibatch',
                              nbr_epochs=1,
                              clf_type=clf_type,
-                             train_labels=ImageLabels(data={
-                                 'my_feats': [(1, 1, 1), (2, 2, 2)]
-                             }),
-                             val_labels=ImageLabels(data={
-                                 'my_feats': [(1, 1, 1), (2, 2, 2)]
+                             labels=ImageLabels(data={
+                                 'feats_1': [(1, 1, 1), (2, 2, 2)],
+                                 'feats_2': [(1, 1, 1), (2, 2, 2)],
+                                 'feats_3': [(1, 1, 1), (2, 2, 2)],
                              }),
                              features_loc=DataLocation(storage_type='memory',
-                                                       key='my_feats'),
+                                                       key=''),
                              previous_model_locs=[
                                  DataLocation(storage_type='memory',
                                               key='my_previous_model')
