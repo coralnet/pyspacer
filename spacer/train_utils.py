@@ -7,6 +7,7 @@ import random
 import string
 from collections.abc import Generator
 from logging import getLogger
+from typing import List, Tuple
 
 import numpy as np
 from sklearn.calibration import CalibratedClassifierCV
@@ -23,8 +24,8 @@ logger = getLogger(__name__)
 
 # Implicit type alias; revisit in Python 3.10
 # https://peps.python.org/pep-0613/
-FeatureLabelPair = tuple[np.ndarray, int]
-FeatureLabelBatch = tuple[list[np.ndarray], list[int]]
+FeatureLabelPair = Tuple[np.ndarray, int]
+FeatureLabelBatch = Tuple[List[np.ndarray], List[int]]
 
 
 def train(train_labels: ImageLabels,
