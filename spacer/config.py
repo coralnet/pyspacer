@@ -252,9 +252,6 @@ STORAGE_TYPES = [
 MAX_IMAGE_PIXELS = get_config_value('MAX_IMAGE_PIXELS', default=10000*10000)
 MAX_POINTS_PER_IMAGE = get_config_value('MAX_POINTS_PER_IMAGE', default=1000)
 
-# The train_classifier task requires as least this many images.
-MIN_TRAINIMAGES = get_config_value('MIN_TRAINIMAGES', default=10)
-
 # Size of training batches. This number of features must be able to fit
 # in memory. Raising this allows the reference set to be larger,
 # which can improve calibration results.
@@ -294,7 +291,6 @@ CONFIGURABLE_VARS = [
     'LOG_LEVEL',
     'MAX_IMAGE_PIXELS',
     'MAX_POINTS_PER_IMAGE',
-    'MIN_TRAINIMAGES',
 ]
 
 

@@ -8,6 +8,8 @@
 
   - A dict which maps each of the keys `train`, `ref`, and `val` to a different `ImageLabels` object.
 
+- Removed `MIN_TRAINIMAGES` config var. Minimum number of images for training is now 1 train set, 1 ref set, and 1 val set; or 3 total if leaving the split to pyspacer.
+
 - Added `LOG_DESTINATION` and `LOG_LEVEL` config vars, providing configurable logging for test-suite runs or quick scripts.
 
 - Logging statements throughout pyspacer's codebase now use module-name loggers rather than the root logger, allowing end-applications to keep their logs organized.

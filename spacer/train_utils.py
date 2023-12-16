@@ -33,9 +33,6 @@ def train(train_labels: ImageLabels,
           nbr_epochs: int,
           clf_type: str) -> tuple[CalibratedClassifierCV, list[float]]:
 
-    if len(train_labels) < config.MIN_TRAINIMAGES:
-        raise ValueError('Not enough training samples.')
-
     logger.debug(
         f"Data sets:"
         f" Train = {len(train_labels)} images,"

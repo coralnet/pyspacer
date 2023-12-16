@@ -200,13 +200,27 @@ class TrainClassifierMsg(DataClass):
         if isinstance(labels, dict):
             # The caller has decided how to split the data into
             # training, reference, and validation sets.
+            for set_name in ['train', 'ref', 'val']:
+                if set_name not in labels:
+                    raise ValueError(
+                        f"TrainClassifierMsg: labels must include"
+                        f" '{set_name}' set.")
             self.labels = labels
         else:
             # Split data into training, reference, and validation sets.
+            #
             # Arbitrarily, validation gets 10%, reference gets
             # min(10%, TRAINING_BATCH_LABEL_COUNT), training gets the rest.
             # This is imprecise because it's split on the image level, not the
             # label level, and images can have different numbers of labels.
+            #
+            # The split is done in a way which guarantees that all 3 sets are
+            # non-empty if there are at least 3 images.
+            if len(labels) < 3:
+                raise ValueError(
+                    f"TrainClassifierMsg: labels has {len(labels)} images,"
+                    f" but need at least 3.")
+
             train_data = dict()
             ref_data = dict()
             val_data = dict()
