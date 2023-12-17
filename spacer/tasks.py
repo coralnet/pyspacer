@@ -16,7 +16,7 @@ from spacer.messages import \
     ClassifyImageMsg, \
     ClassifyReturnMsg, JobMsg, JobReturnMsg
 from spacer.storage import load_image, load_classifier, store_classifier
-from spacer.task_utils import check_extract_inputs
+from spacer.task_utils import check_extract_inputs, preprocess_labels
 from spacer.train_classifier import ClassifierTrainer, trainer_factory
 
 logger = getLogger(__name__)
@@ -40,10 +40,22 @@ def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
 def train_classifier(msg: TrainClassifierMsg) -> TrainClassifierReturnMsg:
     trainer: ClassifierTrainer = trainer_factory(msg.trainer_name)
 
+    labels = preprocess_labels(msg.labels)
+    logger.debug(
+        f"Unique classes:"
+        f" Train + Ref = {len(labels.ref.classes_set)},"
+        f" Val = {len(labels.val.classes_set)}")
+    logger.debug(
+        f"Label count:"
+        f" Train = {labels.train.label_count},"
+        f" Ref = {labels.ref.label_count},"
+        f" Val = {labels.val.label_count},"
+        f" Total = {labels.label_count}")
+
     # Do the actual training
     with config.log_entry_and_exit('actual training'):
         clf, val_results, return_message = trainer(
-            msg.labels,
+            labels,
             msg.nbr_epochs,
             [load_classifier(loc) for loc in msg.previous_model_locs],
             msg.features_loc,

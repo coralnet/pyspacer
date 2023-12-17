@@ -9,8 +9,9 @@ import time
 from sklearn.calibration import CalibratedClassifierCV
 
 from spacer import config
-from spacer.data_classes import ImageLabels, ValResults
-from spacer.messages import TrainClassifierReturnMsg, DataLocation
+from spacer.data_classes import ValResults
+from spacer.messages import (
+    DataLocation, TrainClassifierReturnMsg, TrainingTaskLabels)
 from spacer.train_utils import train, evaluate_classifier, calc_acc
 
 
@@ -18,7 +19,7 @@ class ClassifierTrainer(abc.ABC):  # pragma: no cover
 
     @abc.abstractmethod
     def __call__(self,
-                 labels: dict[str, ImageLabels],
+                 labels: TrainingTaskLabels,
                  nbr_epochs: int,
                  pc_models: list[CalibratedClassifierCV],
                  feature_loc: DataLocation,
@@ -51,13 +52,13 @@ class MiniBatchTrainer(ClassifierTrainer):
 
         # Evaluate new classifier on validation set.
         val_gts, val_ests, val_scores = evaluate_classifier(
-            clf, labels['val'], classes, feature_loc)
+            clf, labels['val'], feature_loc)
 
         # Evaluate previous classifiers on validation set.
         pc_accs = []
         for pc_model in pc_models:
             pc_gts, pc_ests, _ = evaluate_classifier(
-                pc_model, labels['val'], classes, feature_loc)
+                pc_model, labels['val'], feature_loc)
             pc_accs.append(calc_acc(pc_gts, pc_ests))
 
         return \

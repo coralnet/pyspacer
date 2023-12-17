@@ -73,7 +73,14 @@ class ImageLabels(DataClass):
                  # (row, col, label).
                  data: dict[str, list[tuple[int, int, int]]]):
         self.data = data
+
         self.label_count = sum([len(labels) for labels in data.values()])
+
+        self.classes_set = set()
+        for single_image_labels in data.values():
+            single_image_classes = set(
+                label for (row, col, label) in single_image_labels)
+            self.classes_set |= single_image_classes
 
     @classmethod
     def example(cls):
@@ -84,23 +91,38 @@ class ImageLabels(DataClass):
             'img4.features': [(100, 202, 3), (101, 200, 3)],
         })
 
+    def serialize(self) -> dict:
+        """ Only need the `data` field; the other fields can be recomputed. """
+        return self.data
+
     @classmethod
     def deserialize(cls, data: dict) -> 'ImageLabels':
         """ Custom deserializer required to convert back to tuples. """
         return ImageLabels(
             data={key: [tuple(entry) for entry in value] for
-                  key, value in data['data'].items()})
+                  key, value in data.items()})
 
     @property
     def image_keys(self):
         return list(self.data.keys())
 
-    def unique_classes(self) -> set[int]:
-        """ Returns the set of all unique classes in the data. """
-        labels = set()
-        for im_key in self.image_keys:
-            labels |= {label for (row, col, label) in self.data[im_key]}
-        return labels
+    def filter_classes(self, accepted_classes) -> 'ImageLabels':
+        """
+        Make a new instance by filtering out labels not included in
+        the specified classes.
+        """
+        data = {}
+        for image_key in self.image_keys:
+            this_image_labels = [
+                (row, column, label)
+                for row, column, label in self.data[image_key]
+                if label in accepted_classes
+            ]
+            # Only include an image if it has any labels remaining
+            # after filtering.
+            if len(this_image_labels) > 0:
+                data[image_key] = this_image_labels
+        return ImageLabels(data)
 
     def __len__(self):
         return len(self.data)

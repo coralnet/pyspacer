@@ -8,15 +8,17 @@ from spacer.data_classes import (
 from spacer.exceptions import (
     DataLimitError, RowColumnInvalidError, RowColumnMismatchError)
 from spacer.extract_features import DummyExtractor
-from spacer.messages import \
-    ExtractFeaturesMsg, \
-    ExtractFeaturesReturnMsg, \
-    TrainClassifierMsg, \
-    TrainClassifierReturnMsg, \
-    ClassifyFeaturesMsg, \
-    ClassifyImageMsg, \
-    ClassifyReturnMsg, \
-    DataLocation
+from spacer.messages import (
+    ClassifyFeaturesMsg,
+    ClassifyImageMsg,
+    ClassifyReturnMsg,
+    DataLocation,
+    ExtractFeaturesMsg,
+    ExtractFeaturesReturnMsg,
+    TrainClassifierMsg,
+    TrainClassifierReturnMsg,
+    TrainingTaskLabels,
+)
 from spacer.storage import \
     store_classifier, \
     load_classifier, \
@@ -198,7 +200,7 @@ class TestTrainClassifier(unittest.TestCase):
                 trainer_name='minibatch',
                 nbr_epochs=1,
                 clf_type=clf_type,
-                labels=dict(
+                labels=TrainingTaskLabels(
                     train=train_labels,
                     ref=ref_labels,
                     val=val_labels,
@@ -259,7 +261,7 @@ class TestTrainClassifier(unittest.TestCase):
             trainer_name='minibatch',
             nbr_epochs=1,
             clf_type='LR',
-            labels=dict(
+            labels=TrainingTaskLabels(
                 train=train_labels,
                 ref=ref_labels,
                 val=val_labels,

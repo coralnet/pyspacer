@@ -43,21 +43,14 @@ def train(train_labels: ImageLabels,
     logger.debug(
         f"Mini-batch size: {config.TRAINING_BATCH_LABEL_COUNT} labels")
 
-    # Identify classes common to both train and ref.
-    # This will be our labelset for the training.
-    train_classes = train_labels.unique_classes()
-    ref_classes = ref_labels.unique_classes()
-    classes = list(train_classes.intersection(ref_classes))
-    logger.debug(
-        f"Unique classes: Train = {len(train_classes)},"
-        f" Ref = {len(ref_classes)}, common = {len(classes)}")
-    if len(classes) <= 1:
-        raise ValueError(
-            f"Need multiple classes to do training (there are {len(classes)})")
+    # train_labels and ref_labels should already be trimmed down to the
+    # classes common to both, so the classes_set from either one should be the
+    # set used for training.
+    classes_list = list(ref_labels.classes_set)
 
     # Load reference data (must hold in memory for the calibration)
     with config.log_entry_and_exit("loading of reference data"):
-        refx, refy = load_batch_data(ref_labels, feature_loc, classes)
+        refx, refy = load_batch_data(ref_labels, feature_loc)
 
     # Initialize classifier and ref set accuracy list
     with config.log_entry_and_exit("training using " + clf_type):
@@ -75,9 +68,9 @@ def train(train_labels: ImageLabels,
         for epoch in range(nbr_epochs):
             for x, y in load_data_as_mini_batches(
                 labels=train_labels, feature_loc=feature_loc,
-                classes=classes, random_state=epoch,
+                random_state=epoch,
             ):
-                clf.partial_fit(x, y, classes=classes)
+                clf.partial_fit(x, y, classes=classes_list)
 
             ref_acc.append(calc_acc(refy, clf.predict(refx)))
             logger.debug(f"Epoch {epoch}, acc: {ref_acc[-1]}")
@@ -91,7 +84,6 @@ def train(train_labels: ImageLabels,
 
 def evaluate_classifier(clf: CalibratedClassifierCV,
                         labels: ImageLabels,
-                        classes: list[int],
                         feature_loc: DataLocation) -> tuple[list, list, list]:
     """ Evaluates classifier on data """
     scores, gts, ests = [], [], []
@@ -102,10 +94,7 @@ def evaluate_classifier(clf: CalibratedClassifierCV,
         image_labels_data = labels.data[image_key]
 
         pairs = list(
-            load_image_data(image_labels_data, feature_loc, classes))
-        if len(pairs) == 0:
-            # None of the labels for this image overlap with classes.
-            continue
+            load_image_data(image_labels_data, feature_loc))
 
         # List of pairs -> pair of lists
         x, y = zip(*pairs)
@@ -114,17 +103,15 @@ def evaluate_classifier(clf: CalibratedClassifierCV,
         ests.extend(clf.predict(x))
         gts.extend(y)
 
-    if len(gts) == 0:
-        raise ValueError(
-            "Can't run validation. Validation set has no classes in"
-            " common with the train+ref set.")
+    assert len(gts) > 0, (
+        "The validation set should have been checked for emptiness during"
+        " label preprocessing.")
 
     return gts, ests, scores
 
 
 def load_image_data(labels_data: list[tuple[int, int, int]],
-                    feature_loc: DataLocation,
-                    classes: list[int]) \
+                    feature_loc: DataLocation) \
         -> Generator[FeatureLabelPair, None, None]:
     """
     Loads a feature vector and labels of a single image, and generates
@@ -133,19 +120,11 @@ def load_image_data(labels_data: list[tuple[int, int, int]],
     # Load features.
     features = ImageFeatures.load(feature_loc)
 
-    for point_feature, label in match_features_and_labels(
-            features, labels_data, feature_loc.key):
-
-        if label not in classes:
-            continue
-
-        yield point_feature, label
+    return match_features_and_labels(features, labels_data, feature_loc.key)
 
 
 def load_batch_data(labels: ImageLabels,
-                    feature_loc: DataLocation,
-                    # Only load labels of these classes.
-                    classes: list[int]) \
+                    feature_loc: DataLocation) \
         -> FeatureLabelBatch:
     """
     Loads features and labels, and builds element-matching lists
@@ -159,10 +138,9 @@ def load_batch_data(labels: ImageLabels,
         image_labels_data = labels.data[image_key]
 
         batch.extend(
-            load_image_data(image_labels_data, feature_loc, classes))
+            load_image_data(image_labels_data, feature_loc))
 
-    assert (
-        len(batch) > 0,
+    assert len(batch) > 0, (
         "We only ever expect labels to be a non-empty ref set.")
 
     # List of pairs -> pair of lists
@@ -172,8 +150,6 @@ def load_batch_data(labels: ImageLabels,
 
 def load_data_as_mini_batches(labels: ImageLabels,
                               feature_loc: DataLocation,
-                              # Only load labels of these classes.
-                              classes: list[int],
                               # For seeding the randomizer to get repeatable
                               # results.
                               random_state: int) \
@@ -201,7 +177,7 @@ def load_data_as_mini_batches(labels: ImageLabels,
         image_labels_data = labels.data[image_key]
 
         for point_feature, label in load_image_data(
-                image_labels_data, feature_loc, classes):
+                image_labels_data, feature_loc):
 
             current_batch.append((point_feature, label))
 

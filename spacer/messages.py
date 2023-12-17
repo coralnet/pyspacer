@@ -5,6 +5,7 @@ python-native data-structures such that it can be stored.
 """
 
 from __future__ import annotations
+import dataclasses
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -137,6 +138,79 @@ class ExtractFeaturesReturnMsg(DataClass):
         )
 
 
+@dataclasses.dataclass
+class TrainingTaskLabels:
+    """
+    This structure specifies sets of point-locations to ground-truth-labels
+    (annotations) mappings to use for classifier training. Three data sets
+    are included: training, reference, and validation.
+
+    For ease of use, the function preprocess_labels() can help build
+    this from a single ImageLabels instance.
+
+    The reference set is meant to fit in a single
+    training batch, so the label count should be no greater than
+    config.TRAINING_BATCH_LABEL_COUNT. This isn't strictly
+    enforced, but helps ensure stabler performance/results.
+
+    The training set is what the classifier actually learns from.
+    The reference set is a hold-out set whose purpose is to
+    1) get an accuracy measurement per epoch, and
+    2) calibrate classifier output scores.
+    The validation set is used to evaluate accuracy of the final classifier.
+    """
+
+    # Since this is a Python dataclass, there's an automatically generated
+    # __init__() method which sets the fields below.
+    train: ImageLabels
+    ref: ImageLabels
+    val: ImageLabels
+
+    def __getitem__(self, item):
+        """
+        Can access a particular data set with either obj.<setname>,
+        or obj['<setname>'].
+        """
+        if item not in ['train', 'ref', 'val']:
+            raise KeyError
+        return getattr(self, item)
+
+    def __setitem__(self, item, value):
+        if item not in ['train', 'ref', 'val']:
+            raise KeyError
+        setattr(self, item, value)
+
+    @property
+    def label_count(self):
+        return (
+            self.train.label_count
+            + self.ref.label_count
+            + self.val.label_count)
+
+    def serialize(self) -> dict:
+        return {
+            'train': self.train.serialize(),
+            'ref': self.ref.serialize(),
+            'val': self.val.serialize(),
+        }
+
+    @classmethod
+    def deserialize(cls, data: dict) -> 'TrainingTaskLabels':
+        return TrainingTaskLabels(
+            train=ImageLabels.deserialize(data['train']),
+            ref=ImageLabels.deserialize(data['ref']),
+            val=ImageLabels.deserialize(data['val']),
+        )
+
+    @classmethod
+    def example(cls) -> 'TrainingTaskLabels':
+        return TrainingTaskLabels(
+            train=ImageLabels.example(),
+            ref=ImageLabels.example(),
+            val=ImageLabels.example(),
+        )
+
+
 class TrainClassifierMsg(DataClass):
     """ Specifies the train classifier task. """
 
@@ -153,23 +227,10 @@ class TrainClassifierMsg(DataClass):
         # 1. 'MLP': multi-layer perceptron; newer classifier type for CoralNet
         # 2. 'LR': logistic regression; older classifier type for CoralNet
         clf_type: str,
-        # Point-locations to ground-truth-labels (annotations) mapping.
-        # Used for training the classifier. Two acceptable formats:
-        #
-        # 1) One ImageLabels instance, which pyspacer decides how to
-        # split up into training, reference, and validation sets.
-        # 2) A dict containing three ImageLabels instances, with the
-        # dict keys being 'train', 'ref', and 'val'.
-        #
-        # For option 2, the reference set's label count should be no greater
-        # than config.TRAINING_BATCH_LABEL_COUNT.
-        #
-        # The reference set is a hold-out set whose purpose is to
-        # 1) get an accuracy measurement per epoch, and
-        # 2) calibrate classifier output scores.
-        # The validation set is used to evaluate accuracy of the final
-        # classifier.
-        labels: ImageLabels | dict[str, ImageLabels],
+        # Point-locations to ground-truth-labels (annotations) mappings
+        # used to train the classifier.
+        # See TrainingTaskLabels comments for more info.
+        labels: TrainingTaskLabels,
         # All the feature vectors should use the same storage_type, and the
         # same S3 bucket_name if applicable. This DataLocation's purpose is
         # to describe those common storage details. The key arg is ignored,
@@ -192,68 +253,11 @@ class TrainClassifierMsg(DataClass):
         self.trainer_name = trainer_name
         self.nbr_epochs = nbr_epochs
         self.clf_type = clf_type
+        self.labels = labels
         self.features_loc = features_loc
         self.previous_model_locs = previous_model_locs
         self.model_loc = model_loc
         self.valresult_loc = valresult_loc
-
-        if isinstance(labels, dict):
-            # The caller has decided how to split the data into
-            # training, reference, and validation sets.
-            for set_name in ['train', 'ref', 'val']:
-                if set_name not in labels:
-                    raise ValueError(
-                        f"TrainClassifierMsg: labels must include"
-                        f" '{set_name}' set.")
-            self.labels = labels
-        else:
-            # Split data into training, reference, and validation sets.
-            #
-            # Arbitrarily, validation gets 10%, reference gets
-            # min(10%, TRAINING_BATCH_LABEL_COUNT), training gets the rest.
-            # This is imprecise because it's split on the image level, not the
-            # label level, and images can have different numbers of labels.
-            #
-            # The split is done in a way which guarantees that all 3 sets are
-            # non-empty if there are at least 3 images.
-            if len(labels) < 3:
-                raise ValueError(
-                    f"TrainClassifierMsg: labels has {len(labels)} images,"
-                    f" but need at least 3.")
-
-            train_data = dict()
-            ref_data = dict()
-            val_data = dict()
-            ref_label_count = 0
-            ref_done = False
-
-            for image_index, image_key in enumerate(labels.image_keys):
-                this_image_labels = labels.data[image_key]
-
-                if image_index % 10 == 0:
-                    # 1st, 11th, 21st, etc. images go in val.
-                    val_data[image_key] = this_image_labels
-                elif not ref_done and image_index % 10 == 1:
-                    # 2nd, 12th, 22nd, etc. images go in ref, if ref still
-                    # has room within the batch size; else, go in train.
-                    if (ref_label_count + len(this_image_labels)
-                            <= config.TRAINING_BATCH_LABEL_COUNT):
-                        ref_data[image_key] = this_image_labels
-                        ref_label_count += len(this_image_labels)
-                    else:
-                        # ref would go over the batch size if it added this
-                        # image.
-                        train_data[image_key] = this_image_labels
-                        ref_done = True
-                else:
-                    # The rest go in train.
-                    train_data[image_key] = this_image_labels
-
-            self.labels = dict(
-                train=ImageLabels(train_data),
-                ref=ImageLabels(ref_data),
-                val=ImageLabels(val_data),
-            )
 
     @classmethod
     def example(cls):
@@ -262,7 +266,7 @@ class TrainClassifierMsg(DataClass):
             trainer_name='minibatch',
             nbr_epochs=2,
             clf_type='MLP',
-            labels=ImageLabels.example(),
+            labels=TrainingTaskLabels.example(),
             features_loc=DataLocation('memory', ''),
             previous_model_locs=[
                 DataLocation('memory', 'previous_model1.pkl'),
@@ -278,10 +282,7 @@ class TrainClassifierMsg(DataClass):
             'trainer_name': self.trainer_name,
             'nbr_epochs': self.nbr_epochs,
             'clf_type': self.clf_type,
-            'labels': dict([
-                (key, entry.serialize())
-                for key, entry in self.labels.items()
-            ]),
+            'labels': self.labels.serialize(),
             'features_loc': self.features_loc.serialize(),
             'previous_model_locs': [entry.serialize()
                                     for entry in self.previous_model_locs],
@@ -296,10 +297,7 @@ class TrainClassifierMsg(DataClass):
             trainer_name=data['trainer_name'],
             nbr_epochs=data['nbr_epochs'],
             clf_type=data['clf_type'],
-            labels=dict([
-                (key, ImageLabels.deserialize(entry))
-                for key, entry in data['labels'].items()
-            ]),
+            labels=TrainingTaskLabels.deserialize(data['labels']),
             features_loc=DataLocation.deserialize(data['features_loc']),
             previous_model_locs=[DataLocation.deserialize(entry)
                                  for entry in data['previous_model_locs']],

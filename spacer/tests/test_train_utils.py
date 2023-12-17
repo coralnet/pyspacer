@@ -114,30 +114,6 @@ class TestTrain(unittest.TestCase):
                 msg="Learning rate init value should correspond to label"
                     " count")
 
-    def test_too_few_classes(self):
-        """ Can't train with only 1 class! """
-        points_per_image = 20
-        feature_dim = 5
-        class_list = [1]
-        num_epochs = 4
-        feature_loc = DataLocation(storage_type='memory', key='')
-
-        train_labels = make_random_data(
-            1, class_list, points_per_image,
-            feature_dim, feature_loc,
-        )
-        ref_labels = make_random_data(
-            1, class_list, points_per_image,
-            feature_dim, feature_loc,
-        )
-
-        for clf_type in config.CLASSIFIER_TYPES:
-            with self.assertRaises(ValueError):
-                train(
-                    train_labels, ref_labels, feature_loc,
-                    num_epochs, clf_type,
-                )
-
 
 class TestEvaluateClassifier(unittest.TestCase):
 
@@ -156,42 +132,11 @@ class TestEvaluateClassifier(unittest.TestCase):
         for clf_type in config.CLASSIFIER_TYPES:
             clf, _ = train(train_data, ref_data, feature_loc, 1, clf_type)
 
-            gts, ests, scores = evaluate_classifier(
-                clf, val_data, class_list, feature_loc)
+            gts, ests, scores = evaluate_classifier(clf, val_data, feature_loc)
             # Sanity checks
             self.assertTrue(all([gt in class_list for gt in gts]))
             self.assertTrue(all([est in class_list for est in ests]))
             self.assertTrue(all([0 < s < 1 for s in scores]))
-
-    def test_no_gt(self):
-        class_list_train_ref = [1, 2]
-        class_list_val = [3]
-        points_per_image = 4
-        feature_dim = 5
-        feature_loc = DataLocation(storage_type='memory', key='')
-        train_data = make_random_data(
-            9, class_list_train_ref, points_per_image,
-            feature_dim, feature_loc)
-        ref_data = make_random_data(
-            1, class_list_train_ref, points_per_image,
-            feature_dim, feature_loc)
-        val_data = make_random_data(
-            3, class_list_val, points_per_image,
-            feature_dim, feature_loc)
-
-        for clf_type in config.CLASSIFIER_TYPES:
-            clf, _ = train(train_data, ref_data, feature_loc, 1, clf_type)
-
-            # Note here that class_list for the val_data doesn't include
-            # any samples from classes [1, 2] so the gt will be empty,
-            # which will raise an exception.
-            with self.assertRaises(ValueError) as cm:
-                evaluate_classifier(
-                    clf, val_data, class_list_train_ref, feature_loc)
-            self.assertEqual(
-                str(cm.exception),
-                "Can't run validation. Validation set has no classes in"
-                " common with the train+ref set.")
 
 
 class TestLoadDataAsMiniBatches(unittest.TestCase):
@@ -220,7 +165,6 @@ class TestLoadDataAsMiniBatches(unittest.TestCase):
                 im_count, self.classes, points_per_image,
                 self.feature_dim, self.feature_loc),
             self.feature_loc,
-            self.classes,
             random_state,
         )]
 
@@ -239,7 +183,6 @@ class TestLoadDataAsMiniBatches(unittest.TestCase):
                 im_count, self.classes, points_per_image,
                 self.feature_dim, self.feature_loc),
             self.feature_loc,
-            self.classes,
             random_state,
         )]
 
@@ -258,7 +201,6 @@ class TestLoadDataAsMiniBatches(unittest.TestCase):
                 im_count, self.classes, points_per_image,
                 self.feature_dim, self.feature_loc),
             self.feature_loc,
-            self.classes,
             random_state,
         )]
 
@@ -288,7 +230,6 @@ class TestLoadDataAsMiniBatches(unittest.TestCase):
                 im_count, self.classes, points_per_image,
                 self.feature_dim, self.feature_loc),
             self.feature_loc,
-            self.classes,
             random_state,
         )]
 
@@ -314,13 +255,11 @@ class TestLoadDataAsMiniBatches(unittest.TestCase):
         batches_1 = [batch for batch in load_data_as_mini_batches(
             data,
             self.feature_loc,
-            self.classes,
             random_state,
         )]
         batches_2 = [batch for batch in load_data_as_mini_batches(
             data,
             self.feature_loc,
-            self.classes,
             random_state,
         )]
 
@@ -392,7 +331,7 @@ class TestLoadImageData(unittest.TestCase):
 
         labels, features = self.fixtures(in_order=True)
 
-        x, y = zip(*load_image_data(labels, self.feature_loc, [1, 2]))
+        x, y = zip(*load_image_data(labels, self.feature_loc))
 
         self.assertEqual(list(y), [1, 2, 1])
         self.assertTrue(np.array_equal(x[0], features.point_features[0].data))
@@ -404,7 +343,7 @@ class TestLoadImageData(unittest.TestCase):
         """
         labels, features = self.fixtures(in_order=False)
 
-        x, y = zip(*load_image_data(labels, self.feature_loc, [1, 2]))
+        x, y = zip(*load_image_data(labels, self.feature_loc))
 
         self.assertEqual(list(y), [1, 2, 1])
         # Same elements, different order relative to features.
@@ -419,7 +358,7 @@ class TestLoadImageData(unittest.TestCase):
         """
         labels, features = self.fixtures(in_order=False, valid_rowcol=False)
 
-        x, y = zip(*load_image_data(labels, self.feature_loc, [1, 2]))
+        x, y = zip(*load_image_data(labels, self.feature_loc))
 
         self.assertEqual(list(y), [1, 2, 1])
         # There should have been no attempt to correct the order
@@ -427,49 +366,6 @@ class TestLoadImageData(unittest.TestCase):
         self.assertTrue(np.array_equal(x[0], features.point_features[0].data))
         self.assertTrue(np.array_equal(x[1], features.point_features[1].data))
         self.assertTrue(np.array_equal(x[2], features.point_features[2].data))
-
-    def test_smaller_labelset(self):
-        """
-        Here we use a smaller labelset and assert
-        that the right features are kept
-        """
-
-        labels, features = self.fixtures(in_order=True, valid_rowcol=True)
-
-        x, y = zip(*load_image_data(labels, self.feature_loc, [1]))
-
-        self.assertEqual(list(y), [1, 1])
-        # Just the 1st and 3rd point features
-        self.assertTrue(np.array_equal(x[0], features.point_features[0].data))
-        self.assertTrue(np.array_equal(x[1], features.point_features[2].data))
-
-    def test_other_small_labelset(self):
-        """
-        Here we use a smaller labelset and assert
-        that the right features are kept
-        """
-
-        labels, features = self.fixtures(in_order=True, valid_rowcol=True)
-
-        x, y = zip(*load_image_data(labels, self.feature_loc, [2]))
-
-        self.assertEqual(list(y), [2])
-        # Just the 2nd point feature
-        self.assertTrue(np.array_equal(x[0], features.point_features[1].data))
-
-    def test_legacy_smaller_labelset(self):
-        """
-        Here we pretend the features are legacy such that row, col
-        information is not available.
-        """
-        labels, features = self.fixtures(in_order=True, valid_rowcol=False)
-
-        x, y = zip(*load_image_data(labels, self.feature_loc, [1]))
-
-        self.assertEqual(list(y), [1, 1])
-        # Just the 1st and 3rd point features
-        self.assertTrue(np.array_equal(x[0], features.point_features[0].data))
-        self.assertTrue(np.array_equal(x[1], features.point_features[2].data))
 
     def test_rowcol_mismatch(self):
         """
@@ -480,7 +376,7 @@ class TestLoadImageData(unittest.TestCase):
         labels[2] = (300, 299, 1)
 
         with self.assertRaises(RowColumnMismatchError) as cm:
-            _, _ = load_image_data(labels, self.feature_loc, [1, 2])
+            _, _ = load_image_data(labels, self.feature_loc)
         self.assertEqual(
             str(cm.exception),
             f"{self.feat_key}: The labels' row-column positions don't match"
@@ -496,7 +392,7 @@ class TestLoadImageData(unittest.TestCase):
         labels.append((400, 400, 2))
 
         with self.assertRaises(RowColumnMismatchError) as cm:
-            _, _ = load_image_data(labels, self.feature_loc, [1, 2])
+            _, _ = load_image_data(labels, self.feature_loc)
         self.assertEqual(
             str(cm.exception),
             f"{self.feat_key}: The number of labels (4) doesn't match"
@@ -556,7 +452,7 @@ class TestLoadBatchData(unittest.TestCase):
     def test_simple(self):
 
         labels, features1, features2 = self.fixtures(valid_rowcol=True)
-        x, y = load_batch_data(labels, self.feat_loc_template, [1, 2])
+        x, y = load_batch_data(labels, self.feat_loc_template)
 
         for a, b in [
             (x[0], features1.point_features[0].data),
@@ -565,21 +461,6 @@ class TestLoadBatchData(unittest.TestCase):
             (x[3], features2.point_features[0].data),
             (x[4], features2.point_features[1].data),
             (x[5], features2.point_features[2].data),
-        ]:
-            self.assertTrue(np.array_equal(a, b))
-
-    def test_filter_by_label(self):
-
-        labels, features1, features2 = self.fixtures(valid_rowcol=True)
-        x, y = load_batch_data(labels, self.feat_loc_template, [1])
-
-        for a, b in [
-            (x[0], features1.point_features[0].data),
-            # Missing 1/1
-            (x[1], features1.point_features[2].data),
-            (x[2], features2.point_features[0].data),
-            # Missing 2/1
-            (x[3], features2.point_features[2].data),
         ]:
             self.assertTrue(np.array_equal(a, b))
 

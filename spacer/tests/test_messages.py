@@ -12,7 +12,6 @@ from spacer.messages import \
     ClassifyReturnMsg, \
     JobMsg, \
     JobReturnMsg
-from spacer.train_utils import make_random_data
 
 
 class TestDataLocation(unittest.TestCase):
@@ -90,98 +89,6 @@ class TestTrainClassifierMsg(unittest.TestCase):
             msg.serialize()))
         self.assertEqual(msg, TrainClassifierMsg.deserialize(
             json.loads(json.dumps(msg.serialize()))))
-
-    def test_train_ref_val_split(self):
-        """
-        Let pyspacer handle the train/ref/val split.
-        """
-        n_data = 20
-        points_per_image = 10
-        feature_dim = 5
-        class_list = [1, 2]
-        features_loc_template = DataLocation(storage_type='memory', key='')
-
-        msg = TrainClassifierMsg(
-            job_token='test',
-            trainer_name='minibatch',
-            nbr_epochs=1,
-            clf_type='MLP',
-            labels=make_random_data(
-                n_data, class_list, points_per_image,
-                feature_dim, features_loc_template,
-            ),
-            features_loc=features_loc_template,
-            previous_model_locs=[],
-            model_loc=DataLocation(storage_type='memory', key='model'),
-            valresult_loc=DataLocation(storage_type='memory', key='val_res'),
-        )
-
-        # 80% 10% 10%
-        self.assertEqual(len(msg.labels['train']), 16)
-        self.assertEqual(len(msg.labels['ref']), 2)
-        self.assertEqual(len(msg.labels['val']), 2)
-
-    def test_train_ref_val_split_large(self):
-        """
-        This assumes the default batch size config value of 5000 labels.
-
-        Ideally, later we'd be able to override config for specific tests,
-        and then set an override for this test class so that it doesn't
-        depend on the non-test config value.
-        """
-        n_data = 60
-        points_per_image = 1000
-        feature_dim = 5
-        class_list = [1, 2]
-        features_loc_template = DataLocation(storage_type='memory', key='')
-
-        msg = TrainClassifierMsg(
-            job_token='test',
-            trainer_name='minibatch',
-            nbr_epochs=1,
-            clf_type='MLP',
-            labels=make_random_data(
-                n_data, class_list, points_per_image,
-                feature_dim, features_loc_template,
-            ),
-            features_loc=features_loc_template,
-            previous_model_locs=[],
-            model_loc=DataLocation(storage_type='memory', key='model'),
-            valresult_loc=DataLocation(storage_type='memory', key='val_res'),
-        )
-
-        # 80%+ (capped to 5000 points) 10%
-        self.assertEqual(len(msg.labels['train']), 49)
-        self.assertEqual(len(msg.labels['ref']), 5)
-        self.assertEqual(len(msg.labels['val']), 6)
-
-    def test_too_few_images(self):
-        n_data = 2
-        points_per_image = 5
-        feature_dim = 5
-        class_list = [1, 2]
-        features_loc_template = DataLocation(storage_type='memory', key='')
-
-        with self.assertRaises(ValueError) as cm:
-            TrainClassifierMsg(
-                job_token='test',
-                trainer_name='minibatch',
-                nbr_epochs=1,
-                clf_type='MLP',
-                labels=make_random_data(
-                    n_data, class_list, points_per_image,
-                    feature_dim, features_loc_template,
-                ),
-                features_loc=features_loc_template,
-                previous_model_locs=[],
-                model_loc=DataLocation(storage_type='memory', key='model'),
-                valresult_loc=DataLocation(
-                    storage_type='memory', key='val_res'),
-            )
-        self.assertEqual(
-            str(cm.exception),
-            "TrainClassifierMsg: labels has 2 images,"
-            " but need at least 3.")
 
 
 class TestTrainClassifierReturnMsg(unittest.TestCase):

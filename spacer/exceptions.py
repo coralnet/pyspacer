@@ -18,6 +18,10 @@ class RowColumnMismatchError(Exception):
     pass
 
 
+class TrainingLabelsError(Exception):
+    pass
+
+
 class URLDownloadError(Exception):
     """
     This wraps around several different errors that can happen
