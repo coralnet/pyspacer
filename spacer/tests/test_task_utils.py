@@ -191,14 +191,21 @@ class TestPreprocessLabels(unittest.TestCase):
                     '3': [(300, 300, 3),
                           (100, 100, 1),
                           (200, 200, 2)],
+                    '4': [(100, 300, 3),
+                          (200, 100, 4),
+                          (300, 200, 3)],
                 }),
             ),
+            # Filter to just 1 and 2. Note that, if not for passing this kwarg,
+            # it'd auto filter to 1, 2, 3 because those are all in train+ref.
             accepted_classes={1, 2},
         )
 
         self.assertEqual(labels.train.data['1'], [(100, 100, 1), (200, 200, 2)])
         self.assertEqual(labels.ref.data['2'], [(200, 200, 2), (100, 100, 1)])
         self.assertEqual(labels.val.data['3'], [(100, 100, 1), (200, 200, 2)])
+        self.assertNotIn(
+            '4', labels.val.data, msg="Image 4 should be excluded entirely")
 
 
 if __name__ == '__main__':
