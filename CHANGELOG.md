@@ -2,11 +2,9 @@
 
 ## 0.7.0 (WIP)
 
-- `TrainClassifierMsg` labels arguments have changed. Instead of `train_labels` and `val_labels`, it now takes a single argument `labels`, which can be in either of two forms:
+- `TrainClassifierMsg` labels arguments have changed. Instead of `train_labels` and `val_labels`, it now takes a single argument `labels`, which is a `TrainingTaskLabels` object (basically a set of 3 `ImageLabels` objects: training set, reference set, and validation set).
 
-  - A single `ImageLabels` object which pyspacer will decide how to split into training (train), reference (ref), and validation (val) sets.
-
-  - A dict which maps each of the keys `train`, `ref`, and `val` to a different `ImageLabels` object.
+- The new function `task_utils.preprocess_labels()` can be called in advance of building a TrainClassifierMsg, to 1) split a single ImageLabels instance into reasonably-proportioned train/ref/val sets, 2) filter labels to only a desired set of classes, and 3) run error checks.
 
 - Removed `MIN_TRAINIMAGES` config var. Minimum number of images for training is now 1 train set, 1 ref set, and 1 val set; or 3 total if leaving the split to pyspacer.
 
@@ -14,7 +12,7 @@
 
 - Logging statements throughout pyspacer's codebase now use module-name loggers rather than the root logger, allowing end-applications to keep their logs organized.
 
-- Replaced all SpacerInputErrors and some AssertionErrors with more descriptive error classes.
+- Updated various error cases (mainly SpacerInputErrors, asserts, and ValueErrors) with more descriptive error classes. The `SpacerInputError` class is no longer available.
 
 ## 0.6.1
 

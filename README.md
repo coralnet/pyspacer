@@ -170,6 +170,7 @@ Produces a classifier (model) loadable in scikit-learn, and classifier evaluatio
 from spacer.data_classes import ImageLabels
 from spacer.messages import DataLocation, TrainClassifierMsg
 from spacer.tasks import train_classifier
+from spacer.task_utils import preprocess_labels
 
 message = TrainClassifierMsg(
     # For your bookkeeping.
@@ -183,25 +184,22 @@ message = TrainClassifierMsg(
     # 1. 'MLP': multi-layer perceptron; newer classifier type for CoralNet
     # 2. 'LR': logistic regression; older classifier type for CoralNet
     clf_type='MLP',
-    # Point-locations to ground-truth-labels (annotations) mapping. Used for
-    # training the classifier.
-    # The data dict-keys must be the same as the `key` used in the
+    # Point-locations to ground-truth-labels (annotations) mappings
+    # used to train the classifier.
+    # The dict keys must be the same as the `key` used in the
     # extract-features task's `feature_loc`.
-    # The data dict-values are lists of tuples of
-    # (row, column, label ID). You'll need to be tracking a mapping of
-    # integer label IDs to the labels you use.
-    train_labels=ImageLabels(data={
+    # The dict values are lists of tuples of (row, column, label ID).
+    # You'll need to be tracking a mapping of integer label IDs to the
+    # labels you use.
+    # preprocess_labels() can automatically split the data into training,
+    # reference, and validation sets. However, you may also define how to
+    # split it yourself; for details, see `TrainingTaskLabels` comments
+    # in messages.py.
+    labels=preprocess_labels(ImageLabels({
         '/path/to/image1.featurevector': [(1000, 2000, 1), (3000, 2000, 2)],
         '/path/to/image2.featurevector': [(1000, 2000, 3), (3000, 2000, 1)],
         '/path/to/image3.featurevector': [(1234, 2857, 11), (3094, 2262, 25)],
-    }),
-    # Point-locations to ground-truth-labels mapping. Used for evaluating
-    # the classifier's accuracy. Should be disjoint from train_labels.
-    # CoralNet uses a 7-to-1 ratio of train_labels to val_labels.
-    val_labels=ImageLabels(data={
-        '/path/to/image4.featurevector': [(500, 2500, 1), (2500, 1500, 3)],
-        '/path/to/image5.featurevector': [(4321, 5582, 25), (4903, 2622, 19)],
-    }),
+    })),
     # All the feature vectors should use the same storage_type, and the same
     # S3 bucket_name if applicable. This DataLocation's purpose is to describe
     # those common storage details. The key arg is ignored, because that will
@@ -225,14 +223,14 @@ print("Evaluation results stored at: /path/to/valresult.json")
 print(f"New model's accuracy (0.0 = 0%, 1.0 = 100%): {return_message.acc}")
 print(f"Previous models' accuracies: {return_message.pc_accs}")
 print(
-    "New model's accuracy progression (calculated on part of train_labels)"
+    "New model's accuracy progression (calculated on the reference set)"
     f" after each epoch of training: {return_message.ref_accs}")
 print(f"Training runtime: {return_message.runtime:.1f} s")
 ```
 
 Evaluation results consist of three arrays:
 
-- `gt`: Ground-truth label IDs (which were passed in as `val_labels`) for each point.
+- `gt`: Ground-truth label IDs for each point in the validation set.
 - `est`: Estimated (classifier-predicted) label IDs for each point.
 - `scores`: Classifier's confidence scores (0.0 = 0%, 1.0 = 100%) for each estimated label ID.
 
