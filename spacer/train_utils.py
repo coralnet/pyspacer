@@ -91,7 +91,7 @@ def evaluate_classifier(clf: CalibratedClassifierCV,
     for image_key in labels.image_keys:
 
         feature_loc.key = image_key
-        image_labels_data = labels.data[image_key]
+        image_labels_data = labels[image_key]
 
         pairs = list(
             load_image_data(image_labels_data, feature_loc))
@@ -135,7 +135,7 @@ def load_batch_data(labels: ImageLabels,
     for image_key in labels.image_keys:
 
         feature_loc.key = image_key
-        image_labels_data = labels.data[image_key]
+        image_labels_data = labels[image_key]
 
         batch.extend(
             load_image_data(image_labels_data, feature_loc))
@@ -174,7 +174,7 @@ def load_data_as_mini_batches(labels: ImageLabels,
     for image_key in image_keys:
 
         feature_loc.key = image_key
-        image_labels_data = labels.data[image_key]
+        image_labels_data = labels[image_key]
 
         for point_feature, label in load_image_data(
                 image_labels_data, feature_loc):

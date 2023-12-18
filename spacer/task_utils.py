@@ -109,7 +109,7 @@ def preprocess_labels(
         ref_done = False
 
         for image_index, image_key in enumerate(labels_in.image_keys):
-            this_image_labels = labels_in.data[image_key]
+            this_image_labels = labels_in[image_key]
 
             if image_index % 10 == 0:
                 # 1st, 11th, 21st, etc. images go in val.

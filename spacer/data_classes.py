@@ -72,7 +72,7 @@ class ImageLabels(DataClass):
                  # Data maps a feature key (or file path) to a List of
                  # (row, col, label).
                  data: dict[str, list[tuple[int, int, int]]]):
-        self.data = data
+        self._data = data
 
         self.label_count = sum([len(labels) for labels in data.values()])
 
@@ -92,19 +92,20 @@ class ImageLabels(DataClass):
         })
 
     def serialize(self) -> dict:
-        """ Only need the `data` field; the other fields can be recomputed. """
-        return self.data
+        """Only need the `_data` field; the other fields can be recomputed."""
+        return self._data
 
     @classmethod
     def deserialize(cls, data: dict) -> 'ImageLabels':
-        """ Custom deserializer required to convert back to tuples. """
-        return ImageLabels(
-            data={key: [tuple(entry) for entry in value] for
-                  key, value in data.items()})
+        """Custom deserializer required to convert back to tuples."""
+        return ImageLabels({
+            key: [tuple(entry) for entry in value] for
+            key, value in data.items()
+        })
 
     @property
     def image_keys(self):
-        return list(self.data.keys())
+        return list(self._data.keys())
 
     def filter_classes(self, accepted_classes) -> 'ImageLabels':
         """
@@ -115,7 +116,7 @@ class ImageLabels(DataClass):
         for image_key in self.image_keys:
             this_image_labels = [
                 (row, column, label)
-                for row, column, label in self.data[image_key]
+                for row, column, label in self._data[image_key]
                 if label in accepted_classes
             ]
             # Only include an image if it has any labels remaining
@@ -125,7 +126,13 @@ class ImageLabels(DataClass):
         return ImageLabels(data)
 
     def __len__(self):
-        return len(self.data)
+        return len(self._data)
+
+    def __getitem__(self, item):
+        return self._data[item]
+
+    def __contains__(self, item):
+        return item in self._data
 
 
 class PointFeatures(DataClass):

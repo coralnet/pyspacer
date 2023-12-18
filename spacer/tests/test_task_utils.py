@@ -201,11 +201,11 @@ class TestPreprocessLabels(unittest.TestCase):
             accepted_classes={1, 2},
         )
 
-        self.assertEqual(labels.train.data['1'], [(100, 100, 1), (200, 200, 2)])
-        self.assertEqual(labels.ref.data['2'], [(200, 200, 2), (100, 100, 1)])
-        self.assertEqual(labels.val.data['3'], [(100, 100, 1), (200, 200, 2)])
+        self.assertEqual(labels.train['1'], [(100, 100, 1), (200, 200, 2)])
+        self.assertEqual(labels.ref['2'], [(200, 200, 2), (100, 100, 1)])
+        self.assertEqual(labels.val['3'], [(100, 100, 1), (200, 200, 2)])
         self.assertNotIn(
-            '4', labels.val.data, msg="Image 4 should be excluded entirely")
+            '4', labels.val, msg="Image 4 should be excluded entirely")
 
 
 if __name__ == '__main__':
