@@ -5,6 +5,7 @@ python-native data-structures such that it can be stored.
 """
 
 from __future__ import annotations
+import dataclasses
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -137,21 +138,114 @@ class ExtractFeaturesReturnMsg(DataClass):
         )
 
 
+@dataclasses.dataclass
+class TrainingTaskLabels:
+    """
+    This structure specifies sets of point-locations to ground-truth-labels
+    (annotations) mappings to use for classifier training. Three data sets
+    are included: training, reference, and validation.
+
+    For ease of use, the function preprocess_labels() can help build
+    this from a single ImageLabels instance.
+
+    The reference set is meant to fit in a single
+    training batch, so the label count should be no greater than
+    config.TRAINING_BATCH_LABEL_COUNT. This isn't strictly
+    enforced, but helps ensure stabler performance/results.
+
+    The training set is what the classifier actually learns from.
+    The reference set is a hold-out set whose purpose is to
+    1) get an accuracy measurement per epoch, and
+    2) calibrate classifier output scores.
+    The validation set is used to evaluate accuracy of the final classifier.
+    """
+
+    # Since this is a Python dataclass, there's an automatically generated
+    # __init__() method which sets the fields below.
+    train: ImageLabels
+    ref: ImageLabels
+    val: ImageLabels
+
+    def __getitem__(self, item):
+        """
+        Can access a particular data set with either obj.<setname>,
+        or obj['<setname>'].
+        """
+        if item not in ['train', 'ref', 'val']:
+            raise KeyError
+        return getattr(self, item)
+
+    def __setitem__(self, item, value):
+        if item not in ['train', 'ref', 'val']:
+            raise KeyError
+        setattr(self, item, value)
+
+    @property
+    def label_count(self):
+        return (
+            self.train.label_count
+            + self.ref.label_count
+            + self.val.label_count)
+
+    def serialize(self) -> dict:
+        return {
+            'train': self.train.serialize(),
+            'ref': self.ref.serialize(),
+            'val': self.val.serialize(),
+        }
+
+    @classmethod
+    def deserialize(cls, data: dict) -> 'TrainingTaskLabels':
+        return TrainingTaskLabels(
+            train=ImageLabels.deserialize(data['train']),
+            ref=ImageLabels.deserialize(data['ref']),
+            val=ImageLabels.deserialize(data['val']),
+        )
+
+    @classmethod
+    def example(cls) -> 'TrainingTaskLabels':
+        return TrainingTaskLabels(
+            train=ImageLabels.example(),
+            ref=ImageLabels.example(),
+            val=ImageLabels.example(),
+        )
+
+
 class TrainClassifierMsg(DataClass):
     """ Specifies the train classifier task. """
 
-    def __init__(self,
-                 job_token: str,  # Job token, for caller reference.
-                 trainer_name: str,  # Name of trainer to use.
-                 nbr_epochs: int,  # Number of epochs to do training.
-                 clf_type: str,  # Name of classifier to use.
-                 train_labels: ImageLabels,  # Traindata
-                 val_labels: ImageLabels,  # Valdata
-                 features_loc: DataLocation,  # Location of features. Key is set from train and val labels during data load.
-                 previous_model_locs: list[DataLocation],  # Previous models to be evaluated on the valdata.
-                 model_loc: DataLocation,  # Where to store model.
-                 valresult_loc: DataLocation,  # Model result on val.
-                 ):
+    def __init__(
+        self,
+        # For caller's reference.
+        job_token: str,
+        # 'minibatch' is currently the only trainer that spacer defines.
+        trainer_name: str,
+        # How many iterations the training algorithm should run; more epochs
+        # = more opportunity to converge to a better fit, but slower.
+        nbr_epochs: int,
+        # Classifier types available:
+        # 1. 'MLP': multi-layer perceptron; newer classifier type for CoralNet
+        # 2. 'LR': logistic regression; older classifier type for CoralNet
+        clf_type: str,
+        # Point-locations to ground-truth-labels (annotations) mappings
+        # used to train the classifier.
+        # See TrainingTaskLabels comments for more info.
+        labels: TrainingTaskLabels,
+        # All the feature vectors should use the same storage_type, and the
+        # same S3 bucket_name if applicable. This DataLocation's purpose is
+        # to describe those common storage details. The key arg is ignored,
+        # because that will be different for each feature vector.
+        features_loc: DataLocation,
+        # List of previously-created models (classifiers) to also evaluate
+        # using this dataset, for informational purposes only.
+        # A classifier is stored as a pickled CalibratedClassifierCV.
+        previous_model_locs: list[DataLocation],
+        # Where the new model (classifier) should be output to.
+        model_loc: DataLocation,
+        # Where the detailed evaluation results of the new model should be
+        # stored.
+        valresult_loc: DataLocation,
+    ):
 
         assert trainer_name in config.TRAINER_NAMES
 
@@ -159,8 +253,7 @@ class TrainClassifierMsg(DataClass):
         self.trainer_name = trainer_name
         self.nbr_epochs = nbr_epochs
         self.clf_type = clf_type
-        self.train_labels = train_labels
-        self.val_labels = val_labels
+        self.labels = labels
         self.features_loc = features_loc
         self.previous_model_locs = previous_model_locs
         self.model_loc = model_loc
@@ -173,8 +266,7 @@ class TrainClassifierMsg(DataClass):
             trainer_name='minibatch',
             nbr_epochs=2,
             clf_type='MLP',
-            train_labels=ImageLabels.example(),
-            val_labels=ImageLabels.example(),
+            labels=TrainingTaskLabels.example(),
             features_loc=DataLocation('memory', ''),
             previous_model_locs=[
                 DataLocation('memory', 'previous_model1.pkl'),
@@ -190,8 +282,7 @@ class TrainClassifierMsg(DataClass):
             'trainer_name': self.trainer_name,
             'nbr_epochs': self.nbr_epochs,
             'clf_type': self.clf_type,
-            'train_labels': self.train_labels.serialize(),
-            'val_labels': self.val_labels.serialize(),
+            'labels': self.labels.serialize(),
             'features_loc': self.features_loc.serialize(),
             'previous_model_locs': [entry.serialize()
                                     for entry in self.previous_model_locs],
@@ -206,8 +297,7 @@ class TrainClassifierMsg(DataClass):
             trainer_name=data['trainer_name'],
             nbr_epochs=data['nbr_epochs'],
             clf_type=data['clf_type'],
-            train_labels=ImageLabels.deserialize(data['train_labels']),
-            val_labels=ImageLabels.deserialize(data['val_labels']),
+            labels=TrainingTaskLabels.deserialize(data['labels']),
             features_loc=DataLocation.deserialize(data['features_loc']),
             previous_model_locs=[DataLocation.deserialize(entry)
                                  for entry in data['previous_model_locs']],

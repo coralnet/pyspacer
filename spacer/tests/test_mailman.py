@@ -2,15 +2,16 @@ import unittest
 
 from spacer import config
 from spacer.extract_features import DummyExtractor
+from spacer.messages import (
+    ClassifyImageMsg,
+    DataLocation,
+    ExtractFeaturesMsg,
+    JobMsg,
+    JobReturnMsg,
+    TrainClassifierMsg,
+    TrainingTaskLabels,
+)
 from spacer.tasks import process_job
-from spacer.messages import \
-    JobMsg, \
-    JobReturnMsg, \
-    ExtractFeaturesMsg, \
-    TrainClassifierMsg, \
-    ClassifyImageMsg, \
-    DataLocation, \
-    ImageLabels
 
 TEST_URL = \
     'https://upload.wikimedia.org/wikipedia/commons/7/7b/Red_sea_coral_reef.jpg'
@@ -90,14 +91,9 @@ class TestProcessJobErrorHandling(unittest.TestCase):
                              trainer_name='minibatch',
                              nbr_epochs=1,
                              clf_type=clf_type,
-                             train_labels=ImageLabels(data={
-                                 'my_feats': [(1, 1, 1), (2, 2, 2)]
-                             }),
-                             val_labels=ImageLabels(data={
-                                 'my_feats': [(1, 1, 1), (2, 2, 2)]
-                             }),
+                             labels=TrainingTaskLabels.example(),
                              features_loc=DataLocation(storage_type='memory',
-                                                       key='my_feats'),
+                                                       key=''),
                              previous_model_locs=[
                                  DataLocation(storage_type='memory',
                                               key='my_previous_model')

@@ -103,24 +103,21 @@ Spacer supports four storage types: `s3`, `filesystem`, `memory` and `url`.
 `config.py` defines configurable variables/settings and various constants.
 
 
-## Feature extractors
-
-The first step when analyzing an image, or preparing an image as training data, is extracting [features](https://en.wikipedia.org/wiki/Feature_(computer_vision)) from the image. Therefore, you need a feature extractor to use spacer, but spacer does not provide one out of the box.
-
-Spacer's `extract_features.py` provides the Python classes `EfficientNetExtractor` for loading EfficientNet extractors in PyTorch format (CoralNet 1.0's default extraction scheme), and `VGG16CaffeExtractor` for loading VGG16 extractors in Caffe format (CoralNet's legacy extraction scheme).
-
-You'll either want to match one of these schemes so you can use the provided classes, or you'll have to write your own extractor class which inherits from the base class `FeatureExtractor`. Between the provided classes, the easier one to use will probably be `EfficientNetExtractor`, because Caffe is old software which is more complicated to install.
-
-If you're loading the extractor files remotely (from S3 or from a URL), the files will be automatically cached to your configured `EXTRACTORS_CACHE_DIR` for faster subsequent loads.
-
-
 ## Core API
 
 The `tasks.py` module has four functions which comprise the main interface of pyspacer:
 
 ### extract_features
 
-Takes an image, a list of pixel locations on that image, and a feature extractor. Produces a single feature vector out of the image-data at those pixel locations. Example:
+The first step when analyzing an image, or preparing an image as training data, is extracting [features](https://en.wikipedia.org/wiki/Feature_(computer_vision)) from the image. For this step, you specify a set of points (pixel locations) in the image which you want to analyze. At each point, spacer will crop a square of pixels centered around that location and extract features based on that square.
+
+You'll also need a feature extractor, but spacer does not provide one out of the box. Spacer's `extract_features.py` provides the Python classes `EfficientNetExtractor` for loading EfficientNet extractors in PyTorch format (CoralNet 1.0's default extraction scheme), and `VGG16CaffeExtractor` for loading VGG16 extractors in Caffe format (CoralNet's legacy extraction scheme).
+
+You'll either want to match one of these schemes so you can use the provided classes, or you'll have to write your own extractor class which inherits from the base class `FeatureExtractor`. Between the provided classes, the easier one to use will probably be `EfficientNetExtractor`, because Caffe is old software which is more complicated to install.
+
+If you're loading the extractor files remotely (from S3 or from a URL), the files will be automatically cached to your configured `EXTRACTORS_CACHE_DIR` for faster subsequent loads.
+
+The output of `extract_features()` is a single feature-vector file, which is a JSON file that is deserializable using the `data_classes.ImageFeatures` class. Example usage:
 
 ```python
 from spacer.extract_features import EfficientNetExtractor
@@ -157,19 +154,75 @@ print(f"Extraction runtime: {return_message.runtime:.1f} s")
 
 ### train_classifier
 
-Takes:
+To train a classifier, you need:
 
-- Feature vectors, each vector corresponding to a set of pixel locations in one image
-- Ground-truth (typically human-confirmed) annotations corresponding to those feature vectors
-- Optionally, previously-created classifiers to re-evaluate with these annotations
+- Feature vectors; each vector corresponds to a set of point locations in one image
+- Ground-truth labels (typically applied/confirmed by human inspection) for each of the points specified in those feature vectors
 - Training parameters
 
-Produces a classifier (model) loadable in scikit-learn, and classifier evaluation results. Example:
+The labels must be split into training, reference, and validation sets:
+
+- The training set (train) is the data that actually goes into the classifier training algorithm during each training epoch. This is generally much larger than the other two sets.
+- The reference set (ref) is used to evaluate and calibrate the classifier between epochs. 
+- The validation set (val) is used to evaluate the final classifier after training is finished.
+
+This three-set split is known by other names elsewhere, such as [training, validation, and test sets](https://en.wikipedia.org/wiki/Training%2C_validation%2C_and_test_data_sets) respectively, or [training, development, and test sets](https://cs230.stanford.edu/blog/split/) respectively.
+
+There are a few ways to create the `labels` structure. Each way involves creating one or more instances of `data_classes.ImageLabels`:
+
+```python
+from spacer.data_classes import ImageLabels
+image_labels = ImageLabels({
+    # Labels for one feature vector's points.
+    '/path/to/image1.featurevector': [
+        # Point location at row 1000, column 2000, labeled as class 1.
+        (1000, 2000, 1), 
+        # Point location at row 3000, column 2000, labeled as class 2.
+        (3000, 2000, 2),
+    ],
+    # Labels for another feature vector's points.
+    '/path/to/image2.featurevector': [
+        (1500, 2500, 3),
+        (2500, 500, 1),
+    ],
+})
+```
+
+The `labels` argument of `TrainClassifierMsg` expects an instance of `data_classes.TrainingTaskLabels`. There are a few ways to create this:
+
+1. Pass a single ImageLabels instance to the `task_utils.preprocess_labels()` function. preprocess_labels() then decides how to split up your labels into train, ref, and val (while doing error checks in the meantime), and creates a TrainingTaskLabels instance from there.
+2. Pass three ImageLabels instances to the TrainingTaskLabels constructor: one instance for each of train, ref, and val.
+3. Do method 1, but also specify the `accepted_classes` argument to preprocess_labels(); this makes the function filter out any labels that aren't in the desired set of classes.
+4. Do method 2, but also pass the TrainingTaskLabels through preprocess_labels(). This allows you to use the error-checking and accepted_classes parts of preprocess_labels(), and the train/ref/val split you defined will remain intact.
+
+```python
+from spacer.data_classes import ImageLabels
+from spacer.messages import TrainingTaskLabels
+from spacer.task_utils import preprocess_labels
+
+# 1
+labels = preprocess_labels(ImageLabels(...))
+# 2
+labels = TrainingTaskLabels(
+    train=ImageLabels(...), ref=ImageLabels(...), val=ImageLabels(...))
+# 3
+labels = preprocess_labels(ImageLabels(...), accepted_classes={...})
+# 4
+labels = preprocess_labels(TrainingTaskLabels(...), accepted_classes={...})
+```
+
+So, pass that and the other required arguments to TrainClassifierMsg, and then pass that message to `train_classifier()`, which produces:
+
+- A classifier as an `sklearn.calibration.CalibratedClassifierCV` instance, stored in a pickle (.pkl) file. spacer's `storage.load_classifier()` function can help with loading classifiers that were created in older scikit-learn versions. 
+- Classifier evaluation results as a JSON file.
+
+Example: 
 
 ```python
 from spacer.data_classes import ImageLabels
 from spacer.messages import DataLocation, TrainClassifierMsg
 from spacer.tasks import train_classifier
+from spacer.task_utils import preprocess_labels
 
 message = TrainClassifierMsg(
     # For your bookkeeping.
@@ -182,34 +235,32 @@ message = TrainClassifierMsg(
     # Classifier types available:
     # 1. 'MLP': multi-layer perceptron; newer classifier type for CoralNet
     # 2. 'LR': logistic regression; older classifier type for CoralNet
+    # Both types are run with scikit-learn.
     clf_type='MLP',
-    # Point-locations to ground-truth-labels (annotations) mapping. Used for
-    # training the classifier.
-    # The data dict-keys must be the same as the `key` used in the
+    # Point-locations to ground-truth-labels (annotations) mappings
+    # used to train the classifier.
+    # The dict keys must be the same as the `key` used in the
     # extract-features task's `feature_loc`.
-    # The data dict-values are lists of tuples of
-    # (row, column, label ID). You'll need to be tracking a mapping of
-    # integer label IDs to the labels you use.
-    train_labels=ImageLabels(data={
+    # The dict values are lists of tuples of (row, column, label ID).
+    # You'll need to be tracking a mapping of integer label IDs to the
+    # labels you use.
+    # preprocess_labels() can automatically split the data into training,
+    # reference, and validation sets. However, you may also define how to
+    # split it yourself; for details, see `TrainingTaskLabels` comments
+    # in messages.py.
+    labels=preprocess_labels(ImageLabels({
         '/path/to/image1.featurevector': [(1000, 2000, 1), (3000, 2000, 2)],
         '/path/to/image2.featurevector': [(1000, 2000, 3), (3000, 2000, 1)],
         '/path/to/image3.featurevector': [(1234, 2857, 11), (3094, 2262, 25)],
-    }),
-    # Point-locations to ground-truth-labels mapping. Used for evaluating
-    # the classifier's accuracy. Should be disjoint from train_labels.
-    # CoralNet uses a 7-to-1 ratio of train_labels to val_labels.
-    val_labels=ImageLabels(data={
-        '/path/to/image4.featurevector': [(500, 2500, 1), (2500, 1500, 3)],
-        '/path/to/image5.featurevector': [(4321, 5582, 25), (4903, 2622, 19)],
-    }),
+    })),
     # All the feature vectors should use the same storage_type, and the same
     # S3 bucket_name if applicable. This DataLocation's purpose is to describe
     # those common storage details. The key arg is ignored, because that will
     # be different for each feature vector.
     features_loc=DataLocation('filesystem', ''),
     # List of previously-created models (classifiers) to also evaluate
-    # using this dataset, for informational purposes only.
-    # A classifier is stored as a pickled CalibratedClassifierCV.
+    # using this validation set, for informational purposes only.
+    # This can be handy for comparing classifiers.
     previous_model_locs=[
         DataLocation('filesystem', '/path/to/oldclassifier1.pkl'),
         DataLocation('filesystem', '/path/to/oldclassifier2.pkl'),
@@ -223,22 +274,40 @@ return_message = train_classifier(message)
 print("Classifier stored at: /path/to/classifier1.pkl")
 print("Evaluation results stored at: /path/to/valresult.json")
 print(f"New model's accuracy (0.0 = 0%, 1.0 = 100%): {return_message.acc}")
-print(f"Previous models' accuracies: {return_message.pc_accs}")
 print(
-    "New model's accuracy progression (calculated on part of train_labels)"
+    f"Previous models' accuracies on the validation set:"
+    f" {return_message.pc_accs}")
+print(
+    "New model's accuracy progression (calculated on the reference set)"
     f" after each epoch of training: {return_message.ref_accs}")
 print(f"Training runtime: {return_message.runtime:.1f} s")
 ```
 
 Evaluation results consist of three arrays:
 
-- `gt`: Ground-truth label IDs (which were passed in as `val_labels`) for each point.
-- `est`: Estimated (classifier-predicted) label IDs for each point.
+- `gt`: Ground-truth label IDs for each point in the validation set.
+- `est`: Estimated (classifier-predicted) label IDs for each point in the validation set.
 - `scores`: Classifier's confidence scores (0.0 = 0%, 1.0 = 100%) for each estimated label ID.
 
 The *i*th element of `gt`, *i*th element of `est`, and *i*th element of `scores` correspond to each other. But the elements are otherwise in an undefined order.
 
 Accuracy is defined as the percentage of `gt` labels that match the corresponding `est` labels.
+
+Here's a snippet which lists out the evaluation results:
+
+```python
+import json
+from spacer.data_classes import ValResults
+with open('/path/to/valresult.json') as f:
+    valresult = ValResults.deserialize(json.load(f))
+for ground_truth_i, prediction_i, score in zip(
+    valresult.gt, valresult.est, valresult.scores
+):
+    print(
+        f"Actual = {valresult.classes[ground_truth_i]},"
+        f" Predicted = {valresult.classes[prediction_i]},"
+        f" Confidence = {100*score:.1f}%")
+```
 
 ### classify_features
 
@@ -313,7 +382,7 @@ for row, col, scores in return_message.scores:
 
 ## Unit tests
 
-Run the test suite by running `python -m unittest` from the `spacer` directory.
+If you are using the docker build or local install, you can run the test suite by running `python -m unittest` from the `spacer` directory.
 
 - Expect many tests to be skipped, since most test fixtures aren't set up for public access yet.
 
@@ -321,10 +390,10 @@ Run the test suite by running `python -m unittest` from the `spacer` directory.
 
 - You can get logging output during test runs with the `LOG_DESTINATION` and `LOG_LEVEL` vars in config.py.
 
-If you are using the docker build or local install, 
-you can check code coverage like so:
+You can check code coverage like so:
+
 ```
-    coverage run --source=spacer --omit=spacer/tests/* -m unittest    
-    coverage report -m
-    coverage html
+coverage run --source=spacer --omit=spacer/tests/* -m unittest    
+coverage report -m
+coverage html
 ```
