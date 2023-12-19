@@ -89,16 +89,26 @@ def get_config_detection_result():
     return result
 
 
-def get_config_value(key: str, default: Any = 'NO_DEFAULT') -> Any:
+def get_config_value(
+        key: str,
+        value_type: type = str,
+        default: Any = 'NO_DEFAULT') -> Any:
 
     def is_valid_value(value_):
         # Treat an empty string the same as not specifying a setting.
         return value_ not in ['', None]
 
+    def cast_str_value(value_):
+        if value_type == str:
+            return value_
+        if value_type == int:
+            return int(value_)
+        assert False, "Don't call cast_str_value() with unsupported types."
+
     # Try environment variables. Each should be prefixed with 'SPACER_'.
     value = os.getenv('SPACER_' + key)
     if is_valid_value(value):
-        return value
+        return cast_str_value(value)
 
     def handle_unspecified_setting():
         if default == 'NO_DEFAULT':
@@ -112,7 +122,7 @@ def get_config_value(key: str, default: Any = 'NO_DEFAULT') -> Any:
     if SECRETS:
         value = SECRETS.get(key)
         if is_valid_value(value):
-            return value
+            return cast_str_value(value)
         return handle_unspecified_setting()
 
     # Try Django settings.
@@ -249,14 +259,16 @@ STORAGE_TYPES = [
     'url'
 ]
 
-MAX_IMAGE_PIXELS = get_config_value('MAX_IMAGE_PIXELS', default=10000*10000)
-MAX_POINTS_PER_IMAGE = get_config_value('MAX_POINTS_PER_IMAGE', default=1000)
+MAX_IMAGE_PIXELS = get_config_value(
+    'MAX_IMAGE_PIXELS', value_type=int, default=10000*10000)
+MAX_POINTS_PER_IMAGE = get_config_value(
+    'MAX_POINTS_PER_IMAGE', value_type=int, default=1000)
 
 # Size of training batches. This number of features must be able to fit
 # in memory. Raising this allows the reference set to be larger,
 # which can improve calibration results.
 TRAINING_BATCH_LABEL_COUNT = get_config_value(
-    'TRAINING_BATCH_LABEL_COUNT', default=5000)
+    'TRAINING_BATCH_LABEL_COUNT', value_type=int, default=5000)
 
 # Check access to select which tests to run.
 HAS_CAFFE = importlib.util.find_spec("caffe") is not None
