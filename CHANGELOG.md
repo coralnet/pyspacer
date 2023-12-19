@@ -12,6 +12,8 @@
 
 - Logging statements throughout pyspacer's codebase now use module-name loggers rather than the root logger, allowing end-applications to keep their logs organized.
 
+- Fixed bug where int config vars couldn't be configured through environment vars or secrets.json.
+
 - Updated various error cases (mainly SpacerInputErrors, asserts, and ValueErrors) with more descriptive error classes. The `SpacerInputError` class is no longer available.
 
 ## 0.6.1
