@@ -1,26 +1,32 @@
-import itertools
+from __future__ import annotations
 import unittest
-from typing import Tuple
 
 import numpy as np
 
 from spacer import config
 from spacer.data_classes import ImageLabels, PointFeatures, ImageFeatures
+from spacer.exceptions import RowColumnMismatchError
 from spacer.messages import DataLocation
-from spacer.train_utils import train, calc_batch_size, chunkify, calc_acc, \
-    load_image_data, load_batch_data, make_random_data, evaluate_classifier
+from spacer.train_utils import (
+    calc_acc,
+    evaluate_classifier,
+    load_batch_data,
+    load_data_as_mini_batches,
+    load_image_data,
+    make_random_data,
+    train,
+)
 
 
 class TestMakeRandom(unittest.TestCase):
 
     def test_nominal(self):
 
-        n_traindata = 200
-        points_per_image = 20
+        n_traindata = 20
+        points_per_image = 200
         feature_dim = 5
         class_list = [1, 2]
 
-        # Create train and val data.
         features_loc_template = DataLocation(storage_type='memory', key='')
 
         traindata = make_random_data(n_traindata,
@@ -29,171 +35,243 @@ class TestMakeRandom(unittest.TestCase):
                                      feature_dim,
                                      features_loc_template)
 
-        self.assertEqual(traindata.samples_per_image, points_per_image)
-        self.assertEqual(len(traindata), n_traindata)
-        self.assertEqual(traindata.samples_per_image * len(traindata),
-                         points_per_image * n_traindata)
+        self.assertEqual(
+            len(traindata), n_traindata,
+            msg="Length (image count) should be as expected")
+        self.assertEqual(
+            traindata.label_count, n_traindata*points_per_image,
+            msg="Label count should be as expected")
 
         one_feature_loc = features_loc_template
-        one_feature_loc.key = list(traindata.data.keys())[0]
+        one_feature_loc.key = traindata.image_keys[0]
         feats = ImageFeatures.load(one_feature_loc)
-        self.assertEqual(feats.feature_dim, feature_dim)
+        self.assertEqual(
+            feats.feature_dim, feature_dim,
+            msg="Should have created features as expected")
 
 
 class TestTrain(unittest.TestCase):
 
     def test_ok(self):
 
-        n_traindata = config.MIN_TRAINIMAGES + 1
+        n_traindata = 5
+        n_refdata = 1
         points_per_image = 20
         feature_dim = 5
         class_list = [1, 2]
         num_epochs = 4
         feature_loc = DataLocation(storage_type='memory', key='')
 
-        labels = make_random_data(n_traindata,
-                                  class_list,
-                                  points_per_image,
-                                  feature_dim,
-                                  feature_loc)
+        train_labels = make_random_data(
+            n_traindata, class_list, points_per_image,
+            feature_dim, feature_loc,
+        )
+        ref_labels = make_random_data(
+            n_refdata, class_list, points_per_image,
+            feature_dim, feature_loc,
+        )
 
         for clf_type in config.CLASSIFIER_TYPES:
-            clf_calibrated, ref_acc = train(labels, feature_loc, num_epochs,
-                                            clf_type)
+            clf_calibrated, ref_acc = train(
+                train_labels, ref_labels, feature_loc,
+                num_epochs, clf_type,
+            )
 
-            self.assertEqual(len(ref_acc), num_epochs)
+            self.assertEqual(
+                len(ref_acc), num_epochs,
+                msg="Sanity check: expecting one ref_acc element per epoch")
 
     def test_mlp_hybrid_mode(self):
 
-        for (ntd, ppi, hls, lr) in [(11, 20, (100,), 1e-3),
-                                    (1000, 100, (200, 100), 1e-4)]:
-            n_traindata = ntd
-            points_per_image = ppi
+        param_sets = [
+            (11, 20, (100,), 1e-3),
+            (100, 1000, (200, 100), 1e-4),
+        ]
+
+        for (n_traindata, points_per_image, hls, lr) in param_sets:
             feature_dim = 5
             class_list = [1, 2]
             num_epochs = 4
             feature_loc = DataLocation(storage_type='memory', key='')
 
-            labels = make_random_data(n_traindata,
-                                      class_list,
-                                      points_per_image,
-                                      feature_dim,
-                                      feature_loc)
+            train_labels = make_random_data(
+                n_traindata, class_list, points_per_image,
+                feature_dim, feature_loc,
+            )
+            ref_labels = make_random_data(
+                1, class_list, points_per_image,
+                feature_dim, feature_loc,
+            )
 
-            clf_calibrated, ref_acc = train(labels, feature_loc, num_epochs,
-                                            'MLP')
+            clf_calibrated, ref_acc = train(
+                train_labels, ref_labels, feature_loc, num_epochs, 'MLP')
             clf_param = clf_calibrated.get_params()['base_estimator']
-            self.assertEqual(clf_param.hidden_layer_sizes, hls)
-            self.assertEqual(clf_param.learning_rate_init, lr)
-
-    def test_too_few_images(self):
-        n_traindata = config.MIN_TRAINIMAGES - 1
-        points_per_image = 20
-        feature_dim = 5
-        class_list = [1, 2]
-        num_epochs = 4
-        feature_loc = DataLocation(storage_type='memory', key='')
-
-        labels = make_random_data(n_traindata,
-                                  class_list,
-                                  points_per_image,
-                                  feature_dim,
-                                  feature_loc)
-
-        for clf_type in config.CLASSIFIER_TYPES:
-            self.assertRaises(ValueError, train, labels, feature_loc,
-                              num_epochs, clf_type)
-
-    def test_too_few_classes(self):
-        """ Can't train with only 1 class! """
-        n_traindata = config.MIN_TRAINIMAGES + 1
-        points_per_image = 20
-        feature_dim = 5
-        class_list = [1]
-        num_epochs = 4
-        feature_loc = DataLocation(storage_type='memory', key='')
-
-        labels = make_random_data(n_traindata,
-                                  class_list,
-                                  points_per_image,
-                                  feature_dim,
-                                  feature_loc)
-
-        for clf_type in config.CLASSIFIER_TYPES:
-            self.assertRaises(ValueError, train, labels, feature_loc,
-                              num_epochs, clf_type)
+            self.assertEqual(
+                clf_param.hidden_layer_sizes, hls,
+                msg="Hidden layer sizes should correspond to label count")
+            self.assertEqual(
+                clf_param.learning_rate_init, lr,
+                msg="Learning rate init value should correspond to label"
+                    " count")
 
 
 class TestEvaluateClassifier(unittest.TestCase):
 
     def test_simple(self):
+        class_list = [1, 2]
+        points_per_image = 4
+        feature_dim = 5
         feature_loc = DataLocation(storage_type='memory', key='')
-        train_data = make_random_data(10, [1, 2], 4, 5, feature_loc)
+        train_data = make_random_data(
+            9, class_list, points_per_image, feature_dim, feature_loc)
+        ref_data = make_random_data(
+            1, class_list, points_per_image, feature_dim, feature_loc)
+        val_data = make_random_data(
+            3, class_list, points_per_image, feature_dim, feature_loc)
+
         for clf_type in config.CLASSIFIER_TYPES:
-            clf, _ = train(train_data, feature_loc, 1, clf_type)
+            clf, _ = train(train_data, ref_data, feature_loc, 1, clf_type)
 
-            val_data = make_random_data(3, [1, 2], 4, 5, feature_loc)
-            gts, ests, scores = evaluate_classifier(clf, val_data, [1, 2],
-                                                    feature_loc)
-            self.assertTrue(1 in gts)
-            self.assertTrue(2 in gts)
-
-    def test_no_gt(self):
-
-        feature_loc = DataLocation(storage_type='memory', key='')
-        train_data = make_random_data(10, [1, 2], 4, 5, feature_loc)
-        for clf_type in config.CLASSIFIER_TYPES:
-            clf, _ = train(train_data, feature_loc, 1, clf_type)
-
-            # Note here that class_list for the val_data doesn't include
-            # any samples from classes [1, 2] so the gt will be empty,
-            # which will raise an exception.
-            val_data = make_random_data(3, [3], 4, 5, feature_loc)
-            self.assertRaises(ValueError, evaluate_classifier,
-                              clf, val_data, [1, 2], feature_loc)
+            gts, ests, scores = evaluate_classifier(clf, val_data, feature_loc)
+            # Sanity checks
+            self.assertTrue(all([gt in class_list for gt in gts]))
+            self.assertTrue(all([est in class_list for est in ests]))
+            self.assertTrue(all([0 < s < 1 for s in scores]))
 
 
-class TestCalcBatchSize(unittest.TestCase):
+class TestLoadDataAsMiniBatches(unittest.TestCase):
+    """
+    This assumes the default batch size config value of 5000 labels.
 
-    def setUp(self):
+    Ideally, later we'd be able to override config for specific tests,
+    and then set an override for this test class so that it doesn't
+    depend on the non-test config value.
+    """
+
+    @classmethod
+    def setUpClass(cls):
         config.filter_warnings()
 
-    def test1(self):
+        cls.classes = [1, 2]
+        cls.feature_dim = 5
+        cls.feature_loc = DataLocation(storage_type='memory', key='')
 
-        images_per_batch, batches_per_epoch = calc_batch_size(1000, 10)
-        self.assertEqual(images_per_batch, 10)
-        self.assertEqual(batches_per_epoch, 1)
+    def test_one_non_full_batch(self):
+        im_count = 20
+        points_per_image = 10
+        random_state = 1
+        batches = [batch for batch in load_data_as_mini_batches(
+            make_random_data(
+                im_count, self.classes, points_per_image,
+                self.feature_dim, self.feature_loc),
+            self.feature_loc,
+            random_state,
+        )]
 
-    def test2(self):
-        images_per_batch, batches_per_epoch = calc_batch_size(3, 5)
-        self.assertEqual(images_per_batch, 3)
-        self.assertEqual(batches_per_epoch, 2)
+        self.assertEqual(len(batches), 1, msg="Should have 1 batch")
+        self.assertEqual(
+            len(batches[0][0]), 200, msg="Should have 200 point features")
+        self.assertEqual(
+            len(batches[0][1]), 200, msg="Should have 200 labels")
 
-    def test3(self):
-        images_per_batch, batches_per_epoch = calc_batch_size(1, 5)
-        self.assertEqual(images_per_batch, 1)
-        self.assertEqual(batches_per_epoch, 5)
+    def test_one_full_batch(self):
+        im_count = 10
+        points_per_image = 500
+        random_state = 1
+        batches = [batch for batch in load_data_as_mini_batches(
+            make_random_data(
+                im_count, self.classes, points_per_image,
+                self.feature_dim, self.feature_loc),
+            self.feature_loc,
+            random_state,
+        )]
 
+        self.assertEqual(len(batches), 1, msg="Should have 1 batch")
+        self.assertEqual(
+            len(batches[0][0]), 5000, msg="Should have 5000 point features")
+        self.assertEqual(
+            len(batches[0][1]), 5000, msg="Should have 5000 labels")
 
-class TestChunkify(unittest.TestCase):
+    def test_multiple_batches(self):
+        im_count = 21
+        points_per_image = 500
+        random_state = 1
+        batches = [batch for batch in load_data_as_mini_batches(
+            make_random_data(
+                im_count, self.classes, points_per_image,
+                self.feature_dim, self.feature_loc),
+            self.feature_loc,
+            random_state,
+        )]
 
-    def test1(self):
-        out = chunkify(list(range(10)), 3)
-        self.assertEqual(len(out), 3)
-        self.assertEqual(len(out[0]), 4)
-        self.assertEqual(len(list(itertools.chain.from_iterable(out))), 10)
+        self.assertEqual(len(batches), 3, msg="Should have 3 batches")
+        self.assertEqual(
+            len(batches[0][0]), 5000,
+            msg="Batch 1 should have 5000 point features")
+        self.assertEqual(
+            len(batches[0][1]), 5000, msg="Batch 1 should have 5000 labels")
+        self.assertEqual(
+            len(batches[1][0]), 5000,
+            msg="Batch 2 should have 5000 point features")
+        self.assertEqual(
+            len(batches[1][1]), 5000, msg="Batch 2 should have 5000 labels")
+        self.assertEqual(
+            len(batches[2][0]), 500,
+            msg="Batch 3 should have 500 point features")
+        self.assertEqual(
+            len(batches[2][1]), 500, msg="Batch 3 should have 500 labels")
 
-    def test2(self):
-        out = chunkify(list(range(9)), 3)
-        self.assertEqual(len(out), 3)
-        self.assertEqual(len(out[0]), 3)
-        self.assertEqual(len(list(itertools.chain.from_iterable(out))), 9)
+    def test_one_image_split_between_batches(self):
+        im_count = 1
+        points_per_image = 5001
+        random_state = 1
+        batches = [batch for batch in load_data_as_mini_batches(
+            make_random_data(
+                im_count, self.classes, points_per_image,
+                self.feature_dim, self.feature_loc),
+            self.feature_loc,
+            random_state,
+        )]
 
-    def test3(self):
-        out = chunkify(list(range(10)), 10)
-        self.assertEqual(len(out), 10)
-        self.assertEqual(len(out[0]), 1)
-        self.assertEqual(len(list(itertools.chain.from_iterable(out))), 10)
+        self.assertEqual(len(batches), 2, msg="Should have 2 batches")
+        self.assertEqual(
+            len(batches[0][0]), 5000,
+            msg="Batch 1 should have 5000 point features")
+        self.assertEqual(
+            len(batches[0][1]), 5000, msg="Batch 1 should have 5000 labels")
+        self.assertEqual(
+            len(batches[1][0]), 1, msg="Batch 2 should have 1 point feature")
+        self.assertEqual(
+            len(batches[1][1]), 1, msg="Batch 2 should have 1 label")
+
+    def test_repeatable_with_same_random_state(self):
+        im_count = 20
+        points_per_image = 1
+        random_state = 13
+        data = make_random_data(
+            im_count, self.classes, points_per_image,
+            self.feature_dim, self.feature_loc)
+
+        batches_1 = [batch for batch in load_data_as_mini_batches(
+            data,
+            self.feature_loc,
+            random_state,
+        )]
+        batches_2 = [batch for batch in load_data_as_mini_batches(
+            data,
+            self.feature_loc,
+            random_state,
+        )]
+
+        # Should be pretty unlikely that two random-shuffled
+        # 20-feature lists get the same ordering, unless they were
+        # seeded the same.
+        batches_1_features = [feature for feature in batches_1[0][0]]
+        batches_2_features = [feature for feature in batches_2[0][0]]
+        for i in range(im_count):
+            self.assertTrue(
+                np.array_equal(batches_1_features[i], batches_2_features[i]),
+                msg=f"Element {i} in both batch sets should be the same")
 
 
 class TestAcc(unittest.TestCase):
@@ -208,20 +286,19 @@ class TestAcc(unittest.TestCase):
 
 class TestLoadImageData(unittest.TestCase):
 
-    def setUp(self):
-
+    @classmethod
+    def setUpClass(cls):
         config.filter_warnings()
-        self.feat_key = 'tmp_features'
-        self.feature_loc = DataLocation(storage_type='memory',
-                                        key=self.feat_key)
+        cls.feat_key = 'tmp_features'
+        cls.feature_loc = DataLocation(storage_type='memory',
+                                       key=cls.feat_key)
 
     def fixtures(self, in_order=True, valid_rowcol=True) \
-            -> Tuple[ImageLabels, ImageFeatures]:
+            -> tuple[list[tuple[int, int, int]], ImageFeatures]:
 
-        labels = ImageLabels(
-            data={self.feat_key: [(100, 100, 1),
-                                  (200, 200, 2),
-                                  (300, 300, 1)]})
+        labels = [(100, 100, 1),
+                  (200, 200, 2),
+                  (300, 300, 1)]
 
         fv1 = [1.1, 1.2, 1.3]
         fv2 = [2.1, 2.2, 2.3]
@@ -254,92 +331,89 @@ class TestLoadImageData(unittest.TestCase):
 
         labels, features = self.fixtures(in_order=True)
 
-        x, y = load_image_data(labels, self.feat_key, [1, 2], self.feature_loc)
+        x, y = zip(*load_image_data(labels, self.feature_loc))
 
-        self.assertEqual(y, [1, 2, 1])
+        self.assertEqual(list(y), [1, 2, 1])
         self.assertTrue(np.array_equal(x[0], features.point_features[0].data))
 
-    def test_reverse(self):
-        """ here the order of features and labels are reversed.
-        But it all still works thanks to row, col matching. """
-
+    def test_scrambled(self):
+        """
+        Here the feature ordering is scrambled.
+        But the load result is still the same thanks to row, col matching.
+        """
         labels, features = self.fixtures(in_order=False)
 
-        x, y = load_image_data(labels, self.feat_key, [1, 2], self.feature_loc)
+        x, y = zip(*load_image_data(labels, self.feature_loc))
 
-        self.assertEqual(y, [1, 2, 1])
-        # Since the order is reversed, the first feature should be the second
-        # vector of point_features list.
+        self.assertEqual(list(y), [1, 2, 1])
+        # Same elements, different order relative to features.
         self.assertTrue(np.array_equal(x[0], features.point_features[1].data))
+        self.assertTrue(np.array_equal(x[1], features.point_features[0].data))
+        self.assertTrue(np.array_equal(x[2], features.point_features[2].data))
 
-    def test_legacy_reverse(self):
+    def test_legacy_scrambled(self):
         """
         Here we pretend the features are legacy such that row, col
         information is not available.
         """
         labels, features = self.fixtures(in_order=False, valid_rowcol=False)
 
-        x, y = load_image_data(labels, self.feat_key, [1, 2], self.feature_loc)
+        x, y = zip(*load_image_data(labels, self.feature_loc))
 
-        self.assertEqual(y, [1, 2, 1])
-        # Since the order is reversed, the first feature should be the second
-        # vector of point_features list. But it is not.
-        self.assertFalse(np.array_equal(x[0], features.point_features[1].data))
-
-    def test_smaller_labelset(self):
-        """ Here we use a smaller labelset and assert
-        that the right feature vector is kept """
-
-        labels, features = self.fixtures(in_order=True, valid_rowcol=True)
-
-        x, y = load_image_data(labels, self.feat_key, [1], self.feature_loc)
-
-        self.assertEqual(y, [1, 1])
+        self.assertEqual(list(y), [1, 2, 1])
+        # There should have been no attempt to correct the order
+        # relative to features.
         self.assertTrue(np.array_equal(x[0], features.point_features[0].data))
-        self.assertTrue(np.array_equal(x[1], features.point_features[2].data))
+        self.assertTrue(np.array_equal(x[1], features.point_features[1].data))
+        self.assertTrue(np.array_equal(x[2], features.point_features[2].data))
 
-    def test_other_small_labelset(self):
-        """ Here we use a smaller labelset and assert
-        that the right feature vector is kept """
-
+    def test_rowcol_mismatch(self):
+        """
+        Labels has a row-column pair that's not in features.
+        """
         labels, features = self.fixtures(in_order=True, valid_rowcol=True)
 
-        x, y = load_image_data(labels, self.feat_key, [2], self.feature_loc)
+        labels[2] = (300, 299, 1)
 
-        self.assertEqual(y, [2])
-        self.assertTrue(np.array_equal(x[0], features.point_features[1].data))
+        with self.assertRaises(RowColumnMismatchError) as cm:
+            _, _ = load_image_data(labels, self.feature_loc)
+        self.assertEqual(
+            str(cm.exception),
+            f"{self.feat_key}: The labels' row-column positions don't match"
+            f" those of the feature vector (example: (300, 299)).")
 
-    def test_legacy_smaller_labelset(self):
+    def test_legacy_rowcol_mismatch(self):
         """
-        Here we pretend the features are legacy such that row, col
-        information is not available.
+        With legacy features, the best we can do when checking for row-column
+        mismatches is comparing the counts of labels vs. features.
         """
         labels, features = self.fixtures(in_order=True, valid_rowcol=False)
 
-        x, y = load_image_data(labels, self.feat_key, [1], self.feature_loc)
+        labels.append((400, 400, 2))
 
-        self.assertEqual(y, [1, 1])
-        # Since the order is reversed, the first feature should be the second
-        # vector of point_features list. But it is not.
-        self.assertTrue(np.array_equal(x[0], features.point_features[0].data))
-        self.assertTrue(np.array_equal(x[1], features.point_features[2].data))
+        with self.assertRaises(RowColumnMismatchError) as cm:
+            _, _ = load_image_data(labels, self.feature_loc)
+        self.assertEqual(
+            str(cm.exception),
+            f"{self.feat_key}: The number of labels (4) doesn't match"
+            f" the number of extracted features (3).")
 
 
 class TestLoadBatchData(unittest.TestCase):
 
-    def setUp(self):
-        
+    @classmethod
+    def setUpClass(cls):
         config.filter_warnings()
-        self.feat_key1 = 'tmp_features1'
-        self.feat_key2 = 'tmp_features2'
-        self.feat1_loc = DataLocation(storage_type='memory',
-                                      key='tmp_features1')
-        self.feat2_loc = DataLocation(storage_type='memory',
-                                      key='tmp_features2')
-        self.feat_loc_template = DataLocation(storage_type='memory', key='')
+        cls.feat_key1 = 'tmp_features1'
+        cls.feat_key2 = 'tmp_features2'
+        cls.feat1_loc = DataLocation(storage_type='memory',
+                                     key='tmp_features1')
+        cls.feat2_loc = DataLocation(storage_type='memory',
+                                     key='tmp_features2')
+        cls.feat_loc_template = DataLocation(storage_type='memory', key='')
 
     def fixtures(self, valid_rowcol=True) \
-            -> Tuple[ImageLabels, ImageFeatures, ImageFeatures]:
+            -> tuple[ImageLabels, ImageFeatures, ImageFeatures]:
 
         labels = ImageLabels(
             data={self.feat_key1: [(100, 100, 1),
@@ -378,29 +452,17 @@ class TestLoadBatchData(unittest.TestCase):
     def test_simple(self):
 
         labels, features1, features2 = self.fixtures(valid_rowcol=True)
-        x, y = load_batch_data(labels, [self.feat_key1, self.feat_key2],
-                               [1, 2], self.feat_loc_template)
+        x, y = load_batch_data(labels, self.feat_loc_template)
 
-        self.assertTrue(np.array_equal(x[0], features1.point_features[0].data))
-        self.assertTrue(np.array_equal(x[3], features2.point_features[0].data))
-
-    def test_reverse_imkey_order(self):
-        labels, features1, features2 = self.fixtures(valid_rowcol=True)
-        x, y = load_batch_data(labels, [self.feat_key2, self.feat_key1],
-                               [1, 2], self.feat_loc_template)
-
-        self.assertTrue(np.array_equal(x[0], features2.point_features[0].data))
-        self.assertTrue(np.array_equal(x[3], features1.point_features[0].data))
-
-    def test_one_label(self):
-
-        labels, features1, features2 = self.fixtures(valid_rowcol=True)
-        x, y = load_batch_data(labels, [self.feat_key2, self.feat_key1],
-                               [1], self.feat_loc_template)
-
-        # Both images have two points with label=1
-        self.assertEqual(len(x), 4)
-        self.assertEqual(len(y), 4)
+        for a, b in [
+            (x[0], features1.point_features[0].data),
+            (x[1], features1.point_features[1].data),
+            (x[2], features1.point_features[2].data),
+            (x[3], features2.point_features[0].data),
+            (x[4], features2.point_features[1].data),
+            (x[5], features2.point_features[2].data),
+        ]:
+            self.assertTrue(np.array_equal(a, b))
 
 
 if __name__ == '__main__':

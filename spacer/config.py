@@ -2,21 +2,25 @@
 Contains config and settings for the repo.
 """
 
+from __future__ import annotations
 import importlib
 import json
-import logging
 import os
 import sys
+import threading
 import time
 import warnings
 from contextlib import ContextDecorator
+from logging import basicConfig, getLogger
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import boto3
 from PIL import Image, ImageFile
 
 from spacer.exceptions import ConfigError
+
+logger = getLogger(__name__)
 
 
 def filter_warnings():
@@ -51,7 +55,7 @@ if SECRETS_PATH.exists():
 #     'AWS_ACCESS_KEY_ID': '...',
 #     'AWS_SECRET_ACCESS_KEY': '...',
 # }
-SETTINGS_FROM_DJANGO: Optional[dict] = None
+SETTINGS_FROM_DJANGO: dict | None = None
 try:
     from django.core.exceptions import ImproperlyConfigured
 except ImportError:
@@ -85,16 +89,26 @@ def get_config_detection_result():
     return result
 
 
-def get_config_value(key: str, default: Any = 'NO_DEFAULT') -> Any:
+def get_config_value(
+        key: str,
+        value_type: type = str,
+        default: Any = 'NO_DEFAULT') -> Any:
 
     def is_valid_value(value_):
         # Treat an empty string the same as not specifying a setting.
         return value_ not in ['', None]
 
+    def cast_str_value(value_):
+        if value_type == str:
+            return value_
+        if value_type == int:
+            return int(value_)
+        assert False, "Don't call cast_str_value() with unsupported types."
+
     # Try environment variables. Each should be prefixed with 'SPACER_'.
     value = os.getenv('SPACER_' + key)
     if is_valid_value(value):
-        return value
+        return cast_str_value(value)
 
     def handle_unspecified_setting():
         if default == 'NO_DEFAULT':
@@ -108,7 +122,7 @@ def get_config_value(key: str, default: Any = 'NO_DEFAULT') -> Any:
     if SECRETS:
         value = SECRETS.get(key)
         if is_valid_value(value):
-            return value
+            return cast_str_value(value)
         return handle_unspecified_setting()
 
     # Try Django settings.
@@ -125,20 +139,64 @@ def get_config_value(key: str, default: Any = 'NO_DEFAULT') -> Any:
     return handle_unspecified_setting()
 
 
+# If your end application/script doesn't configure its own logging,
+# or if you're running unit tests and want log output, you can specify this
+# config value to output logs to console or to a file of your choice.
+# Specify either as 'console', or as an absolute path to the desired file.
+LOG_DESTINATION = get_config_value('LOG_DESTINATION', default=None)
+# And this is the log level to use when logging to that destination.
+# Specify as "INFO", etc.
+LOG_LEVEL = get_config_value('LOG_LEVEL', default='INFO')
+
+if LOG_DESTINATION:
+    if LOG_DESTINATION == 'console':
+        filename = None
+    else:
+        filename = LOG_DESTINATION
+
+    basicConfig(
+        level=LOG_LEVEL,
+        filename=filename,
+        format='%(asctime)s - %(levelname)s:%(name)s\n%(message)s',
+    )
+
+
+# Save S3 connections (resources) for reuse, but only have one per thread,
+# because they're not thread-safe:
+# https://boto3.amazonaws.com/v1/documentation/api/latest/guide/resources.html
+THREAD_LOCAL = threading.local()
+
+
 def get_s3_conn():
     """
     Returns a boto s3 connection.
-    - It first looks for credentials in spacer config.
-    - If not found there it will default to credentials in ~/.aws/credentials
+    Each thread only establishes a connection once, saving it to
+    THREAD_LOCAL.s3_connection and reusing it thereafter.
     """
     if not all([AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY]):
         raise ConfigError(
             "All AWS config variables must be specified to use S3.")
 
-    return boto3.resource('s3',
-                          region_name=AWS_REGION,
-                          aws_access_key_id=AWS_ACCESS_KEY_ID,
-                          aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
+    try:
+        THREAD_LOCAL.s3_connection
+    except AttributeError:
+        # This passes credentials from spacer config. If credentials are
+        # None, it will default to using credentials in ~/.aws/credentials
+        THREAD_LOCAL.s3_connection = boto3.resource(
+            's3',
+            region_name=AWS_REGION,
+            aws_access_key_id=AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+        )
+
+        # We're interested in confirming:
+        # - That this only gets reached once per thread (log with %(thread)d
+        #   in the logging format to confirm this)
+        # - How long a single resource retrieval can be reused before
+        #   expiring (if it ever expires)
+        logger.info("Called boto3.resource() in get_s3_conn()")
+
+    return THREAD_LOCAL.s3_connection
 
 
 class log_entry_and_exit(ContextDecorator):
@@ -148,10 +206,10 @@ class log_entry_and_exit(ContextDecorator):
 
     def __enter__(self):
         self.start_time = time.time()
-        logging.info('Entering: %s', self.name)
+        logger.debug('Entering: %s', self.name)
 
     def __exit__(self, exc_type, exc, exc_tb):
-        logging.info('Exiting: %s after %f seconds.', self.name,
+        logger.debug('Exiting: %s after %f seconds.', self.name,
                      time.time() - self.start_time)
 
 
@@ -201,11 +259,16 @@ STORAGE_TYPES = [
     'url'
 ]
 
-MAX_IMAGE_PIXELS = get_config_value('MAX_IMAGE_PIXELS', default=10000*10000)
-MAX_POINTS_PER_IMAGE = get_config_value('MAX_POINTS_PER_IMAGE', default=1000)
+MAX_IMAGE_PIXELS = get_config_value(
+    'MAX_IMAGE_PIXELS', value_type=int, default=10000*10000)
+MAX_POINTS_PER_IMAGE = get_config_value(
+    'MAX_POINTS_PER_IMAGE', value_type=int, default=1000)
 
-# The train_classifier task requires as least this many images.
-MIN_TRAINIMAGES = get_config_value('MIN_TRAINIMAGES', default=10)
+# Size of training batches. This number of features must be able to fit
+# in memory. Raising this allows the reference set to be larger,
+# which can improve calibration results.
+TRAINING_BATCH_LABEL_COUNT = get_config_value(
+    'TRAINING_BATCH_LABEL_COUNT', value_type=int, default=5000)
 
 # Check access to select which tests to run.
 HAS_CAFFE = importlib.util.find_spec("caffe") is not None
@@ -236,9 +299,10 @@ CONFIGURABLE_VARS = [
     'TEST_EXTRACTORS_BUCKET',
     'TEST_BUCKET',
     # These can just be configured as needed, or left as defaults.
+    'LOG_DESTINATION',
+    'LOG_LEVEL',
     'MAX_IMAGE_PIXELS',
     'MAX_POINTS_PER_IMAGE',
-    'MIN_TRAINIMAGES',
 ]
 
 

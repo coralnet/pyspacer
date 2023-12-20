@@ -1,10 +1,12 @@
 """
 Defines the highest level methods for completing tasks.
 """
-import logging
 import time
 import traceback
 from typing import Callable
+from logging import getLogger
+
+
 from spacer import config
 from spacer.data_classes import ImageFeatures
 from spacer.messages import \
@@ -16,27 +18,22 @@ from spacer.messages import \
     ClassifyImageMsg, \
     ClassifyReturnMsg, JobMsg, JobReturnMsg
 from spacer.storage import load_image, load_classifier, store_classifier
-from spacer.task_utils import check_rowcols
-from spacer.train_classifier import trainer_factory
+from spacer.task_utils import check_extract_inputs, preprocess_labels
+from spacer.train_classifier import ClassifierTrainer, trainer_factory
+
+logger = getLogger(__name__)
 
 
 def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
 
     img = load_image(msg.image_loc)
 
-    assert img.width * img.height <= config.MAX_IMAGE_PIXELS, \
-        "Image ({}, {}) with {} pixels too large. (max: {})".format(
-            img.width, img.height, img.width * img.height,
-            config.MAX_IMAGE_PIXELS)
-    assert len(msg.rowcols) <= config.MAX_POINTS_PER_IMAGE, \
-        "Too many rowcol locations ({}). Max {} allowed".format(
-            len(msg.rowcols), config.MAX_POINTS_PER_IMAGE
-        )
-
+    check_extract_inputs(img, msg.rowcols, msg.image_loc.key)
+    
     check_rowcols(msg.rowcols, img)
     if not isinstance(msg.extractor, Callable):
         raise TypeError("msg.extractor must be callable")
-    
+
     with config.log_entry_and_exit('actual extraction'):
         features, return_msg = msg.extractor(img, msg.rowcols)
     if not hasattr(features, 'store'):
@@ -49,13 +46,24 @@ def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
 
 
 def train_classifier(msg: TrainClassifierMsg) -> TrainClassifierReturnMsg:
-    trainer = trainer_factory(msg.trainer_name)
+    trainer: ClassifierTrainer = trainer_factory(msg.trainer_name)
+
+    labels = preprocess_labels(msg.labels)
+    logger.debug(
+        f"Unique classes:"
+        f" Train + Ref = {len(labels.ref.classes_set)},"
+        f" Val = {len(labels.val.classes_set)}")
+    logger.debug(
+        f"Label count:"
+        f" Train = {labels.train.label_count},"
+        f" Ref = {labels.ref.label_count},"
+        f" Val = {labels.val.label_count},"
+        f" Total = {labels.label_count}")
 
     # Do the actual training
     with config.log_entry_and_exit('actual training'):
         clf, val_results, return_message = trainer(
-            msg.train_labels,
-            msg.val_labels,
+            labels,
             msg.nbr_epochs,
             [load_classifier(loc) for loc in msg.previous_model_locs],
             msg.features_loc,
@@ -94,7 +102,7 @@ def classify_image(msg: ClassifyImageMsg) -> ClassifyReturnMsg:
 
     # Download image
     img = load_image(msg.image_loc)
-    check_rowcols(msg.rowcols, img)
+    check_extract_inputs(img, msg.rowcols, msg.image_loc.key)
 
     # Extract features
     features, _ = msg.extractor(img, msg.rowcols)
@@ -132,7 +140,7 @@ def process_job(job_msg: JobMsg) -> JobReturnMsg:
                     job_msg.task_name, task.job_token)):
                 results.append(run[job_msg.task_name](task))
         except Exception:
-            logging.error('Error executing job {}: {}'.format(
+            logger.error('Error executing job {}: {}'.format(
                 task.job_token, traceback.format_exc()))
             return_msg = JobReturnMsg(
                 original_job=job_msg,

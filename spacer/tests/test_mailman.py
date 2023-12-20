@@ -2,15 +2,16 @@ import unittest
 
 from spacer import config
 from spacer.extract_features import DummyExtractor
+from spacer.messages import (
+    ClassifyImageMsg,
+    DataLocation,
+    ExtractFeaturesMsg,
+    JobMsg,
+    JobReturnMsg,
+    TrainClassifierMsg,
+    TrainingTaskLabels,
+)
 from spacer.tasks import process_job
-from spacer.messages import \
-    JobMsg, \
-    JobReturnMsg, \
-    ExtractFeaturesMsg, \
-    TrainClassifierMsg, \
-    ClassifyImageMsg, \
-    DataLocation, \
-    ImageLabels
 
 TEST_URL = \
     'https://upload.wikimedia.org/wikipedia/commons/7/7b/Red_sea_coral_reef.jpg'
@@ -47,19 +48,20 @@ class TestProcessJobErrorHandling(unittest.TestCase):
 
     def test_img_classify_bad_url(self):
 
+        bad_url = 'http::/invalid_url.com'
         msg = JobMsg(task_name='classify_image',
                      tasks=[ClassifyImageMsg(
                          job_token='my_job',
                          image_loc=DataLocation(storage_type='url',
-                                                key='http::/invalid_url.com'),
+                                                key=bad_url),
                          extractor=DummyExtractor(),
                          rowcols=[(1, 1)],
                          classifier_loc=DataLocation(storage_type='memory',
                                                      key='doesnt_matter'))])
         return_msg = process_job(msg)
         self.assertFalse(return_msg.ok)
-        self.assertIn("URLError", return_msg.error_message)
-        self.assertIn("SpacerInputError", return_msg.error_message)
+        self.assertIn("URLDownloadError", return_msg.error_message)
+        self.assertIn(bad_url, return_msg.error_message)
         self.assertEqual(type(return_msg), JobReturnMsg)
 
     def test_img_classify_classifier_key(self):
@@ -89,14 +91,9 @@ class TestProcessJobErrorHandling(unittest.TestCase):
                              trainer_name='minibatch',
                              nbr_epochs=1,
                              clf_type=clf_type,
-                             train_labels=ImageLabels(data={
-                                 'my_feats': [(1, 1, 1), (2, 2, 2)]
-                             }),
-                             val_labels=ImageLabels(data={
-                                 'my_feats': [(1, 1, 1), (2, 2, 2)]
-                             }),
+                             labels=TrainingTaskLabels.example(),
                              features_loc=DataLocation(storage_type='memory',
-                                                       key='my_feats'),
+                                                       key=''),
                              previous_model_locs=[
                                  DataLocation(storage_type='memory',
                                               key='my_previous_model')

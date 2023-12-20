@@ -2,19 +2,21 @@
 This script submits 10 jobs to queues and monitors as the
 jobs are completed.
 """
-import logging
-from typing import List
+from __future__ import annotations
+from logging import getLogger
 
 from scripts.aws.utils import submit_jobs, monitor_jobs
 
+logger = getLogger()
 
-def main(nbr_rowcols: List[int],
+
+def main(nbr_rowcols: list[int],
          job_queue: str = 'shakeout',
          image_size: int = 1000):
 
     targets = []
     for name in ['efficientnet_b0_ver1', 'vgg16_coralnet_ver1']:
-        logging.info("Starting scaling test for {}.".format(name))
+        logger.info("Starting scaling test for {}.".format(name))
         targets.extend(submit_jobs(nbr_rowcols, job_queue, image_size, name))
 
     _, runtime = monitor_jobs(targets)

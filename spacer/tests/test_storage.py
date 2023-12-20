@@ -3,7 +3,10 @@ import json
 import os
 import time
 import unittest
+import urllib.request
+from http.client import IncompleteRead
 from io import BytesIO
+from unittest import mock
 
 import numpy as np
 from PIL import Image
@@ -11,7 +14,7 @@ from sklearn.calibration import CalibratedClassifierCV
 
 from spacer import config
 from spacer.data_classes import ImageFeatures
-from spacer.exceptions import SpacerInputError
+from spacer.exceptions import URLDownloadError
 from spacer.messages import DataLocation
 from spacer.storage import \
     storage_factory, \
@@ -63,13 +66,21 @@ class BaseStorageTest(unittest.TestCase, abc.ABC):
     def do_test_load_store_model(self):
         features_loc_template = DataLocation(storage_type='memory', key='')
         train_labels = make_random_data(
-            im_count=20,
+            im_count=10,
             class_list=[1, 2],
             points_per_image=5,
             feature_dim=5,
             feature_loc=features_loc_template,
         )
-        clf, _ = train(train_labels, features_loc_template, 1, 'LR')
+        ref_labels = make_random_data(
+            im_count=2,
+            class_list=[1, 2],
+            points_per_image=5,
+            feature_dim=5,
+            feature_loc=features_loc_template,
+        )
+        clf, _ = train(
+            train_labels, ref_labels, features_loc_template, 1, 'LR')
         store_classifier(self.tmp_model_loc, clf)
         self.assertTrue(self.storage.exists(self.tmp_model_loc.key))
 
@@ -137,21 +148,36 @@ class TestURLStorage(unittest.TestCase):
                           'dummy')
 
     def test_invalid_url(self):
-        with self.assertRaises(SpacerInputError) as context:
+        with self.assertRaises(URLDownloadError) as context:
             self.storage.load(self.INVALID_URL)
         self.assertEqual(
-            f"unknown url type: '{self.INVALID_URL}'",
-            context.exception.args[0],
+            f"Failed to download from the URL '{self.INVALID_URL}'."
+            f" / Details - ValueError: unknown url type: '{self.INVALID_URL}'",
+            str(context.exception),
             "Should raise the appropriate error",
         )
 
     def test_unreachable_domain(self):
-        with self.assertRaises(SpacerInputError):
+        with self.assertRaises(URLDownloadError):
             self.storage.load(self.UNREACHABLE_DOMAIN)
 
     def test_unreachable_url(self):
-        with self.assertRaises(SpacerInputError):
+        with self.assertRaises(URLDownloadError):
             self.storage.load(self.UNREACHABLE_URL)
+
+    def test_incomplete_read(self):
+        class FakeResponse:
+            def read(self):
+                raise IncompleteRead(b'')
+
+        def return_fake_response(*args):
+            return FakeResponse()
+
+        with mock.patch.object(
+            urllib.request, 'urlopen', return_fake_response
+        ):
+            with self.assertRaises(URLDownloadError):
+                self.storage.load('url')
 
 
 @require_test_fixtures

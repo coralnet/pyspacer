@@ -7,10 +7,10 @@ This file provides scripts for
 
 import json
 import os
+import warnings
+from logging import basicConfig
 
 import fire
-import logging
-import warnings
 
 from spacer import config
 from scripts.regression.utils import build_traindata, do_training, \
@@ -42,9 +42,9 @@ def train(source_id: int,
     if not os.path.exists(image_root):
         os.makedirs(image_root)
 
-    logging.basicConfig(format='%(asctime)s %(message)s',
-                        filename=os.path.join(source_root, 'retrain.log'),
-                        level=logging.INFO)
+    basicConfig(format='%(asctime)s %(message)s',
+                filename=os.path.join(source_root, 'retrain.log'),
+                level='INFO')
 
     # Download all data to local.
     if extractor_name is None:
