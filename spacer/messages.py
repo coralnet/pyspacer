@@ -64,6 +64,13 @@ class DataLocation(DataClass):
     def deserialize(cls, data: dict) -> 'DataLocation':
         return DataLocation(**data)
 
+    def serialize(self) -> dict:
+        return dict(
+            storage_type=self.storage_type,
+            key=self.key,
+            bucket_name=self.bucket_name,
+        )
+
     def __hash__(self):
         return hash((self.storage_type, self.key, self.bucket_name))
 
