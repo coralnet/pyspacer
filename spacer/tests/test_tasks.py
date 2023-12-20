@@ -1,4 +1,5 @@
 import unittest
+from unittest import mock
 
 from PIL import Image
 
@@ -30,6 +31,7 @@ from spacer.tasks import \
     train_classifier, \
     classify_features, \
     classify_image
+from spacer.task_utils import preprocess_labels
 from spacer.tests.utils import cn_beta_fixture_location
 from spacer.train_utils import make_random_data, train
 from .decorators import require_test_fixtures
@@ -285,6 +287,42 @@ class TestTrainClassifier(unittest.TestCase):
 
         with self.assertRaises(RowColumnMismatchError):
             train_classifier(msg)
+
+    @require_test_fixtures
+    def test_feature_caching(self):
+        n_data = 3
+        points_per_image = 10
+        feature_dim = 5
+        class_list = [1, 2]
+
+        # Remote storage.
+        features_loc_template = DataLocation(
+            storage_type='s3', key='', bucket_name=config.TEST_BUCKET)
+
+        msg = TrainClassifierMsg(
+            job_token='test',
+            trainer_name='minibatch',
+            nbr_epochs=2,
+            clf_type='MLP',
+            labels=preprocess_labels(make_random_data(
+                n_data, class_list, points_per_image,
+                feature_dim, features_loc_template,
+            )),
+            features_loc=features_loc_template,
+            previous_model_locs=[],
+            model_loc=DataLocation(storage_type='memory', key='model'),
+            valresult_loc=DataLocation(storage_type='memory', key='valresult'),
+        )
+
+        # TODO: This breaks _load_remote(). How to not break it while still being able to track the call count?
+        # with mock.patch(
+        #         'spacer.storage.S3Storage._load_remote') as mock_method:
+        #     train_classifier(msg)
+        # self.assertEqual(
+        #     mock_method.call_count, 3,
+        #     "Should go like: download ref, download train, cache load"
+        #     " train, download val")
+        train_classifier(msg)
 
 
 class ClassifyReturnMsgTest(unittest.TestCase):

@@ -31,6 +31,8 @@ class DataLocation(DataClass):
         self.key = key
         self.bucket_name = bucket_name
 
+        self.filesystem_cache = None
+
     @classmethod
     def example(cls) -> 'DataLocation':
         return DataLocation('memory', 'my_blob')
@@ -51,6 +53,12 @@ class DataLocation(DataClass):
     @property
     def is_writable(self) -> bool:
         return self.storage_type != 'url'
+
+    def set_filesystem_cache(self, dir_path):
+        if not self.is_remote:
+            raise TypeError(
+                "Filesystem caching is only available for remote storage.")
+        self.filesystem_cache = dir_path
 
     @classmethod
     def deserialize(cls, data: dict) -> 'DataLocation':
