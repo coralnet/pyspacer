@@ -13,7 +13,7 @@ from typing import TypeAlias
 
 import numpy as np
 
-from spacer.storage import storage_factory
+from spacer.storage import RemoteStorage, storage_factory
 
 
 # LabelId is constrained by scikit-learn's usage of 'targets':
@@ -280,9 +280,12 @@ class ImageFeatures(DataClass):
 
     @classmethod
     def load(cls, loc: 'DataLocation'):
-
         storage = storage_factory(loc.storage_type, loc.bucket_name)
-        stream = storage.load(loc.key)
+        # TODO: This is extremely ugly OOP
+        if isinstance(storage, RemoteStorage):
+            stream = storage.load(loc.key, loc.filesystem_cache)
+        else:
+            stream = storage.load(loc.key)
         stream.seek(0)
         try:
             data = np.load(stream)
