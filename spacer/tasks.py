@@ -1,6 +1,8 @@
 """
 Defines the highest level methods for completing tasks.
 """
+import contextlib
+import tempfile
 import time
 import traceback
 from logging import getLogger
@@ -50,15 +52,29 @@ def train_classifier(msg: TrainClassifierMsg) -> TrainClassifierReturnMsg:
         f" Val = {labels.val.label_count},"
         f" Total = {labels.label_count}")
 
-    # Do the actual training
-    with config.log_entry_and_exit('actual training'):
-        clf, val_results, return_message = trainer(
-            labels,
-            msg.nbr_epochs,
-            [load_classifier(loc) for loc in msg.previous_model_locs],
-            msg.features_loc,
-            msg.clf_type
-        )
+    # We'll create a temporary directory for training, if applicable.
+    # If so, we make sure to use the TemporaryDirectory context manager,
+    # which ensures the directory gets cleaned up even if training gets
+    # an error.
+    @contextlib.contextmanager
+    def wrapper():
+        if msg.features_loc.is_remote:
+            with tempfile.TemporaryDirectory() as local_feature_dir:
+                msg.features_loc.set_filesystem_cache(local_feature_dir)
+                yield
+        else:
+            yield
+
+    with wrapper():
+        # Do the actual training
+        with config.log_entry_and_exit('actual training'):
+            clf, val_results, return_message = trainer(
+                labels,
+                msg.nbr_epochs,
+                [load_classifier(loc) for loc in msg.previous_model_locs],
+                msg.features_loc,
+                msg.clf_type
+            )
 
     with config.log_entry_and_exit('storing classifier and val res'):
         store_classifier(msg.model_loc, clf)
