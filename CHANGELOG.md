@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.0 (WIP)
+## 0.7.0
 
 - `TrainClassifierMsg` labels arguments have changed. Instead of `train_labels` and `val_labels`, it now takes a single argument `labels`, which is a `TrainingTaskLabels` object (basically a set of 3 `ImageLabels` objects: training set, reference set, and validation set).
 
