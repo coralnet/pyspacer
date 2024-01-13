@@ -16,7 +16,7 @@ from sklearn.neural_network import MLPClassifier
 
 from spacer import config
 from spacer.data_classes import ImageLabels, ImageFeatures
-from spacer.exceptions import RowColumnMismatchError
+from spacer.exceptions import RowColumnInvalidError, RowColumnMismatchError
 from spacer.messages import DataLocation
 
 logger = getLogger(__name__)
@@ -198,39 +198,26 @@ def match_features_and_labels(features: ImageFeatures,
                               image_key: str) \
         -> Generator[FeatureLabelPair, None, None]:
 
-    # Sanity check
-    if features.valid_rowcol:
-        # With new data structure just check that the sets of row, col
-        # given by the labels are available in the features.
-        rc_features_set = set([(pf.row, pf.col) for pf in
-                               features.point_features])
-        rc_labels_set = set([(row, col) for (row, col, _) in labels_data])
+    if not features.valid_rowcol:
+        raise RowColumnInvalidError(
+            f"{image_key}: Features without rowcols are no longer supported"
+            f" for training.")
 
-        if not rc_labels_set.issubset(rc_features_set):
-            difference_set = rc_labels_set.difference(rc_features_set)
-            example_rc = next(iter(difference_set))
-            raise RowColumnMismatchError(
-                f"{image_key}: The labels' row-column positions don't match"
-                f" those of the feature vector (example: {example_rc}).")
-    else:
-        # With legacy data structure check that length is the same.
-        label_count = len(labels_data)
-        feature_count = len(features.point_features)
+    # With new data structure just check that the sets of row, col
+    # given by the labels are available in the features.
+    rc_features_set = set([(pf.row, pf.col) for pf in
+                           features.point_features])
+    rc_labels_set = set([(row, col) for (row, col, _) in labels_data])
 
-        if not label_count == feature_count:
-            raise RowColumnMismatchError(
-                f"{image_key}: The number of labels ({label_count}) doesn't"
-                f" match the number of extracted features ({feature_count}).")
+    if not rc_labels_set.issubset(rc_features_set):
+        difference_set = rc_labels_set.difference(rc_features_set)
+        example_rc = next(iter(difference_set))
+        raise RowColumnMismatchError(
+            f"{image_key}: The labels' row-column positions don't match"
+            f" those of the feature vector (example: {example_rc}).")
 
-    if features.valid_rowcol:
-        for row, col, label in labels_data:
-            yield features[(row, col)], label
-    else:
-        # For legacy features, we didn't store the row, col information.
-        # Instead rely on ordering.
-        for (_, _, label), point_feature in zip(labels_data,
-                                                features.point_features):
-            yield point_feature.data, label
+    for row, col, label in labels_data:
+        yield features[(row, col)], label
 
 
 def calc_acc(gt: list[int], est: list[int]) -> float:
