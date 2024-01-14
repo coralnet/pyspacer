@@ -5,7 +5,7 @@ import numpy as np
 
 from spacer import config
 from spacer.data_classes import ImageLabels, PointFeatures, ImageFeatures
-from spacer.exceptions import RowColumnMismatchError
+from spacer.exceptions import RowColumnInvalidError, RowColumnMismatchError
 from spacer.messages import DataLocation
 from spacer.train_utils import (
     calc_acc,
@@ -351,21 +351,20 @@ class TestLoadImageData(unittest.TestCase):
         self.assertTrue(np.array_equal(x[1], features.point_features[0].data))
         self.assertTrue(np.array_equal(x[2], features.point_features[2].data))
 
-    def test_legacy_scrambled(self):
+    def test_legacy(self):
         """
         Here we pretend the features are legacy such that row, col
         information is not available.
         """
-        labels, features = self.fixtures(in_order=False, valid_rowcol=False)
+        labels, features = self.fixtures(valid_rowcol=False)
 
-        x, y = zip(*load_image_data(labels, self.feature_loc))
-
-        self.assertEqual(list(y), [1, 2, 1])
-        # There should have been no attempt to correct the order
-        # relative to features.
-        self.assertTrue(np.array_equal(x[0], features.point_features[0].data))
-        self.assertTrue(np.array_equal(x[1], features.point_features[1].data))
-        self.assertTrue(np.array_equal(x[2], features.point_features[2].data))
+        with self.assertRaises(RowColumnInvalidError) as cm:
+            # Use next() to run the match_features_and_labels() generator.
+            next(load_image_data(labels, self.feature_loc))
+        self.assertEqual(
+            str(cm.exception),
+            f"{self.feat_key}: Features without rowcols are no longer"
+            f" supported for training.")
 
     def test_rowcol_mismatch(self):
         """
@@ -381,22 +380,6 @@ class TestLoadImageData(unittest.TestCase):
             str(cm.exception),
             f"{self.feat_key}: The labels' row-column positions don't match"
             f" those of the feature vector (example: (300, 299)).")
-
-    def test_legacy_rowcol_mismatch(self):
-        """
-        With legacy features, the best we can do when checking for row-column
-        mismatches is comparing the counts of labels vs. features.
-        """
-        labels, features = self.fixtures(in_order=True, valid_rowcol=False)
-
-        labels.append((400, 400, 2))
-
-        with self.assertRaises(RowColumnMismatchError) as cm:
-            _, _ = load_image_data(labels, self.feature_loc)
-        self.assertEqual(
-            str(cm.exception),
-            f"{self.feat_key}: The number of labels (4) doesn't match"
-            f" the number of extracted features (3).")
 
 
 class TestLoadBatchData(unittest.TestCase):
