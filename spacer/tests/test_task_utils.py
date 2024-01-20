@@ -172,17 +172,13 @@ class TestPreprocessLabels(unittest.TestCase):
             f" Each set must be non-empty.")
 
     def test_just_enough_annotations_stratified(self):
-        n_data = 1
-        points_per_image = 25
-        feature_dim = 5
-        class_list = [1, 2, 3]
-        features_loc_template = DataLocation(storage_type='memory', key='')
-
         labels = preprocess_labels(
-            make_random_data(
-                n_data, class_list, points_per_image,
-                feature_dim, features_loc_template,
-            ),
+            # classes [1, 2, 3], 25 annotations
+            ImageLabels({
+                '1': [*[(n, n, 1) for n in range(0, 9)],
+                      *[(n, n, 2) for n in range(100, 108)],
+                      *[(n, n, 3) for n in range(200, 208)]],
+            }),
             split_ratios=(0.101, 0.2),
             class_sampling=ClassSamplingMethod.STRATIFIED,
         )
@@ -191,18 +187,14 @@ class TestPreprocessLabels(unittest.TestCase):
         self.assertEqual(labels['val'].label_count, 5)
 
     def test_too_few_annotations_stratified(self):
-        n_data = 1
-        points_per_image = 25
-        feature_dim = 5
-        class_list = [1, 2, 3]
-        features_loc_template = DataLocation(storage_type='memory', key='')
-
         with self.assertRaises(TrainingLabelsError) as cm:
             preprocess_labels(
-                make_random_data(
-                    n_data, class_list, points_per_image,
-                    feature_dim, features_loc_template,
-                ),
+                # classes [1, 2, 3], 25 annotations
+                ImageLabels({
+                    '1': [*[(n, n, 1) for n in range(0, 9)],
+                          *[(n, n, 2) for n in range(100, 108)],
+                          *[(n, n, 3) for n in range(200, 208)]],
+                }),
                 split_ratios=(0.099, 0.2),
                 class_sampling=ClassSamplingMethod.STRATIFIED,
             )
@@ -367,6 +359,33 @@ class TestPreprocessLabels(unittest.TestCase):
                 self.count_of_label(labels.val['1'], class_number), 1,
                 msg=f"Class {class_number} should have 1 instance in val",
             )
+
+    def test_stratify_with_too_rare_classes(self):
+        """
+        Classes with less than 3 annotations shouldn't cause issues
+        for stratified splitting.
+        We expect them to get excluded before splitting.
+        """
+        labels = preprocess_labels(
+            ImageLabels({
+                '1': [*[(n, n, 1) for n in range(0, 50)],
+                      *[(n, n, 2) for n in range(100, 103)],
+                      *[(n, n, 3) for n in range(200, 202)],
+                      *[(n, n, 4) for n in range(300, 301)],
+                      *[(n, n, 5) for n in range(400, 410)]],
+            }),
+            # Ensure the filtering by train+ref doesn't exclude anything,
+            # by giving ref a high ratio of 40%.
+            split_ratios=(0.4, 0.1),
+            class_sampling=ClassSamplingMethod.STRATIFIED,
+        )
+
+        included_classes = labels.train.classes_set.union(
+            labels.ref.classes_set, labels.val.classes_set
+        )
+        self.assertSetEqual(
+            {1, 2, 5}, included_classes,
+            msg="Classes 3 and 4 should be excluded")
 
     def test_ignore_classes(self):
         # 10 of each of 100 classes.

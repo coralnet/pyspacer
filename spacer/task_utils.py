@@ -225,7 +225,7 @@ def preprocess_labels(
     This function can be used to preprocess labels before creating a
     TrainClassifierMsg. It does:
     1) Splitting of labels into train/ref/val, if not already done
-    2) Filtering of labels by valid_classes, if that arg is specified
+    2) Filtering of labels by accepted_classes, if that arg is specified
     3) Error checks
 
     This is also called by pyspacer after receiving a TrainClassifierMsg
@@ -233,42 +233,64 @@ def preprocess_labels(
     """
 
     if isinstance(labels_in, TrainingTaskLabels):
+
         # The caller has decided how to split the data into
         # training, reference, and validation sets.
+
         labels = labels_in
+
+        if accepted_classes:
+            for set_name in ['train', 'ref', 'val']:
+                labels[set_name] = \
+                    labels[set_name].filter_classes(accepted_classes)
+
     else:
+
+        # The caller is leaving the split to pyspacer.
+
+        pre_split_labels = labels_in
+
+        if accepted_classes:
+            pre_split_labels = pre_split_labels.filter_classes(
+                accepted_classes)
+
+        if class_sampling == ClassSamplingMethod.STRATIFIED:
+
+            # train_test_split() will want each class to have at least as many
+            # annotations as sets (even though it doesn't guarantee what each
+            # set ends up with).
+            # Otherwise it'll raise an error. So, filter out the rare classes
+            # first.
+            common_enough_classes = [
+                label
+                for label, count in labels_in.label_count_per_class.items()
+                if count >= 3]
+            if len(common_enough_classes) != len(labels_in.classes_set):
+                pre_split_labels = pre_split_labels.filter_classes(
+                    common_enough_classes)
+
         labels = split_labels(
-            labels_in,
+            pre_split_labels,
             split_ratios=split_ratios,
             class_sampling=class_sampling,
         )
 
     # Identify classes common to both train and ref.
+
     train_classes = labels.train.classes_set
     ref_classes = labels.ref.classes_set
     train_ref_classes = train_classes.intersection(ref_classes)
 
-    # Further filter the classes if this arg was specified.
-    # TODO: Filter by accepted_classes earlier, before the train/ref/val
-    #  split, because that can potentially alter the annotation count a
-    #  lot. Keep the train+ref class-set filtering step here, because that
-    #  filtering step shouldn't alter the count much, and requires knowing
-    #  the train and ref sets in the first place.
-    if accepted_classes:
-        classes_filter = \
-            train_ref_classes.intersection(accepted_classes)
-    else:
-        classes_filter = train_ref_classes
-
-    if len(classes_filter) <= 1:
+    if len(train_ref_classes) <= 1:
         raise TrainingLabelsError(
             f"Need multiple classes to do training."
             f" After preprocessing training data, there are"
-            f" {len(classes_filter)} class(es) left.")
+            f" {len(train_ref_classes)} class(es) left.")
 
     for set_name in ['train', 'ref', 'val']:
-        labels[set_name] = \
-            labels[set_name].filter_classes(classes_filter)
+        if not labels[set_name].classes_set.issubset(train_ref_classes):
+            labels[set_name] = \
+                labels[set_name].filter_classes(train_ref_classes)
 
         if len(labels[set_name]) == 0:
             raise TrainingLabelsError(
