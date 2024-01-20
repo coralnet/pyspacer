@@ -86,7 +86,9 @@ class ImageLabels(DataClass):
 
     @property
     def label_count(self):
-        return self.label_count_per_class.total()
+        # In Python 3.10+, this can be
+        # `return self.label_count_per_class.total()`
+        return sum(self.label_count_per_class.values())
 
     @classmethod
     def example(cls):
