@@ -15,6 +15,7 @@ from urllib.error import URLError
 import urllib.request
 
 import botocore.exceptions
+from boto3.s3.transfer import TransferConfig
 from PIL import Image
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.linear_model import SGDClassifier
@@ -99,6 +100,10 @@ class S3Storage(Storage):
 
     def __init__(self, bucketname: str):
         self.bucketname = bucketname
+        # Prevent `RuntimeError: cannot schedule new futures after
+        # interpreter shutdown`.
+        # Based on https://github.com/etianen/django-s3-storage/pull/136
+        self.transfer_config = TransferConfig(use_threads=False)
 
     def store(self, key: str, stream: BytesIO):
         s3 = config.get_s3_conn()
@@ -107,7 +112,8 @@ class S3Storage(Storage):
     def load(self, key: str):
         s3 = config.get_s3_conn()
         stream = BytesIO()
-        s3.Object(self.bucketname, key).download_fileobj(stream)
+        s3.Object(self.bucketname, key).download_fileobj(
+            stream, Config=self.transfer_config)
         return stream
 
     def delete(self, key: str) -> None:
