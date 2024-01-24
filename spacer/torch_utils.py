@@ -36,9 +36,11 @@ def load_weights(model: Any,
     :param weights_datastream: model weights, already loaded from storage
     :return: well trained model
     """
+    # Use GPU if available
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # Load weights
     state_dicts = torch.load(weights_datastream,
-                             map_location=torch.device('cpu'))
+                             map_location=device)
 
     with config.log_entry_and_exit('model initialization'):
         new_state_dicts = OrderedDict()
