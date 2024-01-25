@@ -98,8 +98,8 @@ class URLStorage(Storage):
 class S3Storage(Storage):
     """ Stores objects on AWS S3 """
 
-    def __init__(self, bucketname: str):
-        self.bucketname = bucketname
+    def __init__(self, bucket_name: str):
+        self.bucket_name = bucket_name
         # Prevent `RuntimeError: cannot schedule new futures after
         # interpreter shutdown`.
         # Based on https://github.com/etianen/django-s3-storage/pull/136
@@ -107,23 +107,23 @@ class S3Storage(Storage):
 
     def store(self, key: str, stream: BytesIO):
         s3 = config.get_s3_conn()
-        s3.Bucket(self.bucketname).put_object(Body=stream, Key=key)
+        s3.Bucket(self.bucket_name).put_object(Body=stream, Key=key)
 
     def load(self, key: str):
         s3 = config.get_s3_conn()
         stream = BytesIO()
-        s3.Object(self.bucketname, key).download_fileobj(
+        s3.Object(self.bucket_name, key).download_fileobj(
             stream, Config=self.transfer_config)
         return stream
 
     def delete(self, key: str) -> None:
         s3 = config.get_s3_conn()
-        s3.Object(self.bucketname, key).delete()
+        s3.Object(self.bucket_name, key).delete()
 
     def exists(self, key: str):
         s3 = config.get_s3_conn()
         try:
-            s3.Object(self.bucketname, key).load()
+            s3.Object(self.bucket_name, key).load()
             return True
         except botocore.exceptions.ClientError:
             return False
@@ -184,12 +184,14 @@ def clear_memory_storage():
     _memorystorage = None
 
 
-def storage_factory(storage_type: str, bucketname: str | None = None):
+def storage_factory(storage_type: str, bucket_name: str | None = None):
 
     assert storage_type in config.STORAGE_TYPES
 
     if storage_type == 's3':
-        return S3Storage(bucketname=bucketname)
+        if bucket_name is None:
+            raise ValueError("bucket_name must be a string for s3 storage")
+        return S3Storage(bucket_name=bucket_name)
     if storage_type == 'filesystem':
         return FileSystemStorage()
     if storage_type == 'memory':
