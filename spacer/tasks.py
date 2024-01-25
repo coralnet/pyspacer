@@ -3,6 +3,7 @@ Defines the highest level methods for completing tasks.
 """
 import time
 import traceback
+from logging import getLogger
 from typing import Callable
 from spacer import config
 from spacer.data_classes import ImageFeatures
@@ -24,17 +25,9 @@ logger = getLogger(__name__)
 def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
 
     img = load_image(msg.image_loc)
-
-    check_extract_inputs(img, msg.rowcols, msg.image_loc.key)
-
-    check_rowcols(msg.rowcols, img)
-    if not isinstance(msg.extractor, Callable):
-        raise TypeError("msg.extractor must be callable")
-    
+    check_extract_inputs(img, msg.rowcols, msg.image_loc.key)   
     with config.log_entry_and_exit('actual extraction'):
         features, return_msg = msg.extractor(img, msg.rowcols)
-    if not hasattr(features, 'store'):
-        raise TypeError("features object must have a store method")
 
     with config.log_entry_and_exit('storing features'):
         features.store(msg.feature_loc)
