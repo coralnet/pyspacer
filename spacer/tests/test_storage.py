@@ -1,12 +1,14 @@
 import abc
 import json
 import os
+import socket
 import time
 import unittest
 import urllib.request
-from http.client import IncompleteRead
+from http.client import HTTPMessage, IncompleteRead
 from io import BytesIO
 from unittest import mock
+from urllib.error import HTTPError
 
 import numpy as np
 from PIL import Image
@@ -88,54 +90,72 @@ class BaseStorageTest(unittest.TestCase, abc.ABC):
         self.assertTrue(isinstance(clf2, CalibratedClassifierCV))
 
 
-@require_test_fixtures
+def raise_404(url, *args, **kwargs):
+    raise HTTPError(url, 404, "Not found", HTTPMessage(), None)
+
+
+def raise_timeout(url, *args, **kwargs):
+    # When only supporting Python 3.10+, change socket.timeout to TimeoutError
+    raise socket.timeout("timed out")
+
+
 class TestURLStorage(unittest.TestCase):
 
     INVALID_URL = 'not_even_a_url'
     UNREACHABLE_DOMAIN = 'https://not-a-real-domain/'
-    UNREACHABLE_URL = 'https://coralnet.ucsd.edu/not-a-real-page/'
 
     @classmethod
     def setUpClass(cls):
         cls.storage = storage_factory('url')
-        cls.s3_url_pattern = (
+
+    @staticmethod
+    def s3_url(filepath):
+        return (
             'https://'
             f'{config.TEST_BUCKET}.s3-{config.AWS_REGION}.amazonaws.com/'
-            '{filepath}'
+            f'{filepath}'
         )
 
+    @require_test_fixtures
     def test_load_image(self):
         loc = DataLocation(
             storage_type='url',
-            key=self.s3_url_pattern.format(filepath='08bfc10v7t.png'),
+            key=self.s3_url('08bfc10v7t.png'),
         )
         img = load_image(loc)
         self.assertTrue(isinstance(img, Image.Image))
 
+    @require_test_fixtures
     def test_load_classifier(self):
         loc = DataLocation(
             storage_type='url',
-            key=self.s3_url_pattern.format(
-                filepath='legacy_compat/coralnet_beta/example.model'),
+            key=self.s3_url('legacy_compat/coralnet_beta/example.model'),
         )
         clf = load_classifier(loc)
         self.assertTrue(isinstance(clf, CalibratedClassifierCV))
 
+    @require_test_fixtures
     def test_load_string(self):
         loc = DataLocation(
             storage_type='url',
-            key=self.s3_url_pattern.format(
-                filepath='08bfc10v7t.png.featurevector'),
+            key=self.s3_url('08bfc10v7t.png.featurevector'),
         )
         feats = ImageFeatures.load(loc)
         self.assertTrue(isinstance(feats, ImageFeatures))
 
-    def test_exists(self):
-        self.assertTrue(self.storage.exists(
-            self.s3_url_pattern.format(filepath='08bfc10v7t.png')))
+    @require_test_fixtures
+    def test_exists_true(self):
+        self.assertTrue(self.storage.exists(self.s3_url('08bfc10v7t.png')))
+
+    def test_exists_false(self):
         self.assertFalse(self.storage.exists(self.INVALID_URL))
         self.assertFalse(self.storage.exists(self.UNREACHABLE_DOMAIN))
-        self.assertFalse(self.storage.exists(self.UNREACHABLE_URL))
+
+        with mock.patch('urllib.request.urlopen', raise_404):
+            self.assertFalse(self.storage.exists('a_url'))
+
+        with mock.patch('urllib.request.urlopen', raise_timeout):
+            self.assertFalse(self.storage.exists('a_url'))
 
     def test_unsupported_methods(self):
         self.assertRaises(TypeError,
@@ -158,26 +178,37 @@ class TestURLStorage(unittest.TestCase):
         )
 
     def test_unreachable_domain(self):
-        with self.assertRaises(URLDownloadError):
+        with self.assertRaises(URLDownloadError) as cm:
             self.storage.load(self.UNREACHABLE_DOMAIN)
+        # "getaddrinfo" on Windows or "No address" on Linux
+        self.assertIn("addr", str(cm.exception))
 
-    def test_unreachable_url(self):
-        with self.assertRaises(URLDownloadError):
-            self.storage.load(self.UNREACHABLE_URL)
+    def test_404(self):
+        with mock.patch('urllib.request.urlopen', raise_404):
+            with self.assertRaises(URLDownloadError) as cm:
+                self.storage.load('a_url')
+        self.assertIn("404", str(cm.exception))
+
+    def test_timeout(self):
+        with mock.patch('urllib.request.urlopen', raise_timeout):
+            with self.assertRaises(URLDownloadError) as cm:
+                self.storage.load('a_url')
+        self.assertIn("timed out", str(cm.exception))
 
     def test_incomplete_read(self):
         class FakeResponse:
             def read(self):
                 raise IncompleteRead(b'')
 
-        def return_fake_response(*args):
+        def return_fake_response(*args, **kwargs):
             return FakeResponse()
 
         with mock.patch.object(
             urllib.request, 'urlopen', return_fake_response
         ):
-            with self.assertRaises(URLDownloadError):
+            with self.assertRaises(URLDownloadError) as cm:
                 self.storage.load('url')
+        self.assertIn("full response", str(cm.exception))
 
 
 @require_test_fixtures
