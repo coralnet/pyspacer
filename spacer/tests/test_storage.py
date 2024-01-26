@@ -8,7 +8,7 @@ import urllib.request
 from http.client import HTTPMessage, IncompleteRead
 from io import BytesIO
 from unittest import mock
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 
 import numpy as np
 from PIL import Image
@@ -90,6 +90,10 @@ class BaseStorageTest(unittest.TestCase, abc.ABC):
         self.assertTrue(isinstance(clf2, CalibratedClassifierCV))
 
 
+def raise_urlerror(url, *args, **kwargs):
+    raise URLError("<urlopen error [Errno -100] Reason goes here>")
+
+
 def raise_404(url, *args, **kwargs):
     raise HTTPError(url, 404, "Not found", HTTPMessage(), None)
 
@@ -102,7 +106,6 @@ def raise_timeout(url, *args, **kwargs):
 class TestURLStorage(unittest.TestCase):
 
     INVALID_URL = 'not_even_a_url'
-    UNREACHABLE_DOMAIN = 'https://not-a-real-domain/'
 
     @classmethod
     def setUpClass(cls):
@@ -149,7 +152,9 @@ class TestURLStorage(unittest.TestCase):
 
     def test_exists_false(self):
         self.assertFalse(self.storage.exists(self.INVALID_URL))
-        self.assertFalse(self.storage.exists(self.UNREACHABLE_DOMAIN))
+
+        with mock.patch('urllib.request.urlopen', raise_urlerror):
+            self.assertFalse(self.storage.exists('a_url'))
 
         with mock.patch('urllib.request.urlopen', raise_404):
             self.assertFalse(self.storage.exists('a_url'))
@@ -177,11 +182,11 @@ class TestURLStorage(unittest.TestCase):
             "Should raise the appropriate error",
         )
 
-    def test_unreachable_domain(self):
-        with self.assertRaises(URLDownloadError) as cm:
-            self.storage.load(self.UNREACHABLE_DOMAIN)
-        # "getaddrinfo" on Windows or "No address" on Linux
-        self.assertIn("addr", str(cm.exception))
+    def test_urlerror(self):
+        with mock.patch('urllib.request.urlopen', raise_urlerror):
+            with self.assertRaises(URLDownloadError) as cm:
+                self.storage.load('a_url')
+        self.assertIn("URLError", str(cm.exception))
 
     def test_404(self):
         with mock.patch('urllib.request.urlopen', raise_404):

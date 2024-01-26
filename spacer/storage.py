@@ -68,11 +68,15 @@ class URLStorage(Storage):
                 url, timeout=self.TIMEOUT)
         except (socket.timeout, URLError, ValueError) as e:
             # Besides timeouts, possible errors include:
-            # ValueError - unknown url type: '<url>'
+            # ValueError: unknown url type: '<url>'
             #   - Malformed url
-            # URLError - <urlopen error [Errno -5] No address associated with
-            # hostname> [Linux] OR gaierror(11001, 'getaddrinfo failed') [Win]
+            # URLError: <urlopen error [Errno -5] No address associated with
+            # hostname> [Linux]
+            # OR gaierror(11001, 'getaddrinfo failed') [Win]
             #   - Invalid domain
+            # URLError: <urlopen error [Errno -3] Temporary failure in name
+            # resolution>
+            #   - No internet
             # HTTPError 404 or 500
             #   - HTTPError inherits from URLError
             raise URLDownloadError(
