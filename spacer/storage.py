@@ -6,6 +6,7 @@ from __future__ import annotations
 import abc
 import os
 import pickle
+import socket
 import warnings
 from functools import lru_cache
 from http.client import IncompleteRead
@@ -46,6 +47,8 @@ class Storage(abc.ABC):  # pragma: no cover
 class URLStorage(Storage):
     """ Loads items from URLs. Does not support store operations. """
 
+    TIMEOUT = 20.0
+
     def __init__(self):
         self.fs_storage = FileSystemStorage()
 
@@ -54,13 +57,26 @@ class URLStorage(Storage):
 
     def load(self, url: str) -> BytesIO:
         try:
-            download_response = urllib.request.urlopen(url)
-        except (URLError, ValueError) as e:
-            # Possible errors include:
-            # ValueError - unknown url type: '<url>'
+            # The timeout here defines the max time for both:
+            # - The initial connection; else URLError - <urlopen error timed
+            #   out> is raised.
+            # - A single idle period mid-response (not the entire response
+            #   time); else socket.timeout - timed out is raised
+            #   (socket.timeout is a deprecated alias of TimeoutError starting
+            #   in Python 3.10).
+            download_response = urllib.request.urlopen(
+                url, timeout=self.TIMEOUT)
+        except (socket.timeout, URLError, ValueError) as e:
+            # Besides timeouts, possible errors include:
+            # ValueError: unknown url type: '<url>'
             #   - Malformed url
-            # URLError - gaierror(11001, 'getaddrinfo failed')
+            # URLError: <urlopen error [Errno -5] No address associated with
+            # hostname> [Linux]
+            # OR gaierror(11001, 'getaddrinfo failed') [Win]
             #   - Invalid domain
+            # URLError: <urlopen error [Errno -3] Temporary failure in name
+            # resolution>
+            #   - No internet
             # HTTPError 404 or 500
             #   - HTTPError inherits from URLError
             raise URLDownloadError(
@@ -81,6 +97,10 @@ class URLStorage(Storage):
         raise TypeError('Delete operation not supported for URL storage.')
 
     def exists(self, url: str) -> bool:
+        """
+        URL existence can be a hard problem.
+        This implementation makes no guarantees on correctness.
+        """
         # HEAD can check for existence without downloading the entire resource
         try:
             request = urllib.request.Request(url, method='HEAD')
@@ -89,8 +109,9 @@ class URLStorage(Storage):
             return False
 
         try:
-            urllib.request.urlopen(request)
-        except URLError:
+            urllib.request.urlopen(request, timeout=self.TIMEOUT)
+        except (socket.timeout, URLError):
+            # Might be an unreachable domain, 404, or something else
             return False
         return True
 
