@@ -6,6 +6,16 @@
 
 - S3 downloads are now always performed in the main thread, to prevent `RuntimeError: cannot schedule new futures after interpreter shutdown`.
 
+- `S3Storage` and `storage_factory()` now use the parameter name `bucket_name` instead of `bucketname` to be consistent with other usages in pyspacer (by @yeelauren).
+
+- `URLStorage` downloads and existence checks now have an explicit timeout of 20 seconds (this is a timeout for continuous unresponsiveness, not for the whole response).
+
+- EfficientNet feature extraction now uses CUDA if available (by @yeelauren).
+
+- Updates to pip-install dependencies:
+
+  - Pillow: >=10.0.1 to >=10.2.0
+
 ## 0.7.0
 
 - `TrainClassifierMsg` labels arguments have changed. Instead of `train_labels` and `val_labels`, it now takes a single argument `labels`, which is a `TrainingTaskLabels` object (basically a set of 3 `ImageLabels` objects: training set, reference set, and validation set).
