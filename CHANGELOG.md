@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.8.0 (WIP)
+## 0.8.0
 
 - `ImageFeatures` with `valid_rowcol=False` are no longer supported for training. For now they are still supported for classification.
 
