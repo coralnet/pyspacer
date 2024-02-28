@@ -2,6 +2,7 @@ from __future__ import annotations
 from collections import defaultdict
 from enum import Enum
 from logging import getLogger
+import random
 
 from PIL import Image
 from sklearn.model_selection import train_test_split
@@ -64,22 +65,53 @@ def check_extract_inputs(image: Image,
                 f" valid range of 0-{im_width - 1}.")
 
 
-class ClassSamplingMethod(Enum):
+class SplitMode(Enum):
     """
-    How to consider classes when splitting annotations between
-    train, ref, and val sets.
+    How to split annotations between train, ref, and val sets.
     """
-    # Sample with no regard to classes.
-    IGNORE = 'ignore'
+    # Each feature vector's points all go into train, or all go into ref, or
+    # all go into val.
+    #
+    # The rationale behind this mode is to have greater separation between
+    # training data and evaluation data, whether it's during the calibration
+    # process (train vs. ref) or during evaluation of the final classifier
+    # (train vs. val).
+    # Here we assume the imagery is 'more different' when going across feature
+    # vectors, as opposed to staying within the same feature vector. When
+    # training and evaluation data are 'more different', the result is more
+    # useful.
+    # Thus, this mode can improve usefulness of calibration, and rigor of the
+    # evaluation results.
+    # However, the annotation count may not end up precisely balanced
+    # between train/ref/val as desired, particularly when the feature vector
+    # size is comparable to the set size. For example, if each feature vector
+    # has 100 points, and the target ref-set size is 450, then the best we can
+    # do is giving the ref set either 400 or 500 points.
+    VECTORS = 'vectors'
+    # The split is done on an individual point basis, so a single
+    # feature vector may be split across train/ref/val.
+    #
+    # This allows the annotation count to be more precisely balanced
+    # between train/ref/val.
+    # However, there may be concerns that the imagery going into each set is
+    # too similar, particularly when points are densely distributed within
+    # each image.
+    POINTS = 'points'
     # Stratified sampling by class: an A%/B%/C% train/ref/val split means
-    # about an A%/B%/C% split of each class.
+    # an A%/B%/C% split of each class.
+    # The split is done on an individual point basis.
+    #
+    # The POINTS mode's results should already be approximately stratified due
+    # to the annotations being shuffled. However, POINTS_STRATIFIED makes the
+    # stratification more guaranteed. This can be useful because it makes the
+    # final number of unique classes more consistent.
     #
     # Stratification checks that the number of annotations in each
     # set isn't less than the number of unique classes.
     # However, each set is NOT guaranteed to have at least 1 of each class.
     # If stratification is calculated such that a set would get <0.5
     # annotations of a class, then that set gets 0 of that class.
-    STRATIFIED = 'stratified'
+    POINTS_STRATIFIED = 'points_stratified'
 
 
 def split_labels(
@@ -89,7 +121,7 @@ def split_labels(
     # Remaining annotations go to the training set.
     # Example: (0.5, 0.15) for a 5% ref / 15% val / 80% train split.
     split_ratios: tuple[float, float],
-    class_sampling: ClassSamplingMethod,
+    split_mode: SplitMode,
 ) -> TrainingTaskLabels:
     """
     Split annotation data into training, reference, and validation sets.
@@ -113,15 +145,15 @@ def split_labels(
     # TrainingLabelErrors are more specific and thus should be nicer for
     # error handling.
 
-    if class_sampling == ClassSamplingMethod.IGNORE:
-        set_minimum_size = 1
-        explanation = "Each set must be non-empty."
-    else:
+    if split_mode == SplitMode.POINTS_STRATIFIED:
         # Stratified by class
         set_minimum_size = len(labels_in.classes_set)
         explanation = (
             f"Each set's size must not be less than the number of classes"
             f" ({set_minimum_size}) to work with train_test_split().")
+    else:
+        set_minimum_size = 1
+        explanation = "Each set must be non-empty."
     if ref_goal_size < set_minimum_size \
             or val_goal_size < set_minimum_size \
             or train_goal_size < set_minimum_size:
@@ -132,7 +164,55 @@ def split_labels(
             f" {explanation}"
         )
 
-    # Add annotations to the three sets.
+    if split_mode == SplitMode.VECTORS:
+
+        # We don't use train_test_split() in this case because:
+        # 1) train_test_split() doesn't seem to be able to split annotations
+        #    accurately when splitting must be done at the feature vector
+        #    level, since each vector may have different annotation counts.
+        # 2) the main benefit of train_test_split() is stratification, but
+        #    we're not doing that in this case anyway.
+
+        image_keys = labels_in.image_keys
+        random.seed(0)
+        random.shuffle(image_keys)
+        # Use a generator so we can continue iterating over the image keys
+        # across multiple loops.
+        image_key_generator = (key for key in image_keys)
+
+        train_labels = dict()
+        ref_labels = dict()
+        val_labels = dict()
+
+        for labels, goal_size in [
+            (val_labels, val_goal_size),
+            (ref_labels, ref_goal_size),
+            (train_labels, train_goal_size),
+        ]:
+            # Add annotations to the set until the goal size is met/exceeded,
+            # or until all annotations are added.
+            # If the goal's exceeded, no annotations are taken back. So, since
+            # the order the sets are populated is val-ref-train, val and ref
+            # will either meet or exceed the goal sizes, while train will
+            # either meet or fall short of the goal size.
+            num_annotations = 0
+            while num_annotations < goal_size:
+                try:
+                    key = next(image_key_generator)
+                except StopIteration:
+                    break
+                labels[key] = labels_in[key]
+                num_annotations += len(labels_in[key])
+
+        return TrainingTaskLabels(
+            train=ImageLabels(train_labels),
+            ref=ImageLabels(ref_labels),
+            val=ImageLabels(val_labels),
+        )
+
+    # From here on out, we have either SplitMode.POINTS or
+    # SplitMode.POINTS_STRATIFIED, meaning we'll add annotations to the three
+    # sets on an individual-point basis.
 
     train_data = defaultdict(list)
     ref_data = defaultdict(list)
@@ -159,14 +239,14 @@ def split_labels(
     # Leave the split to scikit-learn. It can only split a set into two,
     # so we first make it do a train+ref / val split, then a train / ref
     # split.
-    # See ClassSamplingMethod for details on stratification.
+    # See SplitMode for details on stratification.
 
     train_ref_indices, val_indices = train_test_split(
         annotation_indices_flat,
         test_size=val_goal_size, random_state=0, shuffle=True,
         stratify=(
-            None if class_sampling == ClassSamplingMethod.IGNORE
-            else labels_flat),
+            labels_flat if split_mode == SplitMode.POINTS_STRATIFIED
+            else None),
     )
 
     annotation_indices_flat_reverse_lookup = {
@@ -184,8 +264,8 @@ def split_labels(
         train_ref_indices,
         test_size=ref_goal_size, random_state=0, shuffle=True,
         stratify=(
-            None if class_sampling == ClassSamplingMethod.IGNORE
-            else train_ref_labels_flat),
+            train_ref_labels_flat if split_mode == SplitMode.POINTS_STRATIFIED
+            else None),
     )
 
     for set_indices, set_data in [
@@ -219,7 +299,7 @@ def preprocess_labels(
     # See split_labels().
     split_ratios: tuple[float, float] = (0.1, 0.1),
     # See split_labels().
-    class_sampling: ClassSamplingMethod = ClassSamplingMethod.STRATIFIED,
+    split_mode: SplitMode = SplitMode.VECTORS,
 ) -> TrainingTaskLabels:
     """
     This function can be used to preprocess labels before creating a
@@ -254,7 +334,7 @@ def preprocess_labels(
             pre_split_labels = pre_split_labels.filter_classes(
                 accepted_classes)
 
-        if class_sampling == ClassSamplingMethod.STRATIFIED:
+        if split_mode == SplitMode.POINTS_STRATIFIED:
 
             # train_test_split() will want each class to have at least as many
             # annotations as sets (even though it doesn't guarantee what each
@@ -272,7 +352,7 @@ def preprocess_labels(
         labels = split_labels(
             pre_split_labels,
             split_ratios=split_ratios,
-            class_sampling=class_sampling,
+            split_mode=split_mode,
         )
 
     # Identify classes common to both train and ref.
@@ -289,6 +369,11 @@ def preprocess_labels(
 
     for set_name in ['train', 'ref', 'val']:
         if not labels[set_name].classes_set.issubset(train_ref_classes):
+            # The classifier can only learn about classes which are in
+            # both train and ref, so if a class is missing from one (or both)
+            # of train or ref, we discard that class's annotations.
+            # Note that this may change the annotation-count balance between
+            # train / ref / val.
             labels[set_name] = \
                 labels[set_name].filter_classes(train_ref_classes)
 
