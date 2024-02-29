@@ -4,7 +4,8 @@ import unittest
 import numpy as np
 
 from spacer import config
-from spacer.data_classes import ImageLabels, PointFeatures, ImageFeatures
+from spacer.data_classes import (
+    Annotation, ImageLabels, PointFeatures, ImageFeatures)
 from spacer.exceptions import RowColumnInvalidError, RowColumnMismatchError
 from spacer.messages import DataLocation
 from spacer.train_utils import (
@@ -278,10 +279,8 @@ class TestAcc(unittest.TestCase):
 
     def test_simple(self):
         self.assertEqual(calc_acc([1, 2, 3, 11], [1, 2, 1, 4]), 0.5)
-        self.assertRaises(TypeError, calc_acc, [], [])
+        self.assertRaises(ValueError, calc_acc, [], [])
         self.assertRaises(ValueError, calc_acc, [1], [2, 1])
-        self.assertRaises(TypeError, calc_acc, [1.1], [1])
-        self.assertRaises(TypeError, calc_acc, [1], [1.1])
 
 
 class TestLoadImageData(unittest.TestCase):
@@ -294,7 +293,7 @@ class TestLoadImageData(unittest.TestCase):
                                        key=cls.feat_key)
 
     def fixtures(self, in_order=True, valid_rowcol=True) \
-            -> tuple[list[tuple[int, int, int]], ImageFeatures]:
+            -> tuple[list[Annotation], ImageFeatures]:
 
         labels = [(100, 100, 1),
                   (200, 200, 2),

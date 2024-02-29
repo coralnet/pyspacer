@@ -9,10 +9,22 @@ from abc import ABC, abstractmethod
 from collections import Counter
 from io import BytesIO
 from pprint import pformat
+from typing import Union
 
 import numpy as np
 
 from spacer.storage import storage_factory
+
+
+# Implicit type aliases; revisit in Python 3.10
+# https://peps.python.org/pep-0613/
+#
+# LabelId is constrained by scikit-learn's usage of 'targets':
+# https://scikit-learn.org/stable/glossary.html#term-target
+# However, more types are possible besides int and str (mainly, combinations
+# thereof).
+LabelId = Union[int, str]
+Annotation = tuple[int, int, LabelId]
 
 
 class DataClass(ABC):  # pragma: no cover
@@ -70,9 +82,8 @@ class ImageLabels(DataClass):
     """ Contains row, col, label information for a set of images. """
 
     def __init__(self,
-                 # Data maps a feature key (or file path) to a List of
-                 # (row, col, label).
-                 data: dict[str, list[tuple[int, int, int]]]):
+                 # Data maps a feature key (or file path) to some Annotations.
+                 data: dict[str, list[Annotation]]):
         self._data = data
 
         self.label_count_per_class = Counter()
@@ -250,12 +261,17 @@ class ImageFeatures(DataClass):
 
     @classmethod
     def make_random(cls,
-                    point_labels: list[int],
+                    point_labels: list[LabelId],
                     feature_dim: int):
-        pfs = [PointFeatures(row=itt,
-                             col=itt,
-                             data=list(label + np.random.randn(feature_dim)))
-               for itt, label in enumerate(point_labels)]
+        pfs = [
+            PointFeatures(
+                row=itt,
+                col=itt,
+                # Generate floats that somewhat depend on the input labels.
+                data=list(hash(label) * np.random.randn(feature_dim)),
+            )
+            for itt, label in enumerate(point_labels)
+        ]
 
         return ImageFeatures(point_features=pfs,
                              valid_rowcol=True,
@@ -316,7 +332,7 @@ class ValResults(DataClass):
                  scores: list[float],
                  gt: list[int],  # Using singular for backwards compatibility.
                  est: list[int],  # Using singular for backwards compatibility.
-                 classes: list[int]):
+                 classes: list[LabelId]):
 
         assert len(gt) == len(est)
         assert len(gt) == len(scores)

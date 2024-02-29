@@ -3,6 +3,7 @@ import unittest
 
 from PIL import Image
 
+from spacer.data_classes import LabelId
 from spacer.exceptions import RowColumnInvalidError, TrainingLabelsError
 from spacer.messages import DataLocation, ImageLabels, TrainingTaskLabels
 from spacer.task_utils import (
@@ -299,7 +300,7 @@ class TestSplitLabels(unittest.TestCase):
             f" (3) to work with train_test_split().")
 
     @staticmethod
-    def count_of_label(annotations: ImageLabels, label: int):
+    def count_of_label(annotations: ImageLabels, label: LabelId):
         return len([
             anno_label for row, column, anno_label in annotations
             if anno_label == label

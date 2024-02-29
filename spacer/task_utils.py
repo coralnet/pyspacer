@@ -8,7 +8,7 @@ from PIL import Image
 from sklearn.model_selection import train_test_split
 
 from spacer import config
-from spacer.data_classes import ImageLabels
+from spacer.data_classes import ImageLabels, LabelId
 from spacer.exceptions import (
     DataLimitError, RowColumnInvalidError, TrainingLabelsError)
 from spacer.messages import TrainingTaskLabels
@@ -295,7 +295,7 @@ def preprocess_labels(
     labels_in: ImageLabels | TrainingTaskLabels,
     # If present, the passed labels are filtered so that any classes not
     # included in this set have their labels discarded.
-    accepted_classes: set[int] | None = None,
+    accepted_classes: set[LabelId] | None = None,
     # See split_labels().
     split_ratios: tuple[float, float] = (0.1, 0.1),
     # See split_labels().
