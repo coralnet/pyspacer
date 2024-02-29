@@ -4,7 +4,7 @@ from PIL import Image
 
 from spacer import config
 from spacer.data_classes import (
-    ImageFeatures, ImageLabels, PointFeatures, ValResults)
+    ImageFeatures, ImageLabels, LabelId, PointFeatures, ValResults)
 from spacer.exceptions import (
     DataLimitError, RowColumnInvalidError, RowColumnMismatchError)
 from spacer.extract_features import DummyExtractor
@@ -308,7 +308,7 @@ class ClassifyReturnMsgTest(unittest.TestCase):
                 self.assertIsNone(col)
 
         for class_ in return_msg.classes:
-            self.assertTrue(isinstance(class_, int))
+            self.assertTrue(isinstance(class_, LabelId))
 
         self.assertTrue(isinstance(return_msg.valid_rowcol, bool))
 

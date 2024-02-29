@@ -15,7 +15,7 @@ from sklearn.linear_model import SGDClassifier
 from sklearn.neural_network import MLPClassifier
 
 from spacer import config
-from spacer.data_classes import ImageLabels, ImageFeatures
+from spacer.data_classes import Annotation, ImageLabels, ImageFeatures, LabelId
 from spacer.exceptions import RowColumnInvalidError, RowColumnMismatchError
 from spacer.messages import DataLocation
 
@@ -24,8 +24,8 @@ logger = getLogger(__name__)
 
 # Implicit type alias; revisit in Python 3.10
 # https://peps.python.org/pep-0613/
-FeatureLabelPair = Tuple[np.ndarray, int]
-FeatureLabelBatch = Tuple[List[np.ndarray], List[int]]
+FeatureLabelPair = Tuple[np.ndarray, LabelId]
+FeatureLabelBatch = Tuple[List[np.ndarray], List[LabelId]]
 
 
 def train(train_labels: ImageLabels,
@@ -110,7 +110,7 @@ def evaluate_classifier(clf: CalibratedClassifierCV,
     return gts, ests, scores
 
 
-def load_image_data(labels_data: list[tuple[int, int, int]],
+def load_image_data(labels_data: list[Annotation],
                     feature_loc: DataLocation) \
         -> Generator[FeatureLabelPair, None, None]:
     """
@@ -194,7 +194,7 @@ def load_data_as_mini_batches(labels: ImageLabels,
 
 
 def match_features_and_labels(features: ImageFeatures,
-                              labels_data: list[tuple[int, int, int]],
+                              labels_data: list[Annotation],
                               image_key: str) \
         -> Generator[FeatureLabelPair, None, None]:
 
@@ -220,29 +220,22 @@ def match_features_and_labels(features: ImageFeatures,
         yield features[(row, col)], label
 
 
-def calc_acc(gt: list[int], est: list[int]) -> float:
+def calc_acc(gt: list, est: list) -> float:
     """
-    Calculate the accuracy of (agreement between) two integer valued list.
+    Calculate the accuracy of (agreement between) two lists whose elements can
+    be tested for equality.
     """
     if len(gt) == 0 or len(est) == 0:
-        raise TypeError('Inputs can not be empty')
+        raise ValueError('Inputs can not be empty')
 
     if not len(gt) == len(est):
         raise ValueError('Input gt and est must have the same length')
-
-    for g in gt:
-        if not int(g) == g:
-            raise TypeError('Input gt must be an array of ints')
-
-    for e in est:
-        if not int(e) == e:
-            raise TypeError('Input est must be an array of ints')
 
     return float(sum([(g == e) for (g, e) in zip(gt, est)])) / len(gt)
 
 
 def make_random_data(im_count: int,
-                     class_list: list[int],
+                     class_list: list[LabelId],
                      points_per_image: int,
                      feature_dim: int,
                      feature_loc: DataLocation) -> ImageLabels:
