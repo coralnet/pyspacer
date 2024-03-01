@@ -259,8 +259,13 @@ class ImageFeatures(DataClass):
             PointFeatures(
                 row=itt,
                 col=itt,
-                # Generate floats that somewhat depend on the input labels.
-                data=list(hash(label) * np.random.randn(feature_dim)),
+                # Generate floats that depend on the input labels.
+                # The goal here is to strike a balance between
+                # the extremes of
+                # "mutually exclusive data for any 2 possible labels" and
+                # "data of 2 possible labels is so similar that any trained
+                # classifier is no better than random chance".
+                data=list(hash(label) + np.random.randn(feature_dim)),
             )
             for itt, label in enumerate(point_labels)
         ]
