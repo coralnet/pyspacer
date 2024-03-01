@@ -8,7 +8,7 @@ import json
 from abc import ABC, abstractmethod
 from io import BytesIO
 from pprint import pformat
-from typing import Union
+from typing import Tuple, Union
 
 import numpy as np
 
@@ -23,7 +23,7 @@ from spacer.storage import storage_factory
 # However, more types are possible besides int and str (mainly, combinations
 # thereof).
 LabelId = Union[int, str]
-Annotation = tuple[int, int, LabelId]
+Annotation = Tuple[int, int, LabelId]
 
 
 class DataClass(ABC):  # pragma: no cover
