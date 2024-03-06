@@ -343,7 +343,9 @@ class ClassifyReturnMsgTest(unittest.TestCase):
                 self.assertIsNone(col)
 
         for class_ in return_msg.classes:
-            self.assertTrue(isinstance(class_, LabelId))
+            # Change to LabelID when on Python 3.10+ only.
+            self.assertTrue(
+                isinstance(class_, int) or isinstance(class_, str))
 
         self.assertTrue(isinstance(return_msg.valid_rowcol, bool))
 
