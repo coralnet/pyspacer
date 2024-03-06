@@ -242,8 +242,7 @@ message = TrainClassifierMsg(
     # The dict keys must be the same as the `key` used in the
     # extract-features task's `feature_loc`.
     # The dict values are lists of tuples of (row, column, label ID).
-    # You'll need to be tracking a mapping of integer label IDs to the
-    # labels you use.
+    # Label IDs may be either integers or strings.
     # preprocess_labels() can automatically split the data into training,
     # reference, and validation sets. However, you may also define how to
     # split it yourself; for details, see `TrainingTaskLabels` comments

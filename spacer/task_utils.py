@@ -4,7 +4,7 @@ from logging import getLogger
 from PIL import Image
 
 from spacer import config
-from spacer.data_classes import ImageLabels
+from spacer.data_classes import ImageLabels, LabelId
 from spacer.exceptions import (
     DataLimitError, RowColumnInvalidError, TrainingLabelsError)
 from spacer.messages import TrainingTaskLabels
@@ -71,7 +71,7 @@ def preprocess_labels(
         labels_in: ImageLabels | TrainingTaskLabels,
         # If present, the passed labels are filtered so that any classes not
         # included in this set have their labels discarded.
-        accepted_classes: set[int] | None = None) -> TrainingTaskLabels:
+        accepted_classes: set[LabelId] | None = None) -> TrainingTaskLabels:
     """
     This function can be used to preprocess labels before creating a
     TrainClassifierMsg. It does:

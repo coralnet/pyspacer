@@ -10,7 +10,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from spacer import config
-from spacer.data_classes import DataClass, ImageLabels
+from spacer.data_classes import DataClass, ImageLabels, LabelId
 
 
 class DataLocation(DataClass):
@@ -442,7 +442,7 @@ class ClassifyReturnMsg(DataClass):
                  # Scores is a list of (row, col, [scores]) tuples.
                  scores: list[tuple[int, int, list[float]]],
                  # Maps the score index to a global class id.
-                 classes: list[int],
+                 classes: list[LabelId],
                  valid_rowcol: bool):
 
         self.runtime = runtime

@@ -4,7 +4,8 @@ import unittest
 import numpy as np
 
 from spacer import config
-from spacer.data_classes import ImageLabels, PointFeatures, ImageFeatures
+from spacer.data_classes import (
+    Annotation, ImageLabels, PointFeatures, ImageFeatures)
 from spacer.exceptions import RowColumnInvalidError, RowColumnMismatchError
 from spacer.messages import DataLocation
 from spacer.train_utils import (
@@ -52,13 +53,12 @@ class TestMakeRandom(unittest.TestCase):
 
 class TestTrain(unittest.TestCase):
 
-    def test_ok(self):
+    def do_basic_run(self, class_list, clf_type):
 
         n_traindata = 5
         n_refdata = 1
         points_per_image = 20
         feature_dim = 5
-        class_list = [1, 2]
         num_epochs = 4
         feature_loc = DataLocation(storage_type='memory', key='')
 
@@ -71,15 +71,26 @@ class TestTrain(unittest.TestCase):
             feature_dim, feature_loc,
         )
 
-        for clf_type in config.CLASSIFIER_TYPES:
-            clf_calibrated, ref_acc = train(
-                train_labels, ref_labels, feature_loc,
-                num_epochs, clf_type,
-            )
+        clf_calibrated, ref_acc = train(
+            train_labels, ref_labels, feature_loc,
+            num_epochs, clf_type,
+        )
 
-            self.assertEqual(
-                len(ref_acc), num_epochs,
-                msg="Sanity check: expecting one ref_acc element per epoch")
+        self.assertEqual(
+            len(ref_acc), num_epochs,
+            msg="Sanity check: expecting one ref_acc element per epoch")
+
+    def test_lr_int_labels(self):
+        self.do_basic_run([1, 2], 'LR')
+
+    def test_mlp_int_labels(self):
+        self.do_basic_run([1, 2], 'MLP')
+
+    def test_lr_str_labels(self):
+        self.do_basic_run(['Porites', 'CCA', 'Sand'], 'LR')
+
+    def test_mlp_str_labels(self):
+        self.do_basic_run(['Porites', 'CCA', 'Sand'], 'MLP')
 
     def test_mlp_hybrid_mode(self):
 
@@ -278,10 +289,8 @@ class TestAcc(unittest.TestCase):
 
     def test_simple(self):
         self.assertEqual(calc_acc([1, 2, 3, 11], [1, 2, 1, 4]), 0.5)
-        self.assertRaises(TypeError, calc_acc, [], [])
+        self.assertRaises(ValueError, calc_acc, [], [])
         self.assertRaises(ValueError, calc_acc, [1], [2, 1])
-        self.assertRaises(TypeError, calc_acc, [1.1], [1])
-        self.assertRaises(TypeError, calc_acc, [1], [1.1])
 
 
 class TestLoadImageData(unittest.TestCase):
@@ -294,7 +303,7 @@ class TestLoadImageData(unittest.TestCase):
                                        key=cls.feat_key)
 
     def fixtures(self, in_order=True, valid_rowcol=True) \
-            -> tuple[list[tuple[int, int, int]], ImageFeatures]:
+            -> tuple[list[Annotation], ImageFeatures]:
 
         labels = [(100, 100, 1),
                   (200, 200, 2),

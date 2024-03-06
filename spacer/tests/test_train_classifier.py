@@ -58,12 +58,15 @@ class TestDefaultTrainerDummyData(unittest.TestCase):
             )
 
             # The way we rendered the data, accuracy is usually around 90%.
-            # Adding some margin to account for randomness.
-            # TODO: fix random seed; somehow the set above didn't work.
+            # Adding some margin to account for randomness. Due to randomizer
+            # seeding, results should be the same when re-running in the same
+            # environment, but can change when the environment changes.
+            # Results also heavily depend on the implementation of
+            # make_random_data().
             self.assertGreater(return_message.acc,
                                0.75,
-                               "Failure may be due to random generated numbers,"
-                               "re-run tests.")
+                               "Failure may be due to random generated numbers."
+                               " Consider lowering the acc threshold.")
             self.assertEqual(len(return_message.pc_accs), 2)
             self.assertEqual(len(return_message.ref_accs), num_epochs)
 

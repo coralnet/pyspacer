@@ -1,10 +1,11 @@
+import random
 import unittest
 
 from PIL import Image
 
 from spacer import config
 from spacer.data_classes import (
-    ImageFeatures, ImageLabels, PointFeatures, ValResults)
+    ImageFeatures, ImageLabels, LabelId, PointFeatures, ValResults)
 from spacer.exceptions import (
     DataLimitError, RowColumnInvalidError, RowColumnMismatchError)
 from spacer.extract_features import DummyExtractor
@@ -30,6 +31,7 @@ from spacer.tasks import \
     train_classifier, \
     classify_features, \
     classify_image
+from spacer.task_utils import preprocess_labels
 from spacer.tests.utils import cn_beta_fixture_location
 from spacer.train_utils import make_random_data, train
 from .decorators import require_test_fixtures
@@ -158,70 +160,69 @@ class TestExtractFeatures(unittest.TestCase):
 
 class TestTrainClassifier(unittest.TestCase):
 
-    def test_default(self):
+    def do_basic_run(self, class_list, clf_type):
 
         # Parameters for data generation
-        n_traindata = 160
-        n_refdata = 20
-        n_valdata = 20
+        n_data = 200
         points_per_image = 20
         feature_dim = 5
-        class_list = [1, 2]
 
         # Create training data.
         features_loc_template = DataLocation(storage_type='memory', key='')
-        train_labels = make_random_data(
-            n_traindata, class_list, points_per_image,
-            feature_dim, features_loc_template,
-        )
-        ref_labels = make_random_data(
-            n_refdata, class_list, points_per_image,
-            feature_dim, features_loc_template,
-        )
-        val_labels = make_random_data(
-            n_valdata, class_list, points_per_image,
-            feature_dim, features_loc_template,
-        )
-
-        for clf_type in config.CLASSIFIER_TYPES:
-            # Train once by calling directly so that we have a
-            # previous classifier.
-            clf, _ = train(
-                train_labels, ref_labels, features_loc_template, 1, clf_type)
-
-            previous_classifier_loc = DataLocation(storage_type='memory',
-                                                   key='pc')
-            store_classifier(previous_classifier_loc, clf)
-
-            valresult_loc = DataLocation(storage_type='memory', key='val_res')
-
-            msg = TrainClassifierMsg(
-                job_token='test',
-                trainer_name='minibatch',
-                nbr_epochs=1,
-                clf_type=clf_type,
-                labels=TrainingTaskLabels(
-                    train=train_labels,
-                    ref=ref_labels,
-                    val=val_labels,
-                ),
-                features_loc=features_loc_template,
-                previous_model_locs=[previous_classifier_loc],
-                model_loc=DataLocation(storage_type='memory', key='model'),
-                valresult_loc=valresult_loc
+        labels = preprocess_labels(
+            make_random_data(
+                n_data, class_list, points_per_image,
+                feature_dim, features_loc_template,
             )
-            return_msg = train_classifier(msg)
-            self.assertEqual(type(return_msg), TrainClassifierReturnMsg)
+        )
 
-            # Do some checks on ValResults
-            val_res = ValResults.load(valresult_loc)
-            self.assertEqual(type(val_res), ValResults)
-            self.assertEqual(len(val_res.gt), len(val_res.est))
-            self.assertEqual(len(val_res.gt), len(val_res.scores))
+        # Train once by calling directly so that we have a
+        # previous classifier.
+        clf, _ = train(
+            labels.train, labels.ref, features_loc_template, 1, clf_type)
 
-            self.assertEqual(
-                len(val_res.gt), val_labels.label_count,
-                msg="val_res has the correct number of labels")
+        previous_classifier_loc = DataLocation(storage_type='memory',
+                                               key='pc')
+        store_classifier(previous_classifier_loc, clf)
+
+        valresult_loc = DataLocation(storage_type='memory', key='val_res')
+
+        msg = TrainClassifierMsg(
+            job_token='test',
+            trainer_name='minibatch',
+            nbr_epochs=1,
+            clf_type=clf_type,
+            labels=labels,
+            features_loc=features_loc_template,
+            previous_model_locs=[previous_classifier_loc],
+            model_loc=DataLocation(storage_type='memory', key='model'),
+            valresult_loc=valresult_loc
+        )
+        return_msg = train_classifier(msg)
+        self.assertEqual(type(return_msg), TrainClassifierReturnMsg)
+
+        # Do some checks on ValResults
+        val_res = ValResults.load(valresult_loc)
+        self.assertEqual(type(val_res), ValResults)
+        self.assertEqual(len(val_res.gt), len(val_res.est))
+        self.assertEqual(len(val_res.gt), len(val_res.scores))
+        self.assertSetEqual(set(val_res.classes), set(class_list))
+
+        self.assertEqual(
+            len(val_res.gt), labels.val.label_count,
+            msg="val_res has the correct number of labels")
+
+    def test_lr_int_labels(self):
+        self.do_basic_run([1, 2], 'LR')
+
+    def test_mlp_int_labels(self):
+        self.do_basic_run([1, 2], 'MLP')
+
+    def test_lr_str_labels(self):
+        self.do_basic_run(['Porites', 'CCA', 'Sand'], 'LR')
+
+    def test_mlp_str_labels(self):
+        self.do_basic_run(['Porites', 'CCA', 'Sand'], 'MLP')
 
     def test_row_column_matching(self):
 
@@ -289,6 +290,40 @@ class TestTrainClassifier(unittest.TestCase):
 
 class ClassifyReturnMsgTest(unittest.TestCase):
 
+    @staticmethod
+    def _train_classifier(class_list):
+        # Parameters for data generation
+        n_data = 200
+        points_per_image = 20
+        feature_dim = 5
+
+        # Create training data.
+        features_loc_template = DataLocation(storage_type='memory', key='')
+        labels = preprocess_labels(
+            make_random_data(
+                n_data, class_list, points_per_image,
+                feature_dim, features_loc_template,
+            )
+        )
+
+        model_loc = DataLocation(storage_type='memory', key='model')
+        valresult_loc = DataLocation(storage_type='memory', key='val_res')
+
+        msg = TrainClassifierMsg(
+            job_token='test',
+            trainer_name='minibatch',
+            nbr_epochs=1,
+            clf_type='MLP',
+            labels=labels,
+            features_loc=features_loc_template,
+            previous_model_locs=[],
+            model_loc=model_loc,
+            valresult_loc=valresult_loc
+        )
+        train_classifier(msg)
+
+        return model_loc
+
     def _validate_return_msg(self, return_msg, valid_rowcol):
 
         self.assertTrue(isinstance(return_msg.runtime, float))
@@ -308,7 +343,9 @@ class ClassifyReturnMsgTest(unittest.TestCase):
                 self.assertIsNone(col)
 
         for class_ in return_msg.classes:
-            self.assertTrue(isinstance(class_, int))
+            # Change to LabelID when on Python 3.10+ only.
+            self.assertTrue(
+                isinstance(class_, int) or isinstance(class_, str))
 
         self.assertTrue(isinstance(return_msg.valid_rowcol, bool))
 
@@ -351,6 +388,31 @@ class TestClassifyFeatures(ClassifyReturnMsgTest):
 
         self._validate_return_msg(return_msg, True)
 
+    def do_train_and_classify(self, class_list):
+        model_loc = self._train_classifier(class_list)
+
+        feats = ImageFeatures.make_random(
+            random.choices(class_list, k=4), feature_dim=5)
+        feature_loc = DataLocation(storage_type='memory',
+                                   key='new.jpg.feats')
+        feats.store(feature_loc)
+
+        msg = ClassifyFeaturesMsg(
+            job_token='my_job',
+            feature_loc=feature_loc,
+            classifier_loc=model_loc
+        )
+
+        return_msg = classify_features(msg)
+
+        self._validate_return_msg(return_msg, True)
+
+    def test_train_and_classify_int_labels(self):
+        self.do_train_and_classify([1, 2, 3])
+
+    def test_train_and_classify_str_labels(self):
+        self.do_train_and_classify(['Porites', 'CCA', 'Sand'])
+
 
 class TestClassifyImage(ClassifyReturnMsgTest):
 
@@ -369,6 +431,28 @@ class TestClassifyImage(ClassifyReturnMsgTest):
         )
         return_msg = classify_image(msg)
         self._validate_return_msg(return_msg, True)
+
+    def do_train_and_classify(self, class_list):
+        model_loc = self._train_classifier(class_list)
+
+        msg = ClassifyImageMsg(
+            job_token='my_job',
+            extractor=DummyExtractor(feature_dim=5),
+            rowcols=[(100, 100), (200, 200)],
+            image_loc=DataLocation(storage_type='url',
+                                   key=TEST_URL),
+            classifier_loc=model_loc
+        )
+
+        return_msg = classify_image(msg)
+
+        self._validate_return_msg(return_msg, True)
+
+    def test_train_and_classify_int_labels(self):
+        self.do_train_and_classify([1, 2, 3])
+
+    def test_train_and_classify_str_labels(self):
+        self.do_train_and_classify(['Porites', 'CCA', 'Sand'])
 
 
 class TestClassifyImageCache(unittest.TestCase):
@@ -410,7 +494,7 @@ class TestClassifyImageCache(unittest.TestCase):
         self.assertLess(return_msg2.runtime, return_msg3.runtime)
 
 
-class TestBadRowcols(unittest.TestCase):
+class TestClassifyBadRowcols(unittest.TestCase):
 
     @require_test_fixtures
     def test_image_classify(self):
