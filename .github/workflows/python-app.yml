@@ -9,10 +9,11 @@ on:
 jobs:
   build:
 
-    runs-on: ubuntu-22.04
+    # 23.04 isn't an LTS version, but ensures that Python 3.11 is available
+    runs-on: ubuntu-23.04
     strategy:
       matrix:
-        python-version: [ "3.8", "3.9", "3.10" ]
+        python-version: [ "3.10", "3.11" ]
 
     steps:
     - uses: actions/checkout@v2
