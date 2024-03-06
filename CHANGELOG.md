@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.0 (WIP)
+
+- The `train_classifier` task now accepts label IDs as either integers or strings, not just integers.
+
 ## 0.8.0
 
 - `ImageFeatures` with `valid_rowcol=False` are no longer supported for training. For now they are still supported for classification.
