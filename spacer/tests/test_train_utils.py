@@ -53,13 +53,12 @@ class TestMakeRandom(unittest.TestCase):
 
 class TestTrain(unittest.TestCase):
 
-    def test_ok(self):
+    def do_basic_run(self, class_list, clf_type):
 
         n_traindata = 5
         n_refdata = 1
         points_per_image = 20
         feature_dim = 5
-        class_list = [1, 2]
         num_epochs = 4
         feature_loc = DataLocation(storage_type='memory', key='')
 
@@ -72,15 +71,26 @@ class TestTrain(unittest.TestCase):
             feature_dim, feature_loc,
         )
 
-        for clf_type in config.CLASSIFIER_TYPES:
-            clf_calibrated, ref_acc = train(
-                train_labels, ref_labels, feature_loc,
-                num_epochs, clf_type,
-            )
+        clf_calibrated, ref_acc = train(
+            train_labels, ref_labels, feature_loc,
+            num_epochs, clf_type,
+        )
 
-            self.assertEqual(
-                len(ref_acc), num_epochs,
-                msg="Sanity check: expecting one ref_acc element per epoch")
+        self.assertEqual(
+            len(ref_acc), num_epochs,
+            msg="Sanity check: expecting one ref_acc element per epoch")
+
+    def test_lr_int_labels(self):
+        self.do_basic_run([1, 2], 'LR')
+
+    def test_mlp_int_labels(self):
+        self.do_basic_run([1, 2], 'MLP')
+
+    def test_lr_str_labels(self):
+        self.do_basic_run(['Porites', 'CCA', 'Sand'], 'LR')
+
+    def test_mlp_str_labels(self):
+        self.do_basic_run(['Porites', 'CCA', 'Sand'], 'MLP')
 
     def test_mlp_hybrid_mode(self):
 
