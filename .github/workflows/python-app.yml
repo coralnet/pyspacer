@@ -9,8 +9,8 @@ on:
 jobs:
   build:
 
-    # 23.04 isn't an LTS version, but ensures that Python 3.11 is available
-    runs-on: ubuntu-23.04
+    # https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2204-Readme.md#python
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         python-version: [ "3.10", "3.11" ]
