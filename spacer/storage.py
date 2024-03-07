@@ -6,7 +6,6 @@ from __future__ import annotations
 import abc
 import os
 import pickle
-import socket
 import warnings
 from functools import lru_cache
 from http.client import IncompleteRead
@@ -61,12 +60,10 @@ class URLStorage(Storage):
             # - The initial connection; else URLError - <urlopen error timed
             #   out> is raised.
             # - A single idle period mid-response (not the entire response
-            #   time); else socket.timeout - timed out is raised
-            #   (socket.timeout is a deprecated alias of TimeoutError starting
-            #   in Python 3.10).
+            #   time); else TimeoutError - timed out is raised.
             download_response = urllib.request.urlopen(
                 url, timeout=self.TIMEOUT)
-        except (socket.timeout, URLError, ValueError) as e:
+        except (TimeoutError, URLError, ValueError) as e:
             # Besides timeouts, possible errors include:
             # ValueError: unknown url type: '<url>'
             #   - Malformed url
@@ -110,7 +107,7 @@ class URLStorage(Storage):
 
         try:
             urllib.request.urlopen(request, timeout=self.TIMEOUT)
-        except (socket.timeout, URLError):
+        except (TimeoutError, URLError):
             # Might be an unreachable domain, 404, or something else
             return False
         return True

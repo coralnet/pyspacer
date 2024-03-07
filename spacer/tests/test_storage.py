@@ -1,7 +1,6 @@
 import abc
 import json
 import os
-import socket
 import time
 import unittest
 import urllib.request
@@ -99,8 +98,7 @@ def raise_404(url, *args, **kwargs):
 
 
 def raise_timeout(url, *args, **kwargs):
-    # When only supporting Python 3.10+, change socket.timeout to TimeoutError
-    raise socket.timeout("timed out")
+    raise TimeoutError("timed out")
 
 
 class TestURLStorage(unittest.TestCase):
