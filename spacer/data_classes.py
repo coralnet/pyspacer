@@ -6,6 +6,7 @@ python-native data-structures such that it can be stored.
 from __future__ import annotations
 import json
 from abc import ABC, abstractmethod
+from collections import Counter
 from io import BytesIO
 from pprint import pformat
 from typing import TypeAlias
@@ -82,13 +83,18 @@ class ImageLabels(DataClass):
                  data: dict[str, list[Annotation]]):
         self._data = data
 
-        self.label_count = sum([len(labels) for labels in data.values()])
+        self.label_count_per_class = Counter()
+        for single_image_annotations in data.values():
+            labels = [label for (row, col, label) in single_image_annotations]
+            self.label_count_per_class.update(labels)
 
-        self.classes_set = set()
-        for single_image_labels in data.values():
-            single_image_classes = set(
-                label for (row, col, label) in single_image_labels)
-            self.classes_set |= single_image_classes
+    @property
+    def classes_set(self):
+        return set(self.label_count_per_class.keys())
+
+    @property
+    def label_count(self):
+        return self.label_count_per_class.total()
 
     @classmethod
     def example(cls):
