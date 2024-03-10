@@ -2,6 +2,10 @@
 
 ## 0.9.0 (WIP)
 
+- Python 3.8 and 3.9 support have been dropped; Python 3.11 support has been added.
+
+- torch and torchvision accepted versions have been relaxed to accommodate Python 3.11. (torch==1.13.1 to torch>=1.13.1,<2.3; torchvision==0.14.1 to torchvision>=0.14.1,<0.18)
+
 - The `train_classifier` task now accepts label IDs as either integers or strings, not just integers.
 
 ## 0.8.0

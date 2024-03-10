@@ -7,7 +7,7 @@ import random
 import string
 from collections.abc import Generator
 from logging import getLogger
-from typing import List, Tuple
+from typing import TypeAlias
 
 import numpy as np
 from sklearn.calibration import CalibratedClassifierCV
@@ -22,10 +22,8 @@ from spacer.messages import DataLocation
 logger = getLogger(__name__)
 
 
-# Implicit type alias; revisit in Python 3.10
-# https://peps.python.org/pep-0613/
-FeatureLabelPair = Tuple[np.ndarray, LabelId]
-FeatureLabelBatch = Tuple[List[np.ndarray], List[LabelId]]
+FeatureLabelPair: TypeAlias = tuple[np.ndarray, LabelId]
+FeatureLabelBatch: TypeAlias = tuple[list[np.ndarray], list[LabelId]]
 
 
 def train(train_labels: ImageLabels,

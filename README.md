@@ -7,7 +7,7 @@ PySpacer (AKA spacer) provides utilities to extract features from random point
 locations in images and then train classifiers over those features.
 It is used in the vision backend of `https://github.com/coralnet/coralnet`.
 
-Spacer currently supports python >=3.8.
+Spacer currently supports Python 3.10 and 3.11.
 
 ## Installation
 
@@ -80,7 +80,7 @@ run the same command but append `bash` in the end.
 ### Local clone
 * Clone this repo
   * If using Windows: turn Git's `autocrlf` setting off before your initial checkout. Otherwise, pickled classifiers in `spacer/tests/fixtures` will get checked out with `\r\n` newlines, and the pickle module will fail to load them, leading to test failures. However, autocrlf should be left on when adding any new non-pickle files.
-* `pip install -r requirements.txt`
+* `pip install -r requirements/dev.txt`
 * Set up configuration
 
 

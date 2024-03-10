@@ -8,22 +8,19 @@ import json
 from abc import ABC, abstractmethod
 from io import BytesIO
 from pprint import pformat
-from typing import Tuple, Union
+from typing import TypeAlias
 
 import numpy as np
 
 from spacer.storage import storage_factory
 
 
-# Implicit type aliases; revisit in Python 3.10
-# https://peps.python.org/pep-0613/
-#
 # LabelId is constrained by scikit-learn's usage of 'targets':
 # https://scikit-learn.org/stable/glossary.html#term-target
 # However, more types are possible besides int and str (mainly, combinations
 # thereof).
-LabelId = Union[int, str]
-Annotation = Tuple[int, int, LabelId]
+LabelId: TypeAlias = int | str
+Annotation: TypeAlias = tuple[int, int, LabelId]
 
 
 class DataClass(ABC):  # pragma: no cover
