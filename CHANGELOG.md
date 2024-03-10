@@ -6,6 +6,8 @@
 
 - torch and torchvision accepted versions have been relaxed to accommodate Python 3.11. (torch==1.13.1 to torch>=1.13.1,<2.3; torchvision==0.14.1 to torchvision>=0.14.1,<0.18)
 
+- `task_utils.preprocess_labels()` now has three available modes on how to split training annotations between train, ref, and val sets. Differences between the three modes - `VECTORS`, `POINTS`, and `POINTS_STRATIFIED` - are explained in the `SplitMode` Enum's comments. Additionally, all three modes now ensure that the ordering of the given training data has no effect on which data goes into train, ref, and val.
+
 - The `train_classifier` task now accepts label IDs as either integers or strings, not just integers.
 
 ## 0.8.0
