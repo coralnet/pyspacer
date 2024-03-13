@@ -204,12 +204,21 @@ from spacer.messages import TrainingTaskLabels
 from spacer.task_utils import preprocess_labels
 
 # 1
-labels = preprocess_labels(ImageLabels(...), ...)
+labels = preprocess_labels(
+    ImageLabels("see previous code block for example args to ImageLabels..."),
+    "optional args to preprocess_labels()...",
+)
 # 2
 labels = TrainingTaskLabels(
-    train=ImageLabels(...), ref=ImageLabels(...), val=ImageLabels(...))
+    train=ImageLabels(...),
+    ref=ImageLabels(...),
+    val=ImageLabels(...),
+)
 # 3
-labels = preprocess_labels(TrainingTaskLabels(...), ...)
+labels = preprocess_labels(
+    TrainingTaskLabels("args like the previous example..."),
+    "optional args to preprocess_labels()...",
+)
 ```
 
 Once you have a TrainingTaskLabels instance, pass that and the other required arguments to TrainClassifierMsg, and then pass that message to `train_classifier()`, which produces:
