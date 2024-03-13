@@ -69,27 +69,37 @@ class SplitMode(Enum):
     """
     How to split annotations between train, ref, and val sets.
     """
+
     # Each feature vector's points all go into train, or all go into ref, or
     # all go into val.
     #
-    # The rationale behind this mode is to have greater separation between
-    # training data and evaluation data, whether it's during the calibration
-    # process (train vs. ref) or during evaluation of the final classifier
-    # (train vs. val).
-    # Here we assume the imagery is 'more different' when going across feature
-    # vectors, as opposed to staying within the same feature vector. When
-    # training and evaluation data are 'more different', the result is more
-    # useful.
-    # Thus, this mode can improve usefulness of calibration, and rigor of the
-    # evaluation results.
+    # This mode is based on a few assumptions:
+    # 1) Each feature vector to be used as training data represents one image.
+    # 2) The imagery around a particular point is more similar to the imagery
+    #    around another point if those two points are from the same image, as
+    #    opposed to being from different images.
+    #    Therefore, a classifier trained on points of image A is expected to
+    #    have better-or-equal accuracy on other points of image A, compared to
+    #    its accuracy on points of image B.
+    # 3) Real-world usage of classifiers involves classifying 'new' images
+    #    which the classifier has not been trained on.
+    #
+    # Thus, this mode can help ensure real-world applicability of
+    # classifiers, in terms of usefulness of calibration (which depends on the
+    # differences between train and ref), and rigor of the evaluation results
+    # (which depends on the differences between train and val).
+    #
     # However, the annotation count may not end up precisely balanced
     # between train/ref/val as desired, particularly when the feature vector
     # size is comparable to the set size. For example, if each feature vector
     # has 100 points, and the target ref-set size is 450, then the best we can
     # do is giving the ref set either 400 or 500 points.
     VECTORS = 'vectors'
+
     # The split is done on an individual point basis, so a single
-    # feature vector may be split across train/ref/val.
+    # feature vector may be split across train/ref/val. For example, a
+    # feature vector with 20 point-features may have 16 points going to train,
+    # 2 going to ref, and 2 going to val.
     #
     # This allows the annotation count to be more precisely balanced
     # between train/ref/val.
@@ -97,6 +107,7 @@ class SplitMode(Enum):
     # too similar, particularly when points are densely distributed within
     # each image.
     POINTS = 'points'
+
     # Stratified sampling by class: an A%/B%/C% train/ref/val split means
     # an A%/B%/C% split of each class.
     # The split is done on an individual point basis.
