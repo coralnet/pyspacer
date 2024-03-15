@@ -190,10 +190,13 @@ image_labels = ImageLabels({
 
 The `labels` argument of `TrainClassifierMsg` expects an instance of `data_classes.TrainingTaskLabels`. There are a few ways to create this:
 
-1. Pass a single ImageLabels instance to the `task_utils.preprocess_labels()` function. preprocess_labels() then decides how to split up your labels into train, ref, and val (while doing error checks in the meantime), and creates a TrainingTaskLabels instance from there.
-2. Pass three ImageLabels instances to the TrainingTaskLabels constructor: one instance for each of train, ref, and val.
-3. Do method 1, but also specify the `accepted_classes` argument to preprocess_labels(); this makes the function filter out any labels that aren't in the desired set of classes.
-4. Do method 2, but also pass the TrainingTaskLabels through preprocess_labels(). This allows you to use the error-checking and accepted_classes parts of preprocess_labels(), and the train/ref/val split you defined will remain intact.
+1. Pass a single ImageLabels instance to the `task_utils.preprocess_labels()` function. preprocess_labels() will:
+   - Split up your labels into train, ref, and val sets; optional arguments are available to control how the split is done.
+   - Do error checks.
+   - Optionally filter out unwanted classes, if you specified the `accepted_classes` argument.
+   - Return a TrainingTaskLabels instance.
+2. Create your own TrainingTaskLabels instance by passing three ImageLabels instances into the constructor: one ImageLabels for each of train, ref, and val. This lets you define your own arbitrary train/ref/val split.
+3. Do method 2, but then pass your TrainingTaskLabels instance through preprocess_labels(). This allows you to use just the error-checking and class-filtering parts of preprocess_labels().
 
 ```python
 from spacer.data_classes import ImageLabels
@@ -201,17 +204,24 @@ from spacer.messages import TrainingTaskLabels
 from spacer.task_utils import preprocess_labels
 
 # 1
-labels = preprocess_labels(ImageLabels(...))
+labels = preprocess_labels(
+    ImageLabels("see previous code block for example args to ImageLabels..."),
+    "optional args to preprocess_labels()...",
+)
 # 2
 labels = TrainingTaskLabels(
-    train=ImageLabels(...), ref=ImageLabels(...), val=ImageLabels(...))
+    train=ImageLabels(...),
+    ref=ImageLabels(...),
+    val=ImageLabels(...),
+)
 # 3
-labels = preprocess_labels(ImageLabels(...), accepted_classes={...})
-# 4
-labels = preprocess_labels(TrainingTaskLabels(...), accepted_classes={...})
+labels = preprocess_labels(
+    TrainingTaskLabels("args like the previous example..."),
+    "optional args to preprocess_labels()...",
+)
 ```
 
-So, pass that and the other required arguments to TrainClassifierMsg, and then pass that message to `train_classifier()`, which produces:
+Once you have a TrainingTaskLabels instance, pass that and the other required arguments to TrainClassifierMsg, and then pass that message to `train_classifier()`, which produces:
 
 - A classifier as an `sklearn.calibration.CalibratedClassifierCV` instance, stored in a pickle (.pkl) file. spacer's `storage.load_classifier()` function can help with loading classifiers that were created in older scikit-learn versions. 
 - Classifier evaluation results as a JSON file.
