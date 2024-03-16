@@ -267,13 +267,13 @@ class TrainClassifierMsg(DataClass):
         # stored.
         valresult_loc: DataLocation,
         # If feature vectors are loaded from remote storage, this specifies
-        # where the feature-vector cache (a temporary directory in the
+        # where the feature-vector cache (a temporary directory in the local
         # filesystem) is located. Can be:
         # - The special value FeatureCache.AUTO, which lets the OS decide where
-        #   the temporary directory lives.
-        # - The special value FeatureCache.DISABLED, to not cache feature
-        #   vectors, which means vectors are loaded in remotely on every epoch,
-        #   not just the first epoch.
+        #   the temporary directory lives. (Default)
+        # - The special value FeatureCache.DISABLED, which makes feature
+        #   vectors get loaded remotely every time without being cached
+        #   (which means most vectors will be remote-loaded once per epoch).
         #   This would be desired if there isn't enough disk space to cache all
         #   features.
         # - Absolute path to the directory where the cache will live, either

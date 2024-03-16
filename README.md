@@ -278,6 +278,19 @@ message = TrainClassifierMsg(
     model_loc=DataLocation('filesystem', '/path/to/classifier1.pkl'),
     # Where the detailed evaluation results of the new model should be stored.
     valresult_loc=DataLocation('filesystem', '/path/to/valresult.json'),
+    # If feature vectors are loaded from remote storage, this specifies
+    # where the feature-vector cache (a temporary directory in the local
+    # filesystem) is located. Can be:
+    # - The special value FeatureCache.AUTO, which lets the OS decide where
+    #   the temporary directory lives. (Default)
+    # - The special value FeatureCache.DISABLED, which makes feature
+    #   vectors get loaded remotely every time without being cached
+    #   (which means most vectors will be remote-loaded once per epoch).
+    #   This would be desired if there isn't enough disk space to cache all
+    #   features.
+    # - Absolute path to the directory where the cache will live, either
+    #   as a str or a pathlib.Path.
+    feature_cache_dir=TrainClassifierMsg.FeatureCache.AUTO,
 )
 return_message = train_classifier(message)
 print("Classifier stored at: /path/to/classifier1.pkl")

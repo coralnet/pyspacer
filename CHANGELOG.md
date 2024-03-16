@@ -10,6 +10,8 @@
 
 - The `train_classifier` task now accepts label IDs as either integers or strings, not just integers.
 
+- The `train_classifier` task is now able to locally cache feature vectors which were loaded from remote storage, which can greatly speed up training from epoch 2 onward. This is optional and enabled by default; the location of the cache directory is also configurable.
+
 ## 0.8.0
 
 - `ImageFeatures` with `valid_rowcol=False` are no longer supported for training. For now they are still supported for classification.
