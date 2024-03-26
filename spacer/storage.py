@@ -10,6 +10,7 @@ import warnings
 from functools import lru_cache
 from http.client import IncompleteRead
 from io import BytesIO
+from pathlib import Path
 from pickle import Unpickler
 from urllib.error import URLError
 import urllib.request
@@ -43,7 +44,42 @@ class Storage(abc.ABC):  # pragma: no cover
         """ Checks if key exists """
 
 
-class URLStorage(Storage):
+class RemoteStorage(Storage):
+    """
+    Base class for types of storage which typically involve going out to
+    the network.
+    """
+
+    def load(self, key: str, filesystem_cache: str | None = None):
+        filesystem_storage = storage_factory('filesystem')
+
+        if not filesystem_cache:
+            # Load from remote.
+            return self._load_remote(key)
+
+        # From this point on, there's a filesystem cache.
+
+        cache_filepath = str(Path(filesystem_cache, key))
+
+        if filesystem_storage.exists(cache_filepath):
+            # Load file from the cache.
+            loaded_stream = filesystem_storage.load(cache_filepath)
+        else:
+            # Didn't load from cache; load from remote.
+            loaded_stream = self._load_remote(key)
+
+            # Cache loaded file to the provided filesystem dir.
+            loaded_stream.seek(0)
+            filesystem_storage.store(cache_filepath, loaded_stream)
+
+        return loaded_stream
+
+    @abc.abstractmethod
+    def _load_remote(self, key: str):
+        pass
+
+
+class URLStorage(RemoteStorage):
     """ Loads items from URLs. Does not support store operations. """
 
     TIMEOUT = 20.0
@@ -54,7 +90,7 @@ class URLStorage(Storage):
     def store(self, url: str, stream: BytesIO):
         raise TypeError('Store operation not supported for URL storage.')
 
-    def load(self, url: str) -> BytesIO:
+    def _load_remote(self, url: str) -> BytesIO:
         try:
             # The timeout here defines the max time for both:
             # - The initial connection; else URLError - <urlopen error timed
@@ -113,7 +149,7 @@ class URLStorage(Storage):
         return True
 
 
-class S3Storage(Storage):
+class S3Storage(RemoteStorage):
     """ Stores objects on AWS S3 """
 
     def __init__(self, bucket_name: str):
@@ -127,7 +163,7 @@ class S3Storage(Storage):
         s3 = config.get_s3_conn()
         s3.Bucket(self.bucket_name).put_object(Body=stream, Key=key)
 
-    def load(self, key: str):
+    def _load_remote(self, key: str):
         s3 = config.get_s3_conn()
         stream = BytesIO()
         s3.Object(self.bucket_name, key).download_fileobj(

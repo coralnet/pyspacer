@@ -1,10 +1,11 @@
 """
 Defines the highest level methods for completing tasks.
 """
+import contextlib
+import tempfile
 import time
 import traceback
 from logging import getLogger
-from typing import Callable
 from spacer import config
 from spacer.data_classes import ImageFeatures
 from spacer.messages import \
@@ -50,15 +51,45 @@ def train_classifier(msg: TrainClassifierMsg) -> TrainClassifierReturnMsg:
         f" Val = {labels.val.label_count},"
         f" Total = {labels.label_count}")
 
-    # Do the actual training
-    with config.log_entry_and_exit('actual training'):
-        clf, val_results, return_message = trainer(
-            labels,
-            msg.nbr_epochs,
-            [load_classifier(loc) for loc in msg.previous_model_locs],
-            msg.features_loc,
-            msg.clf_type
-        )
+    # This wrapper goes around the training call. It will be useful if
+    # we need to manage a temporary directory for caching during training.
+    # Else, it'll just be a no-op.
+    @contextlib.contextmanager
+    def wrapper():
+        if (
+            msg.features_loc.is_remote
+            and msg.feature_cache_dir != msg.FeatureCache.DISABLED
+        ):
+            # Define a location to cache feature vectors after loading remotely
+            if msg.feature_cache_dir == msg.FeatureCache.AUTO:
+                # The OS decides where the temporary directory lives.
+                feature_cache_dir = None
+            else:
+                # Caller-specified absolute path.
+                feature_cache_dir = msg.feature_cache_dir
+
+            # This context manager ensures the created temp dir gets cleaned up
+            # even if training gets an error.
+            # Note that feature_cache_dir itself is not the created temp dir.
+            # The temp dir is created within feature_cache_dir.
+            with tempfile.TemporaryDirectory(
+                    dir=feature_cache_dir) as local_feature_dir:
+                msg.features_loc.set_filesystem_cache(local_feature_dir)
+                yield
+        else:
+            # Not caching feature vectors.
+            yield
+
+    with wrapper():
+        # Do the actual training
+        with config.log_entry_and_exit('actual training'):
+            clf, val_results, return_message = trainer(
+                labels,
+                msg.nbr_epochs,
+                [load_classifier(loc) for loc in msg.previous_model_locs],
+                msg.features_loc,
+                msg.clf_type
+            )
 
     with config.log_entry_and_exit('storing classifier and val res'):
         store_classifier(msg.model_loc, clf)

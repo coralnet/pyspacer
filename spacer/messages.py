@@ -31,6 +31,8 @@ class DataLocation(DataClass):
         self.key = key
         self.bucket_name = bucket_name
 
+        self.filesystem_cache = None
+
     @classmethod
     def example(cls) -> 'DataLocation':
         return DataLocation('memory', 'my_blob')
@@ -52,9 +54,22 @@ class DataLocation(DataClass):
     def is_writable(self) -> bool:
         return self.storage_type != 'url'
 
+    def set_filesystem_cache(self, dir_path):
+        if not self.is_remote:
+            raise TypeError(
+                "Filesystem caching is only available for remote storage.")
+        self.filesystem_cache = dir_path
+
     @classmethod
     def deserialize(cls, data: dict) -> 'DataLocation':
         return DataLocation(**data)
+
+    def serialize(self) -> dict:
+        return dict(
+            storage_type=self.storage_type,
+            key=self.key,
+            bucket_name=self.bucket_name,
+        )
 
     def __hash__(self):
         return hash((self.storage_type, self.key, self.bucket_name))
@@ -214,6 +229,12 @@ class TrainingTaskLabels:
 class TrainClassifierMsg(DataClass):
     """ Specifies the train classifier task. """
 
+    # When on Python 3.11+ only, we could define this as a StrEnum to be more
+    # idiomatic.
+    class FeatureCache:
+        AUTO = 'auto'
+        DISABLED = 'disabled'
+
     def __init__(
         self,
         # For caller's reference.
@@ -245,6 +266,19 @@ class TrainClassifierMsg(DataClass):
         # Where the detailed evaluation results of the new model should be
         # stored.
         valresult_loc: DataLocation,
+        # If feature vectors are loaded from remote storage, this specifies
+        # where the feature-vector cache (a temporary directory in the local
+        # filesystem) is located. Can be:
+        # - The special value FeatureCache.AUTO, which lets the OS decide where
+        #   the temporary directory lives. (Default)
+        # - The special value FeatureCache.DISABLED, which makes feature
+        #   vectors get loaded remotely every time without being cached
+        #   (which means most vectors will be remote-loaded once per epoch).
+        #   This would be desired if there isn't enough disk space to cache all
+        #   features.
+        # - Absolute path to the directory where the cache will live, either
+        #   as a str or a pathlib.Path.
+        feature_cache_dir: str | Path = FeatureCache.AUTO,
     ):
 
         assert trainer_name in config.TRAINER_NAMES
@@ -258,6 +292,7 @@ class TrainClassifierMsg(DataClass):
         self.previous_model_locs = previous_model_locs
         self.model_loc = model_loc
         self.valresult_loc = valresult_loc
+        self.feature_cache_dir = feature_cache_dir
 
     @classmethod
     def example(cls):
@@ -273,7 +308,7 @@ class TrainClassifierMsg(DataClass):
                 DataLocation('memory', 'previous_model2.pkl'),
             ],
             model_loc=DataLocation('memory', 'my_new_model.pkl'),
-            valresult_loc=DataLocation('memory', 'my_valresult.json')
+            valresult_loc=DataLocation('memory', 'my_valresult.json'),
         )
 
     def serialize(self) -> dict:
@@ -288,6 +323,7 @@ class TrainClassifierMsg(DataClass):
                                     for entry in self.previous_model_locs],
             'model_loc': self.model_loc.serialize(),
             'valresult_loc': self.valresult_loc.serialize(),
+            'feature_cache_dir': str(self.feature_cache_dir),
         }
 
     @classmethod
@@ -302,7 +338,8 @@ class TrainClassifierMsg(DataClass):
             previous_model_locs=[DataLocation.deserialize(entry)
                                  for entry in data['previous_model_locs']],
             model_loc=DataLocation.deserialize(data['model_loc']),
-            valresult_loc=DataLocation.deserialize(data['valresult_loc'])
+            valresult_loc=DataLocation.deserialize(data['valresult_loc']),
+            feature_cache_dir=data['feature_cache_dir'],
         )
 
 

@@ -1,5 +1,6 @@
 import random
 import unittest
+from unittest import mock
 
 from PIL import Image
 
@@ -20,17 +21,20 @@ from spacer.messages import (
     TrainClassifierReturnMsg,
     TrainingTaskLabels,
 )
-from spacer.storage import \
-    store_classifier, \
-    load_classifier, \
-    clear_memory_storage, \
-    store_image, \
-    storage_factory
-from spacer.tasks import \
-    extract_features, \
-    train_classifier, \
-    classify_features, \
-    classify_image
+from spacer.storage import (
+    clear_memory_storage,
+    load_classifier,
+    S3Storage,
+    storage_factory,
+    store_classifier,
+    store_image,
+)
+from spacer.tasks import (
+    classify_features,
+    classify_image,
+    extract_features,
+    train_classifier,
+)
 from spacer.task_utils import preprocess_labels
 from spacer.tests.utils import cn_beta_fixture_location
 from spacer.train_utils import make_random_data, train
@@ -156,6 +160,20 @@ class TestExtractFeatures(unittest.TestCase):
         _ = extract_features(msg)
         features = ImageFeatures.load(msg.feature_loc)
         self.assertEqual(len(features.point_features), len(msg.rowcols))
+
+
+def spy_decorator(method_to_decorate):
+    """
+    A way to track calls to a class's instance method, across all instances
+    of the class. From:
+    https://stackoverflow.com/a/41599695
+    """
+    mock_obj = mock.MagicMock()
+    def wrapper(self, *args, **kwargs):
+        mock_obj(*args, **kwargs)
+        return method_to_decorate(self, *args, **kwargs)
+    wrapper.mock_obj = mock_obj
+    return wrapper
 
 
 class TestTrainClassifier(unittest.TestCase):
@@ -286,6 +304,56 @@ class TestTrainClassifier(unittest.TestCase):
 
         with self.assertRaises(RowColumnMismatchError):
             train_classifier(msg)
+
+    @staticmethod
+    def do_feature_caching_test(feature_cache_dir):
+        n_data = 3
+        points_per_image = 10
+        feature_dim = 5
+        class_list = [1, 2]
+
+        # Remote storage.
+        features_loc_template = DataLocation(
+            storage_type='s3', key='', bucket_name=config.TEST_BUCKET)
+
+        msg = TrainClassifierMsg(
+            job_token='test',
+            trainer_name='minibatch',
+            nbr_epochs=2,
+            clf_type='MLP',
+            labels=preprocess_labels(make_random_data(
+                n_data, class_list, points_per_image,
+                feature_dim, features_loc_template,
+            )),
+            features_loc=features_loc_template,
+            previous_model_locs=[],
+            model_loc=DataLocation(storage_type='memory', key='model'),
+            valresult_loc=DataLocation(storage_type='memory', key='valresult'),
+            feature_cache_dir=feature_cache_dir,
+        )
+
+        load_remote = spy_decorator(S3Storage._load_remote)
+        with mock.patch.object(S3Storage, '_load_remote', load_remote):
+            train_classifier(msg)
+        return load_remote.mock_obj
+
+    @require_test_fixtures
+    def test_feature_caching_enabled(self):
+        load_remote_mock = self.do_feature_caching_test(
+            TrainClassifierMsg.FeatureCache.AUTO)
+        self.assertEqual(
+            load_remote_mock.call_count, 3,
+            "Should go like: download ref, download train, cache-load"
+            " train, download val")
+
+    @require_test_fixtures
+    def test_feature_caching_disabled(self):
+        load_remote_mock = self.do_feature_caching_test(
+            TrainClassifierMsg.FeatureCache.DISABLED)
+        self.assertEqual(
+            load_remote_mock.call_count, 4,
+            "Should go like: download ref, download train, download"
+            " train, download val")
 
 
 class ClassifyReturnMsgTest(unittest.TestCase):
