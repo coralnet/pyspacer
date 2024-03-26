@@ -1,12 +1,22 @@
 # Changelog
 
-## 0.9.0 (WIP)
+## 0.9.0
 
 - Python 3.8 and 3.9 support have been dropped; Python 3.11 support has been added.
 
 - torch and torchvision accepted versions have been relaxed to accommodate Python 3.11. (torch==1.13.1 to torch>=1.13.1,<2.3; torchvision==0.14.1 to torchvision>=0.14.1,<0.18)
 
 - `task_utils.preprocess_labels()` now has three available modes on how to split training annotations between train, ref, and val sets. Differences between the three modes - `VECTORS`, `POINTS`, and `POINTS_STRATIFIED` - are explained in the `SplitMode` Enum's comments. Additionally, all three modes now ensure that the ordering of the given training data has no effect on which data goes into train, ref, and val.
+
+  The table below compares the three modes to the splitting functionality of earlier versions of pyspacer. Note that it's still possible to split train/ref/val yourself instead of letting pyspacer do it.
+
+  | Mode              | Sets split in pyspacer | Order agnostic | Vectors can be split | Stratifies by label |
+  |-------------------|------------------------|----------------|----------------------|---------------------|
+  | 0.6.1 and earlier | Train/ref              | No             | No                   | No                  |
+  | 0.7.0 - 0.8.0     | Train/ref/val          | No             | No                   | No                  |
+  | VECTORS           | Train/ref/val          | Yes            | No                   | No                  |
+  | POINTS            | Train/ref/val          | Yes            | Yes                  | No                  |
+  | POINTS_STRATIFIED | Train/ref/val          | Yes            | Yes                  | Yes                 |
 
 - The `train_classifier` task now accepts label IDs as either integers or strings, not just integers.
 
