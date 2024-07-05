@@ -6,7 +6,6 @@ from __future__ import annotations
 import abc
 import os
 import pickle
-import warnings
 from functools import lru_cache
 from http.client import IncompleteRead
 from io import BytesIO
@@ -19,7 +18,6 @@ import botocore.exceptions
 from boto3.s3.transfer import TransferConfig
 from PIL import Image
 from sklearn.calibration import CalibratedClassifierCV
-from sklearn.linear_model import SGDClassifier
 
 from spacer import config
 from spacer.exceptions import URLDownloadError
@@ -278,36 +276,6 @@ def store_classifier(loc: 'DataLocation', clf: CalibratedClassifierCV):
 
 
 class ClassifierUnpickler(Unpickler):
-    """
-    Custom Unpickler for sklearn classifiers. Upgrades classifiers pickled
-    in older sklearn versions to be loadable in newer versions.
-    pyspacer has used scikit-learn versions 0.17.1, 0.22.1, and 1.1.3,
-    so these are the only versions that are considered.
-
-    Note: this is only tested for inference.
-    """
-    IMPORT_MAPPING = {
-        # Importing from most sklearn sub-modules was deprecated as
-        # of 0.22 and no longer possible as of 0.24 (they established an API
-        # deprecation cycle of two minor versions starting in 0.22).
-        'sklearn.linear_model.sgd_fast': 'sklearn.linear_model',
-        'sklearn.linear_model.stochastic_gradient': 'sklearn.linear_model',
-    }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        # We can't see the base class's attributes from here for some reason,
-        # so we have to set anything we want ourselves.
-        if 'fix_imports' in kwargs:
-            self.fix_imports = kwargs['fix_imports']
-
-    def find_class(self, module, name):
-        if self.fix_imports:
-            if module in self.IMPORT_MAPPING:
-                module = self.IMPORT_MAPPING[module]
-        return super().find_class(module, name)
-
     def load(self):
         clf = super().load()
 
@@ -316,62 +284,7 @@ class ClassifierUnpickler(Unpickler):
                 f"Loaded a {type(clf).__name__}"
                 f" instead of a CalibratedClassifierCV.")
 
-        if clf.cv != 'prefit':
-            raise ValueError(
-                f"Loaded classifier has cv '{clf.cv}' instead of 'prefit'."
-                f" Don't know how to check this classifier type for"
-                f" compatibility.")
-
-        # Detect legacy classifiers and patch as needed.
-        #
-        # The main scikit-learn classes to keep tabs on for changes are:
-        # - CalibratedClassifierCV: clf
-        # - _CalibratedClassifier: each element of the
-        #   clf.calibrated_classifiers_ list
-        # - MLPClassifier, SGDClassifier: possible classes of
-        #   clf.base_estimator and the base_estimator attribute of each
-        #   _CalibratedClassifier
-
-        # These attrs were added after sklearn 0.22.1. The calibration.py
-        # comments (as of 0.24.2) indicate that they're ignored if cv='prefit'.
-        # Despite not being used in our case, if they're not set, then they get
-        # an AttributeError when inspecting the classifier in a debugger.
-        # We can just set them to their defaults.
-        if not hasattr(clf, 'ensemble'):
-            clf.ensemble = True
-        if not hasattr(clf, 'n_jobs'):
-            clf.n_jobs = None
-
-        self.patch_base_estimator(clf.base_estimator)
-
-        for calibrated_clf in clf.calibrated_classifiers_:
-
-            self.patch_base_estimator(calibrated_clf.base_estimator)
-
-            # sklearn 0.17.1: the classes attribute didn't exist.
-            # sklearn 0.22.1: the classes attribute was introduced, and was
-            # set unconditionally in __init__(), but ended up as None for
-            # our use cases.
-            if (
-                not hasattr(calibrated_clf, 'classes')
-                or calibrated_clf.classes is None
-            ):
-                calibrated_clf.classes = calibrated_clf.classes_
-
-            # This attribute was introduced after 0.22.1 and by 0.24.2. It's set
-            # unconditionally in __init__().
-            if not hasattr(calibrated_clf, 'calibrators'):
-                calibrated_clf.calibrators = calibrated_clf.calibrators_
-
         return clf
-
-    @staticmethod
-    def patch_base_estimator(base_estimator):
-        if isinstance(base_estimator, SGDClassifier):
-            if base_estimator.loss == 'log':
-                # The loss parameter name 'log' was deprecated in favor of the
-                # new name 'log_loss' as of scikit-learn 1.1.
-                base_estimator.loss = 'log_loss'
 
 
 @lru_cache(maxsize=3)
@@ -381,18 +294,7 @@ def load_classifier(loc: 'DataLocation'):
     stream = storage.load(loc.key)
     stream.seek(0)
 
-    # Restore old warnings config once this block is over.
-    with warnings.catch_warnings():
-        # Ignore unpickling warnings from sklearn.
-        warnings.filterwarnings(
-            'ignore',
-            category=UserWarning,
-            # Part after 'version' either starts with 'pre-0.18' or '0.22.1'
-            message=r"Trying to unpickle estimator [A-Za-z_]+"
-                    r" from version"
-                    r" ((pre-0\.18)|(0\.22\.1)).*",
-        )
-        clf = ClassifierUnpickler(
-            stream, fix_imports=True, encoding='latin1').load()
+    clf = ClassifierUnpickler(
+        stream, fix_imports=True, encoding='latin1').load()
 
     return clf
