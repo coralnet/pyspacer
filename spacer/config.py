@@ -173,6 +173,16 @@ def get_s3_conn():
     Each thread only establishes a connection once, saving it to
     THREAD_LOCAL.s3_connection and reusing it thereafter.
     """
+
+    # Try getting an identity, which means the process is running in AWS
+    # with access to the metadata service to fetch credentials.
+    response = boto3.client('sts').get_caller_identity()
+
+    if response["ResponseMetadata"]["HTTPStatusCode"] == 200:
+        THREAD_LOCAL.s3_connection = boto3.resource()
+        logger.info("Called boto3.resource() in get_s3_conn()")
+        return THREAD_LOCAL.s3_connection
+
     if not all([AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY]):
         raise ConfigError(
             "All AWS config variables must be specified to use S3.")
