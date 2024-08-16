@@ -18,7 +18,7 @@ The spacer repo can be installed in three ways.
 
 ### Config
 
-Setting spacer config variables is only necessary when using certain features. If you don't need S3 storage, and you won't load extractors remotely, you can skip this section.
+Setting spacer config variables is only necessary when using certain features. If you won't access S3 storage with static credentials, and you won't load extractors remotely, you can skip this section.
 
 See `CONFIGURABLE_VARS` in `config.py` for a full list of available variables, and for an explanation of when each variable must be configured or not.
 
