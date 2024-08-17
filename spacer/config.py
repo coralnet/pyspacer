@@ -179,7 +179,7 @@ def get_s3_conn():
     response = boto3.client('sts').get_caller_identity()
 
     if response["ResponseMetadata"]["HTTPStatusCode"] == 200:
-        THREAD_LOCAL.s3_connection = boto3.resource()
+        THREAD_LOCAL.s3_connection = boto3.resource("s3")
         logger.info("Called boto3.resource() in get_s3_conn()")
         return THREAD_LOCAL.s3_connection
 
