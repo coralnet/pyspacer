@@ -62,7 +62,7 @@ def aws_batch_job_status(jobs: list[tuple[str, DataLocation, JobMsg,
         if job_status == 'SUCCEEDED' and feat_loc is not None:
 
             # Double check that the out_key is actually there.
-            s3 = config.get_s3_conn()
+            s3 = config.get_s3_resource()
             try:
                 s3.Object(config.TEST_BUCKET, feat_loc.key).load()
             except ClientError as e:

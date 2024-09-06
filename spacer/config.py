@@ -162,30 +162,30 @@ if LOG_DESTINATION:
     )
 
 
-# Save S3 connections (resources) for reuse, but only have one per thread,
+# Save S3 resources for reuse, but only have one per thread,
 # because they're not thread-safe:
 # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/resources.html
 THREAD_LOCAL = threading.local()
 
 
-def get_s3_conn():
+def get_s3_resource():
     """
-    Returns a boto s3 connection.
-    Each thread only establishes a connection once, saving it to
-    THREAD_LOCAL.s3_connection and reusing it thereafter.
+    Returns a boto s3 Resource.
+    Each thread only gets this from the boto API once, saving it to
+    THREAD_LOCAL.s3_resource and reusing it thereafter.
 
     The logging statements aim to confirm:
-    - That each thread only establishes one connection (log with %(thread)d
+    - That each thread only gets one resource (log with %(thread)d
       in the logging format to confirm this)
     - How long a single resource retrieval can be reused before expiring,
       if it ever expires (we might not handle this case yet, but logging
       with timestamp will help confirm the time till expiry)
     """
     try:
-        # Reuse this thread's previously established connection, if any.
-        return THREAD_LOCAL.s3_connection
+        # Reuse this thread's previously established resource, if any.
+        return THREAD_LOCAL.s3_resource
     except AttributeError:
-        # No connection for this thread yet.
+        # No resource for this thread yet.
         pass
 
     # Try getting an identity, which means the process is running in AWS
@@ -196,11 +196,11 @@ def get_s3_conn():
         pass
     else:
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
-            THREAD_LOCAL.s3_connection = boto3.resource('s3')
+            THREAD_LOCAL.s3_resource = boto3.resource('s3')
             logger.info(
-                "Called boto3.resource() in get_s3_conn(),"
+                "Called boto3.resource() in get_s3_resource(),"
                 " with STS credentials")
-            return THREAD_LOCAL.s3_connection
+            return THREAD_LOCAL.s3_resource
 
     # Use credentials from spacer config. If credentials are None,
     # boto will instead look in other places such as ~/.aws/credentials.
@@ -208,16 +208,16 @@ def get_s3_conn():
     #
     # This call doesn't actually test validity of credentials. When a bucket
     # or object is actually accessed later, you'll know if it's valid or not.
-    THREAD_LOCAL.s3_connection = boto3.resource(
+    THREAD_LOCAL.s3_resource = boto3.resource(
         's3',
         region_name=AWS_REGION,
         aws_access_key_id=AWS_ACCESS_KEY_ID,
         aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
     )
     logger.info(
-        "Called boto3.resource() in get_s3_conn(),"
+        "Called boto3.resource() in get_s3_resource(),"
         " with spacer config or auto-detected credentials")
-    return THREAD_LOCAL.s3_connection
+    return THREAD_LOCAL.s3_resource
 
 
 class log_entry_and_exit(ContextDecorator):
