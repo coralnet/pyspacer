@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.1 (WIP)
+
+- AWS credentials can now be obtained through the following methods, in addition to spacer config values as before:
+  
+  - AWS's metadata service (STS); proof of concept from @michaelconnor00
+  - boto's auto-detection logic when neither of STS or spacer config are used (this was intended to work before, but needed fixing)
+
 ## 0.9.0
 
 - Python 3.8 and 3.9 support have been dropped; Python 3.11 support has been added.
