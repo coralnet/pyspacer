@@ -7,6 +7,11 @@
   - AWS's metadata service (STS); proof of concept from @michaelconnor00
   - boto's auto-detection logic when neither of STS or spacer config are used (this was intended to work before, but needed fixing)
 
+- Updates to pip-install dependencies:
+
+  - numpy: >=1.19 to >=1.21.4,<2
+  - boto3: nothing to >=1.26.0
+
 ## 0.9.0
 
 - Python 3.8 and 3.9 support have been dropped; Python 3.11 support has been added.
