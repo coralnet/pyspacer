@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.10.0 (WIP)
+## 0.10.0
 
 - AWS credentials can now be obtained through the following methods, in addition to spacer config values as before:
   
