@@ -67,8 +67,8 @@ def train(source_id: int,
 def list_sources(export_name: str = 'beta_export') -> None:
     """ Lists sources available in export. """
 
-    conn = config.get_s3_conn()
-    bucket = conn.Bucket('spacer-trainingdata')
+    s3 = config.get_s3_resource()
+    bucket = s3.Bucket('spacer-trainingdata')
 
     obj_list = bucket.objects.filter(Prefix='{}/s'.format(export_name),
                                      Delimiter='images')

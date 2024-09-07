@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 import boto3
+import botocore.exceptions
 from PIL import Image, ImageFile
 
 from spacer.exceptions import ConfigError
@@ -161,42 +162,62 @@ if LOG_DESTINATION:
     )
 
 
-# Save S3 connections (resources) for reuse, but only have one per thread,
+# Save S3 resources for reuse, but only have one per thread,
 # because they're not thread-safe:
 # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/resources.html
 THREAD_LOCAL = threading.local()
 
 
-def get_s3_conn():
+def get_s3_resource():
     """
-    Returns a boto s3 connection.
-    Each thread only establishes a connection once, saving it to
-    THREAD_LOCAL.s3_connection and reusing it thereafter.
-    """
-    if not all([AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY]):
-        raise ConfigError(
-            "All AWS config variables must be specified to use S3.")
+    Returns a boto s3 Resource.
+    Each thread only gets this from the boto API once, saving it to
+    THREAD_LOCAL.s3_resource and reusing it thereafter.
 
+    The logging statements aim to confirm:
+    - That each thread only gets one resource (log with %(thread)d
+      in the logging format to confirm this)
+    - How long a single resource retrieval can be reused before expiring,
+      if it ever expires (we might not handle this case yet, but logging
+      with timestamp will help confirm the time till expiry)
+    """
     try:
-        THREAD_LOCAL.s3_connection
+        # Reuse this thread's previously established resource, if any.
+        return THREAD_LOCAL.s3_resource
     except AttributeError:
-        # This passes credentials from spacer config. If credentials are
-        # None, it will default to using credentials in ~/.aws/credentials
-        THREAD_LOCAL.s3_connection = boto3.resource(
-            's3',
-            region_name=AWS_REGION,
-            aws_access_key_id=AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-        )
+        # No resource for this thread yet.
+        pass
 
-        # We're interested in confirming:
-        # - That this only gets reached once per thread (log with %(thread)d
-        #   in the logging format to confirm this)
-        # - How long a single resource retrieval can be reused before
-        #   expiring (if it ever expires)
-        logger.info("Called boto3.resource() in get_s3_conn()")
+    # Try getting an identity, which means the process is running in AWS
+    # with access to the metadata service to fetch credentials.
+    try:
+        response = boto3.client('sts').get_caller_identity()
+    except botocore.exceptions.NoCredentialsError:
+        pass
+    else:
+        if response['ResponseMetadata']['HTTPStatusCode'] == 200:
+            THREAD_LOCAL.s3_resource = boto3.resource('s3')
+            logger.info(
+                "Called boto3.resource() in get_s3_resource(),"
+                " with STS credentials")
+            return THREAD_LOCAL.s3_resource
 
-    return THREAD_LOCAL.s3_connection
+    # Use credentials from spacer config. If credentials are None,
+    # boto will instead look in other places such as ~/.aws/credentials.
+    # https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-authentication.html#cli-chap-authentication-precedence
+    #
+    # This call doesn't actually test validity of credentials. When a bucket
+    # or object is actually accessed later, you'll know if it's valid or not.
+    THREAD_LOCAL.s3_resource = boto3.resource(
+        's3',
+        region_name=AWS_REGION,
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    )
+    logger.info(
+        "Called boto3.resource() in get_s3_resource(),"
+        " with spacer config or auto-detected credentials")
+    return THREAD_LOCAL.s3_resource
 
 
 class log_entry_and_exit(ContextDecorator):
@@ -284,12 +305,12 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
 CONFIGURABLE_VARS = [
-    # These two variables are required if you're using AWS S3 storage,
-    # unless spacer is running on an AWS instance which has been set up with
-    # `aws configure`.
+    # These three variables enable use of AWS S3 storage with static
+    # credentials. If you don't use S3, or if you have other ways to specify
+    # credentials and region (such as Amazon STS or `aws configure`), then
+    # these aren't required.
     'AWS_ACCESS_KEY_ID',
     'AWS_SECRET_ACCESS_KEY',
-    # This is required if you're using S3 storage.
     'AWS_REGION',
     # This is required if you're loading feature extractors from a remote
     # source (S3 or URL).

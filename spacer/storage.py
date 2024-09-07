@@ -160,22 +160,22 @@ class S3Storage(RemoteStorage):
         self.transfer_config = TransferConfig(use_threads=False)
 
     def store(self, key: str, stream: BytesIO):
-        s3 = config.get_s3_conn()
+        s3 = config.get_s3_resource()
         s3.Bucket(self.bucket_name).put_object(Body=stream, Key=key)
 
     def _load_remote(self, key: str):
-        s3 = config.get_s3_conn()
+        s3 = config.get_s3_resource()
         stream = BytesIO()
         s3.Object(self.bucket_name, key).download_fileobj(
             stream, Config=self.transfer_config)
         return stream
 
     def delete(self, key: str) -> None:
-        s3 = config.get_s3_conn()
+        s3 = config.get_s3_resource()
         s3.Object(self.bucket_name, key).delete()
 
     def exists(self, key: str):
-        s3 = config.get_s3_conn()
+        s3 = config.get_s3_resource()
         try:
             s3.Object(self.bucket_name, key).load()
             return True

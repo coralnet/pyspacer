@@ -75,7 +75,7 @@ class TestImageFeaturesNumpyStore(unittest.TestCase):
 
         self._test_numpy_store(s3_loc)
 
-        s3 = config.get_s3_conn()
+        s3 = config.get_s3_resource()
         s3.Object(config.TEST_BUCKET, s3_loc.key).delete()
 
     def test_fs(self):

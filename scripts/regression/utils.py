@@ -20,8 +20,8 @@ def cache_local(source_root: str,
                 cache_image: bool,
                 cache_feats: bool) -> None:
     # Download data to the local to speed up training
-    conn = config.get_s3_conn()
-    bucket = conn.Bucket('spacer-trainingdata')
+    s3 = config.get_s3_resource()
+    bucket = s3.Bucket('spacer-trainingdata')
     if not os.path.exists(source_root):
         os.system('mkdir -p ' + source_root)
     if not os.path.exists(image_root):
