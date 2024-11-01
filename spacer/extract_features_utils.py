@@ -4,21 +4,6 @@ import numpy as np
 from PIL import Image
 
 
-def gray2rgb(im: np.ndarray) -> np.ndarray:
-    """
-    Convert gray image to RGB image
-    :param im: gray image to be converted
-    :return: RGB image
-    """
-    w, h = im.shape
-    ret = np.empty((w, h, 3), dtype=np.uint8)
-    ret[:, :, 0] = im
-    ret[:, :, 1] = im
-    ret[:, :, 2] = im
-
-    return ret
-
-
 def crop_patches(im: Image,
                  rowcols: list[tuple[int, int]],
                  crop_size: int) -> list[np.ndarray]:
@@ -29,11 +14,11 @@ def crop_patches(im: Image,
     :param crop_size: patch size
     :return: patch list
     """
-    im = np.array(im)
+    # Normalize to RGB mode (so for example, no transparency channel,
+    # and not a monochrome format) to simplify later processing steps.
+    im = im.convert('RGB')
 
-    if len(im.shape) == 2 or im.shape[2] == 1:
-        im = gray2rgb(im)
-    im = im[:, :, :3]  # only keep the first three color channels
+    im = np.array(im)
 
     pad = crop_size
     im = np.pad(im, ((pad, pad), (pad, pad), (0, 0)), mode='reflect')

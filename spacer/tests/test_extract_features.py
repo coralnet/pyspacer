@@ -196,6 +196,43 @@ class BaseExtractorTest(unittest.TestCase):
             self.assertTrue(pf_legacy.row is None)
             self.assertTrue(pf_new.row is not None)
 
+    def do_test_image_mode(self, mode):
+        """
+        Test an image of a particular color mode.
+
+        RGB is what we want to convert to; it's good to still test
+        RGB input to ensure that the no-op conversion doesn't do anything
+        wrong.
+
+        RGBA is common for PNG images.
+
+        LA (lightness and alpha channels) has occurred before as an
+        all-transparent image at the edge of an otherwise non-monochrome
+        mosaic. Perhaps there was some kind of auto-compression process
+        that actually reduced the number of channels from the usual
+        RGB/RGBA.
+        We don't necessarily need meaningful features from such an image,
+        but we need extraction to at least not crash.
+
+        L is the no-alpha equivalent of LA.
+        """
+        img = Image.new(mode, (100, 100))
+
+        features, return_msg = self.extractor(
+            im=img,
+            rowcols=[(25, 25), (50, 50)],
+        )
+
+        self.assertTrue(isinstance(return_msg, ExtractFeaturesReturnMsg))
+        self.assertTrue(isinstance(features, ImageFeatures))
+
+        # Check some feature metadata
+        self.assertEqual(features.point_features[0].row, 25)
+        self.assertEqual(features.point_features[0].col, 25)
+        self.assertEqual(
+            len(features.point_features[0].data),
+            self.expected_feature_dimension)
+
 
 @require_caffe
 @require_test_extractors
@@ -223,6 +260,18 @@ class TestCaffeExtractor(BaseExtractorTest):
     def test_regression(self):
         super().do_test_regression('08bfc10v7t.png.featurevector')
 
+    def test_rgb_mode(self):
+        super().do_test_image_mode('RGB')
+
+    def test_rgba_mode(self):
+        super().do_test_image_mode('RGBA')
+
+    def test_l_mode(self):
+        super().do_test_image_mode('L')
+
+    def test_la_mode(self):
+        super().do_test_image_mode('LA')
+
 
 @require_test_extractors
 @require_test_fixtures
@@ -249,6 +298,18 @@ class TestEfficientNetExtractor(BaseExtractorTest):
 
     def test_regression(self):
         super().do_test_regression('08bfc10v7t.png.effnet.ver1.featurevector')
+
+    def test_rgb_mode(self):
+        super().do_test_image_mode('RGB')
+
+    def test_rgba_mode(self):
+        super().do_test_image_mode('RGBA')
+
+    def test_l_mode(self):
+        super().do_test_image_mode('L')
+
+    def test_la_mode(self):
+        super().do_test_image_mode('LA')
 
 
 class TestExtractorLoad(unittest.TestCase):

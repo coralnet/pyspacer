@@ -1,17 +1,8 @@
 import unittest
 
-import numpy as np
 from PIL import Image
 
-from spacer.extract_features_utils import gray2rgb, crop_patches
-
-
-class TestGray2RGB(unittest.TestCase):
-
-    def test_default(self):
-        out_arr = gray2rgb(np.array(Image.new('L', (200, 200))))
-        out_im = Image.fromarray(out_arr)
-        self.assertEqual(out_im.mode, "RGB")
+from spacer.extract_features_utils import crop_patches
 
 
 class TestCropPatch(unittest.TestCase):
