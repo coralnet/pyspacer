@@ -2,9 +2,6 @@
 
 coverage==7.0.5
 
-# https://tqdm.github.io/releases/
-tqdm==4.65.0
-
 # For mailman.py entry point
 # https://github.com/google/python-fire/releases
 fire==0.5.0
