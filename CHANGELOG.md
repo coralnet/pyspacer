@@ -22,6 +22,11 @@
 
   Related to these changes, now more tests are runnable without needing CoralNet AWS credentials. More tests are runnable in GitHub Actions CI, as well (even though that doesn't use AWS at all).
 
+- Updates to pip-install dependencies:
+
+  - Pillow: >=10.2.0 to >=10.4.0
+  - tqdm: no longer required in any environment
+
 - Feature extraction should now be able to tolerate more image color modes. Previously, `LA` and possibly other modes supported by Pillow would make feature extraction crash. (Note that all modes are converted to RGB for feature extraction purposes.)
 
 - Most of the repo's standalone scripts have been removed, thus avoiding confusion about their purpose.

@@ -1,6 +1,6 @@
 # This should install pyproject.toml's minimum accepted versions.
 
-Pillow==10.2.0
+Pillow==10.4.0
 numpy==1.21.4
 scikit-learn==1.1.3
 torch==1.13.1
