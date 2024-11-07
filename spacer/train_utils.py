@@ -236,13 +236,14 @@ def make_random_data(im_count: int,
                      class_list: list[LabelId],
                      points_per_image: int,
                      feature_dim: int,
-                     feature_loc: DataLocation) -> ImageLabels:
+                     feature_loc: DataLocation,
+                     im_keys: list[str] | None = None) -> ImageLabels:
     """
     Utility method for testing that generates an ImageLabels instance
     complete with stored ImageFeatures.
     """
     data = {}
-    for _ in range(im_count):
+    for i in range(im_count):
 
         # Generate random features (using labels to draw from a Gaussian).
         point_labels = np.random.choice(class_list, points_per_image).tolist()
@@ -251,14 +252,20 @@ def make_random_data(im_count: int,
         point_labels[:len(class_list)] = class_list
         feats = ImageFeatures.make_random(point_labels, feature_dim)
 
-        # Generate a random string as imkey.
-        imkey = ''.join(random.choice(string.ascii_uppercase + string.digits)
-                        for _ in range(20))
+        if im_keys is None:
+            # Generate a random string as im_key.
+            im_key = ''.join(
+                random.choice(string.ascii_uppercase + string.digits)
+                for _ in range(20))
+        else:
+            # Use the keys passed into this function.
+            # im_keys must contain at least im_count elements.
+            im_key = im_keys[i]
 
         # Store
-        feature_loc.key = imkey
+        feature_loc.key = im_key
         feats.store(feature_loc)
-        data[imkey] = [
+        data[im_key] = [
             (pf.row, pf.col, pl) for pf, pl in
             zip(feats.point_features, point_labels)
         ]

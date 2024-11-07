@@ -1,11 +1,12 @@
 # Utilities for unit tests.
 
 from contextlib import contextmanager
-import os
 import tempfile
+import uuid
 
 from spacer import config
 from spacer.messages import DataLocation
+from spacer.storage import FileSystemStorage, S3Storage
 
 
 def cn_beta_fixture_location(key):
@@ -31,5 +32,29 @@ def temp_filesystem_data_location():
 
     yield temp_data_location
 
-    if os.path.exists(temporary_file.name):
-        os.remove(temporary_file.name)
+    storage = FileSystemStorage()
+    if storage.exists(temporary_file.name):
+        storage.delete(temporary_file.name)
+
+
+@contextmanager
+def temp_s3_filepaths(
+    # Name of S3 bucket to claim filepaths in
+    bucket_name: str,
+    # How many filepaths to claim
+    num_data_locations: int = 1,
+):
+    # Claim some filepaths in the bucket, for the in-context code to
+    # use.
+    filenames = []
+    for _ in range(num_data_locations):
+        random_base_filename = uuid.uuid4()
+        filenames.append(f'tmp_{random_base_filename}')
+
+    yield filenames
+
+    # Clean up any files created at those filepaths.
+    storage = S3Storage(bucket_name=bucket_name)
+    for filename in filenames:
+        if storage.exists(filename):
+            storage.delete(filename)
