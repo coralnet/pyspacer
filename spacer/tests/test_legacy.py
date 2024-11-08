@@ -29,29 +29,17 @@ cn_beta_fixtures = {
     's812': ('4772.model', ['i672762', 'i674185']),
     's1388': ('8942.model', ['i1023182', 'i1023213'])
 }
-pyspacer_031_vgg16_fixtures = {
-    '23': {'classifier': 33358, 'images': [3286565, 3286615]},
-    '1288': {'classifier': 33360, 'images': [3286481, 3286511]},
-}
-pyspacer_031_efficientnet_fixtures = {
-    '23': {'classifier': 33369, 'images': [3286565, 3286615]},
-    '1288': {'classifier': 33368, 'images': [3286481, 3286511]},
+pyspacer_fixtures = {
+    's23': ('test.model', ['IMG_4619', 'IMG_4700']),
+    's1288': ('test.model', ['ROS-03_2018_A_30', 'ROS-06_2018_A_30']),
 }
 
 
-def pyspacer031_vgg16_fixture_location(key):
+def pyspacer_fixture_location(version, extractor, key):
     return DataLocation(
         storage_type='s3',
         bucket_name=config.CN_FIXTURES_BUCKET,
-        key='legacy_compat/pyspacer_0.3.1/vgg16/' + key
-    )
-
-
-def pyspacer031_efficientnet_fixture_location(key):
-    return DataLocation(
-        storage_type='s3',
-        bucket_name=config.CN_FIXTURES_BUCKET,
-        key='legacy_compat/pyspacer_0.3.1/efficientnet/' + key
+        key=f'legacy_compat/pyspacer_{version}/{extractor}/{key}'
     )
 
 
@@ -184,41 +172,29 @@ class TestClassifyFeatures(unittest.TestCase):
                         f"{source}/{img}.scores.json"),
                 )
 
-    def test_pyspacer_0_3_1_vgg16(self):
-        for source_id, source_data in pyspacer_031_vgg16_fixtures.items():
-            for image_id in source_data['images']:
-                classifier_id = source_data['classifier']
-                features_filename = f"{image_id}.featurevector"
-                classifier_filename = f"{classifier_id}.model"
-                scores_filename = \
-                    f"img{image_id}_clf{classifier_id}.scores.json"
+    def do_test_pyspacer(self, version, extractor):
+        for source, (clf, imgs) in pyspacer_fixtures.items():
+            for img in imgs:
                 self.run_one_test(
-                    pyspacer031_vgg16_fixture_location(
-                        f"s{source_id}/{features_filename}"),
-                    pyspacer031_vgg16_fixture_location(
-                        f"s{source_id}/{classifier_filename}"),
-                    pyspacer031_vgg16_fixture_location(
-                        f"s{source_id}/{scores_filename}"),
+                    pyspacer_fixture_location(
+                        version, extractor, f"{source}/{img}.featurevector"),
+                    pyspacer_fixture_location(
+                        version, extractor, f"{source}/{clf}"),
+                    pyspacer_fixture_location(
+                        version, extractor, f"{source}/{img}.scores.json"),
                 )
 
+    def test_pyspacer_0_3_1_vgg16(self):
+        self.do_test_pyspacer('0.3.1', 'vgg16')
+
     def test_pyspacer_0_3_1_efficientnet(self):
-        for source_id, source_data in (
-            pyspacer_031_efficientnet_fixtures.items()
-        ):
-            for image_id in source_data['images']:
-                classifier_id = source_data['classifier']
-                features_filename = f"{image_id}.featurevector"
-                classifier_filename = f"{classifier_id}.model"
-                scores_filename = \
-                    f"img{image_id}_clf{classifier_id}.scores.json"
-                self.run_one_test(
-                    pyspacer031_efficientnet_fixture_location(
-                        f"s{source_id}/{features_filename}"),
-                    pyspacer031_efficientnet_fixture_location(
-                        f"s{source_id}/{classifier_filename}"),
-                    pyspacer031_efficientnet_fixture_location(
-                        f"s{source_id}/{scores_filename}"),
-                )
+        self.do_test_pyspacer('0.3.1', 'efficientnet')
+
+    def test_pyspacer_0_9_0_vgg16(self):
+        self.do_test_pyspacer('0.9.0', 'vgg16')
+
+    def test_pyspacer_0_9_0_efficientnet(self):
+        self.do_test_pyspacer('0.9.0', 'efficientnet')
 
 
 @require_caffe
