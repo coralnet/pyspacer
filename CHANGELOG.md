@@ -25,6 +25,7 @@
 - Updates to pip-install dependencies:
 
   - Pillow: >=10.2.0 to >=10.4.0
+  - scikit-learn: ==1.1.3 to ==1.5.2
   - tqdm: no longer required in any environment
 
 - Feature extraction should now be able to tolerate more image color modes. Previously, `LA` and possibly other modes supported by Pillow would make feature extraction crash. (Note that all modes are converted to RGB for feature extraction purposes.)

@@ -329,7 +329,7 @@ class ClassifierUnpickler(Unpickler):
         # - _CalibratedClassifier: each element of the
         #   clf.calibrated_classifiers_ list
         # - MLPClassifier, SGDClassifier: possible classes of
-        #   clf.base_estimator and the base_estimator attribute of each
+        #   clf.estimator and the estimator attribute of each
         #   _CalibratedClassifier
 
         # These attrs were added after sklearn 0.22.1. The calibration.py
@@ -342,11 +342,22 @@ class ClassifierUnpickler(Unpickler):
         if not hasattr(clf, 'n_jobs'):
             clf.n_jobs = None
 
-        self.patch_base_estimator(clf.base_estimator)
+        # base_estimator was renamed to estimator (in both
+        # CalibratedClassifierCV and _CalibratedClassifier) in sklearn 1.2.
+        if not hasattr(clf, 'estimator'):
+            clf.estimator = clf.base_estimator
+            delattr(clf, 'base_estimator')
+
+        self.patch_estimator(clf.estimator)
 
         for calibrated_clf in clf.calibrated_classifiers_:
 
-            self.patch_base_estimator(calibrated_clf.base_estimator)
+            # base_estimator was renamed to estimator (in both
+            # CalibratedClassifierCV and _CalibratedClassifier) in sklearn 1.2.
+            if not hasattr(calibrated_clf, 'estimator'):
+                calibrated_clf.estimator = calibrated_clf.base_estimator
+                delattr(calibrated_clf, 'base_estimator')
+            self.patch_estimator(calibrated_clf.estimator)
 
             # sklearn 0.17.1: the classes attribute didn't exist.
             # sklearn 0.22.1: the classes attribute was introduced, and was
@@ -366,12 +377,12 @@ class ClassifierUnpickler(Unpickler):
         return clf
 
     @staticmethod
-    def patch_base_estimator(base_estimator):
-        if isinstance(base_estimator, SGDClassifier):
-            if base_estimator.loss == 'log':
+    def patch_estimator(estimator):
+        if isinstance(estimator, SGDClassifier):
+            if estimator.loss == 'log':
                 # The loss parameter name 'log' was deprecated in favor of the
                 # new name 'log_loss' as of scikit-learn 1.1.
-                base_estimator.loss = 'log_loss'
+                estimator.loss = 'log_loss'
 
 
 @lru_cache(maxsize=3)
@@ -387,10 +398,11 @@ def load_classifier(loc: 'DataLocation'):
         warnings.filterwarnings(
             'ignore',
             category=UserWarning,
-            # Part after 'version' either starts with 'pre-0.18' or '0.22.1'
+            # Match when the part after 'version' either starts with 'pre-0.18'
+            # or '0.22.1' or '1.1.3'
             message=r"Trying to unpickle estimator [A-Za-z_]+"
                     r" from version"
-                    r" ((pre-0\.18)|(0\.22\.1)).*",
+                    r" ((pre-0\.18)|(0\.22\.1)|(1\.1\.3)).*",
         )
         clf = ClassifierUnpickler(
             stream, fix_imports=True, encoding='latin1').load()
