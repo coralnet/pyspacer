@@ -10,12 +10,20 @@ fire==0.5.0
 Pillow==11.0.0
 
 # https://numpy.org/devdocs/release.html
-numpy==1.24.1
+numpy==2.1.3
+
+# pyspacer has no direct usages of scipy. But since scikit-learn (below)
+# requires scipy, it must be installed. And since scipy requires numpy (above),
+# one may need to specify a scipy version constraint for numpy compatibility,
+# particularly when updating an existing env instead of creating a new one.
+# https://github.com/scipy/scipy/releases
+# Requires: numpy
+scipy==1.14.1
 
 # For training and classification.
 # Classifier compatibility depends heavily on this package's version.
 # https://scikit-learn.org/stable/whats_new.html
-# Requires: numpy (and scipy)
+# Requires: numpy, scipy
 scikit-learn==1.5.2
 
 # For the EfficientNet extractor
@@ -24,7 +32,7 @@ scikit-learn==1.5.2
 #
 # Matching torch and Python versions:
 # https://github.com/pytorch/vision#installation
-torch==1.13.1
-torchvision==0.14.1
+torch==2.4.1
+torchvision==0.19.1
 
 boto3>=1.26.122,<1.27

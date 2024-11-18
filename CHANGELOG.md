@@ -25,8 +25,15 @@
 - Updates to pip-install dependencies:
 
   - Pillow: >=10.2.0 to >=10.4.0
-  - scikit-learn: ==1.1.3 to ==1.5.2
+  - numpy: >=1.21.4,<2 to >=1.22,<2.2
+  - scikit-learn: ==1.1.3 to ==1.5.2 (loading models from previously-supported versions should still work)
+  - torch: >=1.13.1,<2.3 to >=2.2,<2.5
+  - torchvision: >=0.14.1,<0.18 to >=0.17,<0.20
   - tqdm: no longer required in any environment
+
+  If you use numpy>=2.0, you probably also need torch>=2.3, torchvision>=0.18, and scipy>=1.13 (scipy is required by scikit-learn). Otherwise, you may get errors like "_ARRAY_API not found" and warnings like "A module that was compiled using NumPy 1.x cannot be run in NumPy 2.1.3 as it may crash."
+
+  Also note that torch>=2.3 does not provide binaries for macOS x86.
 
 - Feature extraction should now be able to tolerate more image color modes. Previously, `LA` and possibly other modes supported by Pillow would make feature extraction crash. (Note that all modes are converted to RGB for feature extraction purposes.)
 

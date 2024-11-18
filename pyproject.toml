@@ -13,10 +13,10 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "Pillow>=10.4.0",
-    "numpy>=1.21.4,<2",
+    "numpy>=1.22,<2.2",
     "scikit-learn==1.5.2",
-    "torch>=1.13.1,<2.3",
-    "torchvision>=0.14.1,<0.18",
+    "torch>=2.2,<2.5",
+    "torchvision>=0.17,<0.20",
     "boto3>=1.26.0",
 ]
 license = {file = "license.txt"}

@@ -1,8 +1,15 @@
 # This should install pyproject.toml's minimum accepted versions.
 
+# Minimum for GitHub security alerts
 Pillow==10.4.0
-numpy==1.21.4
+# Minimum for GitHub security alerts
+numpy==1.22.0
+# Minimum for scikit-learn compat
+scipy==1.6.0
 scikit-learn==1.5.2
-torch==1.13.1
-torchvision==0.14.1
+# Minimum for GitHub security alerts
+torch==2.2.0
+# Should correspond with torch version
+torchvision==0.17.0
+# Fairly arbitrary
 boto3==1.26.0
