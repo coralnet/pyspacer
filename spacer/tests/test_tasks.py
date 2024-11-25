@@ -36,7 +36,7 @@ from spacer.tasks import (
     train_classifier,
 )
 from spacer.task_utils import preprocess_labels
-from spacer.tests.utils import cn_beta_fixture_location
+from spacer.tests.utils import cn_beta_fixture_location, temp_s3_filepaths
 from spacer.train_utils import make_random_data, train
 from .decorators import require_test_fixtures
 
@@ -311,30 +311,39 @@ class TestTrainClassifier(unittest.TestCase):
         points_per_image = 10
         feature_dim = 5
         class_list = [1, 2]
+        bucket_name = config.TEST_BUCKET
 
         # Remote storage.
         features_loc_template = DataLocation(
-            storage_type='s3', key='', bucket_name=config.TEST_BUCKET)
-
-        msg = TrainClassifierMsg(
-            job_token='test',
-            trainer_name='minibatch',
-            nbr_epochs=2,
-            clf_type='MLP',
-            labels=preprocess_labels(make_random_data(
-                n_data, class_list, points_per_image,
-                feature_dim, features_loc_template,
-            )),
-            features_loc=features_loc_template,
-            previous_model_locs=[],
-            model_loc=DataLocation(storage_type='memory', key='model'),
-            valresult_loc=DataLocation(storage_type='memory', key='valresult'),
-            feature_cache_dir=feature_cache_dir,
-        )
+            storage_type='s3', key='', bucket_name=bucket_name)
 
         load_remote = spy_decorator(S3Storage._load_remote)
-        with mock.patch.object(S3Storage, '_load_remote', load_remote):
+
+        with (
+            mock.patch.object(
+                S3Storage, '_load_remote', load_remote),
+            temp_s3_filepaths(
+                bucket_name=bucket_name,
+                num_data_locations=n_data) as s3_feature_paths,
+        ):
+            msg = TrainClassifierMsg(
+                job_token='test',
+                trainer_name='minibatch',
+                nbr_epochs=2,
+                clf_type='MLP',
+                labels=preprocess_labels(make_random_data(
+                    n_data, class_list, points_per_image,
+                    feature_dim, features_loc_template,
+                    im_keys=s3_feature_paths,
+                )),
+                features_loc=features_loc_template,
+                previous_model_locs=[],
+                model_loc=DataLocation(storage_type='memory', key='model'),
+                valresult_loc=DataLocation(storage_type='memory', key='valresult'),
+                feature_cache_dir=feature_cache_dir,
+            )
             train_classifier(msg)
+
         return load_remote.mock_obj
 
     @require_test_fixtures
