@@ -28,6 +28,8 @@ class FeatureExtractor(abc.ABC):
     # Subclasses should define their expected data_locations keys here.
     # See __init__() for an explanation of data_locations.
     DATA_LOCATION_KEYS: list[str] = []
+    # Width and height of cropped patches.
+    CROP_SIZE = 224
 
     def __init__(self,
                  data_locations: dict[str, DataLocation],
@@ -49,12 +51,51 @@ class FeatureExtractor(abc.ABC):
         # ones you want to check the integrity of.
         self.data_hashes = data_hashes or dict()
 
-    @abc.abstractmethod
     def __call__(self,
                  im: Image,
                  rowcols: list[tuple[int, int]]) \
             -> tuple[ImageFeatures, ExtractFeaturesReturnMsg]:
-        """ Runs the feature extraction """
+        """
+        Runs feature extraction on a single image. rowcols specifies the
+        pixel locations at which to crop square patches, and then features
+        are computed for each patch.
+        """
+        start_time = time.time()
+
+        # Crop patches
+        with config.log_entry_and_exit('cropping of {} patches'.format(
+                len(rowcols))):
+            patch_list = crop_patches(im, rowcols, self.CROP_SIZE)
+        del im
+
+        feats, extractor_loaded_remotely = self.patches_to_features(
+            patch_list)
+
+        image_features = ImageFeatures(
+            point_features=[
+                PointFeatures(row=rc[0], col=rc[1], data=ft)
+                for rc, ft in zip(rowcols, feats)
+            ],
+            valid_rowcol=True,
+            feature_dim=len(feats[0]),
+            npoints=len(feats),
+        )
+        return_msg = ExtractFeaturesReturnMsg(
+            extractor_loaded_remotely=extractor_loaded_remotely,
+            runtime=time.time() - start_time,
+        )
+        return image_features, return_msg
+
+    def patches_to_features(
+            self, patch_list: list[Image]) -> tuple[list, bool]:
+        """
+        Extract features from cropped patches.
+        :param patch_list: a list of square images of size CROP_SIZE
+        :return: list of extracted features, one per patch; and a bool
+          saying whether or not the extractor params were loaded from a
+          remote source.
+        """
+        raise NotImplementedError
 
     @property
     @abc.abstractmethod
@@ -218,8 +259,8 @@ class FeatureExtractor(abc.ABC):
 
 class DummyExtractor(FeatureExtractor):
     """
-    This doesn't actually extract any features from the image,
-    it just returns dummy information.
+    This doesn't actually extract any features from the image;
+    it just returns dummy information in the correct format.
     """
     def __init__(self,
                  data_locations: dict[str, DataLocation] = None,
@@ -234,14 +275,17 @@ class DummyExtractor(FeatureExtractor):
 
     def __call__(self, im, rowcols):
         return ImageFeatures(
-            point_features=[PointFeatures(row=rc[0],
-                                          col=rc[1],
-                                          data=[random.random() for _ in
-                                                range(self.feature_dim)])
-                            for rc in rowcols],
+            point_features=[
+                PointFeatures(
+                    row=rc[0],
+                    col=rc[1],
+                    data=[random.random() for _ in range(self.feature_dim)],
+                )
+                for rc in rowcols
+            ],
             valid_rowcol=True,
+            feature_dim=self.feature_dim,
             npoints=len(rowcols),
-            feature_dim=self.feature_dim
         ), ExtractFeaturesReturnMsg.example()
 
     @property
@@ -266,48 +310,32 @@ class VGG16CaffeExtractor(FeatureExtractor):
                 f"Need Caffe installed to call"
                 f" {self.__class__.__name__}.")
 
+        return super().__call__(im, rowcols)
+
+    def patches_to_features(self, patch_list):
         # We should only reach this line if it is confirmed caffe is available
         from spacer.extractors.vgg16 import classify_from_patchlist
-
-        start_time = time.time()
 
         # Set caffe parameters
         caffe_params = {'im_mean': [128, 128, 128],
                         'scaling_method': 'scale',
-                        'crop_size': 224,
                         'batch_size': 10}
 
-        # Crop patches
-        with config.log_entry_and_exit('cropping of {} patches'.format(
-                len(rowcols))):
-            patch_list = crop_patches(im, rowcols, caffe_params['crop_size'])
-        del im
-
         # Extract features
-        definition_filepath, _ = \
-            self.load_data_into_filesystem('definition')
-        weights_filepath, remote_loaded = \
-            self.load_data_into_filesystem('weights')
+        definition_filepath, _ = (
+            self.load_data_into_filesystem('definition'))
+        weights_filepath, extractor_loaded_remotely = (
+            self.load_data_into_filesystem('weights'))
 
-        feats = classify_from_patchlist(patch_list,
-                                        caffe_params,
-                                        definition_filepath,
-                                        weights_filepath,
-                                        scorelayer='fc7')
-
-        return \
-            ImageFeatures(
-                point_features=[PointFeatures(row=rc[0],
-                                              col=rc[1],
-                                              data=ft.tolist())
-                                for rc, ft in zip(rowcols, feats)],
-                valid_rowcol=True,
-                feature_dim=len(feats[0]),
-                npoints=len(feats)
-            ), ExtractFeaturesReturnMsg(
-                extractor_loaded_remotely=remote_loaded,
-                runtime=time.time() - start_time
-            )
+        features = classify_from_patchlist(
+            patch_list,
+            caffe_params,
+            definition_filepath,
+            weights_filepath,
+            scorelayer='fc7',
+        )
+        features = [feat.tolist() for feat in features]
+        return features, extractor_loaded_remotely
 
     @property
     def feature_dim(self):
@@ -319,36 +347,22 @@ class EfficientNetExtractor(FeatureExtractor):
     # weights should be a PyTorch tensor file, typically .pt
     DATA_LOCATION_KEYS = ['weights']
 
-    def __call__(self, im, rowcols):
+    def patches_to_features(self, patch_list):
 
-        start_time = time.time()
-
-        weights_datastream, remote_loaded = self.load_datastream('weights')
+        weights_datastream, extractor_loaded_remotely = (
+            self.load_datastream('weights'))
 
         # Set torch parameters
         torch_params = {'model_type': 'efficientnet',
                         'model_name': 'efficientnet-b0',
                         'weights_datastream': weights_datastream,
                         'num_class': 1275,
-                        'crop_size': 224,
                         'batch_size': 10}
 
-        # Crop patches
-        with config.log_entry_and_exit('cropping %s patches' % len(rowcols)):
-            patch_list = crop_patches(im, rowcols, torch_params['crop_size'])
-        del im
-
         # Extract features
-        feats = extract_feature(patch_list, torch_params)
+        features = extract_feature(patch_list, torch_params)
 
-        return ImageFeatures(
-            point_features=[PointFeatures(row=rc[0], col=rc[1], data=ft)
-                            for rc, ft in zip(rowcols, feats)],
-            valid_rowcol=True, feature_dim=len(feats[0]), npoints=len(feats)
-        ), ExtractFeaturesReturnMsg(
-            extractor_loaded_remotely=remote_loaded,
-            runtime=time.time() - start_time
-        )
+        return features, extractor_loaded_remotely
 
     @property
     def feature_dim(self):
