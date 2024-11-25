@@ -1,6 +1,12 @@
 """
 For possible future network extension
 """
+from .base import (
+    DummyExtractor,
+    EfficientNetExtractor,
+    FeatureExtractor,
+    VGG16CaffeExtractor,
+)
 from .efficientnet import EfficientNet
 
 
@@ -11,3 +17,12 @@ def get_model(model_type, model_name, num_classes, pretrained=False):
     else:
         raise NotImplementedError(model_name)
     return model
+
+
+__all__ = [
+    'get_model',
+    'DummyExtractor',
+    'EfficientNetExtractor',
+    'FeatureExtractor',
+    'VGG16CaffeExtractor',
+]

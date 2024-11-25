@@ -8,7 +8,7 @@ from spacer import config
 # error if the S3 bucket isn't available.)
 TEST_EXTRACTORS = {
     'vgg16': dict(
-        class_path='spacer.extract_features.VGG16CaffeExtractor',
+        class_path='spacer.extractors.VGG16CaffeExtractor',
         data_locations=dict(
             definition=dict(
                 storage_type='s3',
@@ -29,7 +29,7 @@ TEST_EXTRACTORS = {
         ),
     ),
     'efficientnet-b0': dict(
-        class_path='spacer.extract_features.EfficientNetExtractor',
+        class_path='spacer.extractors.EfficientNetExtractor',
         data_locations=dict(
             weights=dict(
                 storage_type='s3',

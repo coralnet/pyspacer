@@ -9,7 +9,7 @@ from spacer.data_classes import (
     ImageFeatures, ImageLabels, LabelId, PointFeatures, ValResults)
 from spacer.exceptions import (
     DataLimitError, RowColumnInvalidError, RowColumnMismatchError)
-from spacer.extract_features import DummyExtractor
+from spacer.extractors import DummyExtractor
 from spacer.messages import (
     ClassifyFeaturesMsg,
     ClassifyImageMsg,

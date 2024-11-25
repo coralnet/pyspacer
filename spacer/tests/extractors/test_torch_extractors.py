@@ -5,10 +5,10 @@ import torch
 from PIL import Image
 from torchvision import transforms
 
-from spacer.extract_features import FeatureExtractor
-from spacer.torch_utils import extract_feature, transformation
-from .common import TEST_EXTRACTORS
-from .decorators import require_test_extractors
+from spacer.extractors import FeatureExtractor
+from spacer.extractors.torch_extractors import extract_feature, transformation
+from ..common import TEST_EXTRACTORS
+from ..decorators import require_test_extractors
 
 
 class TestTransformation(unittest.TestCase):

@@ -5,16 +5,16 @@ import numpy as np
 from PIL import Image
 
 from spacer import config
-from spacer.extract_features import FeatureExtractor
-from .common import TEST_EXTRACTORS
-from .decorators import require_caffe, require_test_extractors
+from spacer.extractors import FeatureExtractor
+from ..common import TEST_EXTRACTORS
+from ..decorators import require_caffe, require_test_extractors
 
 
 @require_caffe
 class TestTransformer(unittest.TestCase):
 
     def test_process(self):
-        from spacer.caffe_utils import Transformer
+        from spacer.extractors.vgg16 import Transformer
         trans = Transformer()
         im_pil = Image.new('RGB', (50, 50))
         im_arr = np.asarray(im_pil)

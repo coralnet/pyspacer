@@ -12,7 +12,7 @@ import torch
 from torchvision import transforms
 
 from spacer import config
-from spacer import models
+from spacer import extractors
 
 
 def transformation():
@@ -63,9 +63,9 @@ def extract_feature(patch_list: list,
     :return: a list of features
     """
     # Model setup and load pretrained weight
-    net = models.get_model(model_type=pyparams['model_type'],
-                           model_name=pyparams['model_name'],
-                           num_classes=pyparams['num_class'])
+    net = extractors.get_model(model_type=pyparams['model_type'],
+                               model_name=pyparams['model_name'],
+                               num_classes=pyparams['num_class'])
     net = load_weights(net, pyparams['weights_datastream'])
     net.eval()
 

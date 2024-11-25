@@ -3,8 +3,8 @@ import unittest
 
 import torch
 
-from spacer import models
-from spacer.models.effcientnet_utils import \
+from spacer import extractors
+from spacer.extractors.efficientnet_utils import \
     round_filters, \
     round_repeats, \
     drop_connect, \
@@ -18,9 +18,9 @@ class TestGetModels(unittest.TestCase):
 
     def test_invalid_model(self):
         with self.assertRaises(NotImplementedError):
-            _ = models.get_model(model_type='dummy',
-                                 model_name='dummy',
-                                 num_classes=1000)
+            _ = extractors.get_model(model_type='dummy',
+                                     model_name='dummy',
+                                     num_classes=1000)
 
 
 class TestEfficientNet(unittest.TestCase):
@@ -29,9 +29,9 @@ class TestEfficientNet(unittest.TestCase):
         model_param = {'model_type': 'efficientnet',
                        'model_name': 'efficientnet-b0',
                        'num_classes': 1000}
-        net = models.get_model(model_type=model_param['model_type'],
-                               model_name=model_param['model_name'],
-                               num_classes=model_param['num_classes'])
+        net = extractors.get_model(model_type=model_param['model_type'],
+                                   model_name=model_param['model_name'],
+                                   num_classes=model_param['num_classes'])
         with torch.no_grad():
             output = net(torch.rand(1, 3, 224, 224))
 

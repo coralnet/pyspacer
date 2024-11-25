@@ -7,7 +7,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from .effcientnet_utils import (
+from .efficientnet_utils import (
     relu_fn,
     round_filters,
     round_repeats,

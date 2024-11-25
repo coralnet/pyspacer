@@ -9,7 +9,7 @@ import numpy as np
 
 from spacer import config
 from spacer.data_classes import ImageFeatures
-from spacer.extract_features import FeatureExtractor
+from spacer.extractors import FeatureExtractor
 from spacer.messages import \
     DataLocation, \
     ExtractFeaturesMsg, \

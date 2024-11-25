@@ -7,12 +7,12 @@ from PIL import Image
 from spacer import config
 from spacer.data_classes import ImageFeatures
 from spacer.exceptions import HashMismatchError
-from spacer.extract_features import \
-    DummyExtractor, EfficientNetExtractor, FeatureExtractor
+from spacer.extractors import (
+    DummyExtractor, EfficientNetExtractor, FeatureExtractor)
 from spacer.messages import ExtractFeaturesReturnMsg, DataLocation
 from spacer.storage import load_image, storage_factory
-from .common import TEST_EXTRACTORS
-from .decorators import \
+from ..common import TEST_EXTRACTORS
+from ..decorators import \
     require_caffe, require_test_extractors, require_test_fixtures
 
 

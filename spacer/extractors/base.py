@@ -17,10 +17,10 @@ from PIL import Image
 from spacer import config
 from spacer.data_classes import PointFeatures, ImageFeatures
 from spacer.exceptions import ConfigError, HashMismatchError
-from spacer.extract_features_utils import crop_patches
+from spacer.extractors.utils import crop_patches
 from spacer.messages import DataLocation, ExtractFeaturesReturnMsg
 from spacer.storage import storage_factory
-from spacer.torch_utils import extract_feature
+from spacer.extractors.torch_extractors import extract_feature
 
 
 class FeatureExtractor(abc.ABC):
@@ -267,7 +267,7 @@ class VGG16CaffeExtractor(FeatureExtractor):
                 f" {self.__class__.__name__}.")
 
         # We should only reach this line if it is confirmed caffe is available
-        from spacer.caffe_utils import classify_from_patchlist
+        from spacer.extractors.vgg16 import classify_from_patchlist
 
         start_time = time.time()
 
