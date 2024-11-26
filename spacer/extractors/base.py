@@ -20,7 +20,6 @@ from spacer.exceptions import ConfigError, HashMismatchError
 from spacer.extractors.utils import crop_patches
 from spacer.messages import DataLocation, ExtractFeaturesReturnMsg
 from spacer.storage import storage_factory
-from spacer.extractors.torch_extractors import extract_feature
 
 
 class FeatureExtractor(abc.ABC):
@@ -340,30 +339,3 @@ class VGG16CaffeExtractor(FeatureExtractor):
     @property
     def feature_dim(self):
         return 4096
-
-
-class EfficientNetExtractor(FeatureExtractor):
-
-    # weights should be a PyTorch tensor file, typically .pt
-    DATA_LOCATION_KEYS = ['weights']
-
-    def patches_to_features(self, patch_list):
-
-        weights_datastream, extractor_loaded_remotely = (
-            self.load_datastream('weights'))
-
-        # Set torch parameters
-        torch_params = {'model_type': 'efficientnet',
-                        'model_name': 'efficientnet-b0',
-                        'weights_datastream': weights_datastream,
-                        'num_class': 1275,
-                        'batch_size': 10}
-
-        # Extract features
-        features = extract_feature(patch_list, torch_params)
-
-        return features, extractor_loaded_remotely
-
-    @property
-    def feature_dim(self):
-        return 1280

@@ -3,7 +3,7 @@ import unittest
 
 import torch
 
-from spacer import extractors
+from spacer.extractors import EfficientNetExtractor
 from spacer.extractors.efficientnet_utils import \
     round_filters, \
     round_repeats, \
@@ -14,29 +14,21 @@ from spacer.extractors.efficientnet_utils import \
     get_model_params
 
 
-class TestGetModels(unittest.TestCase):
-
-    def test_invalid_model(self):
-        with self.assertRaises(NotImplementedError):
-            _ = extractors.get_model(model_type='dummy',
-                                     model_name='dummy',
-                                     num_classes=1000)
+class SampleExtractor(EfficientNetExtractor):
+    MODEL_NAME = 'efficientnet-b0'
+    NUM_CLASSES = 1000
 
 
 class TestEfficientNet(unittest.TestCase):
 
     def test_efficientnet(self):
-        model_param = {'model_type': 'efficientnet',
-                       'model_name': 'efficientnet-b0',
-                       'num_classes': 1000}
-        net = extractors.get_model(model_type=model_param['model_type'],
-                                   model_name=model_param['model_name'],
-                                   num_classes=model_param['num_classes'])
+        net = SampleExtractor.untrained_model()
         with torch.no_grad():
             output = net(torch.rand(1, 3, 224, 224))
 
-        self.assertEqual(net.get_image_size(model_param['model_name']), 224)
-        self.assertEqual(output.shape[1], model_param['num_classes'])
+        self.assertEqual(
+            net.get_image_size(SampleExtractor.MODEL_NAME), 224)
+        self.assertEqual(output.shape[1], SampleExtractor.NUM_CLASSES)
         with self.assertRaises(ValueError):
             net._check_model_name_is_valid(model_name='dummy')
 
