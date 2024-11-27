@@ -14,6 +14,7 @@ from spacer.storage import load_image, storage_factory
 from ..common import TEST_EXTRACTORS
 from ..decorators import \
     require_caffe, require_test_extractors, require_test_fixtures
+from ..utils import random_image
 
 
 class TestDummyExtractor(unittest.TestCase):
@@ -71,11 +72,7 @@ class BaseExtractorTest(unittest.TestCase):
 
     def do_test_simple(self):
 
-        img = load_image(DataLocation(
-            storage_type='s3',
-            key='edinburgh3.jpg',
-            bucket_name=config.TEST_BUCKET,
-        ))
+        img = random_image(800, 600)
         features, return_msg = self.extractor(
             im=img,
             rowcols=[(100, 100)],
@@ -150,52 +147,6 @@ class BaseExtractorTest(unittest.TestCase):
             len(features.point_features[0].data),
             self.expected_feature_dimension)
 
-    def do_test_regression(self, legacy_features_s3_key):
-        """
-        This test runs the extractor on a known image and compares the
-        results to features extracted with
-        https://github.com/beijbom/ecs_spacer/releases/tag/1.0
-        """
-        rowcols = [(20, 265),
-                   (76, 295),
-                   (59, 274),
-                   (151, 62),
-                   (265, 234)]
-
-        img = load_image(DataLocation(
-            storage_type='s3',
-            key='08bfc10v7t.png',
-            bucket_name=config.TEST_BUCKET,
-        ))
-        features_new, _ = self.extractor(
-            im=img,
-            rowcols=rowcols,
-        )
-
-        legacy_feat_loc = DataLocation(storage_type='s3',
-                                       key=legacy_features_s3_key,
-                                       bucket_name=config.TEST_BUCKET)
-        features_legacy = ImageFeatures.load(legacy_feat_loc)
-
-        self.assertFalse(features_legacy.valid_rowcol)
-        self.assertEqual(features_legacy.npoints, len(rowcols))
-        self.assertEqual(
-            features_legacy.feature_dim,
-            self.expected_feature_dimension)
-
-        self.assertTrue(features_new.valid_rowcol)
-        self.assertEqual(features_new.npoints, len(rowcols))
-        self.assertEqual(
-            features_new.feature_dim,
-            self.expected_feature_dimension)
-
-        for pf_new, pf_legacy in zip(features_new.point_features,
-                                     features_legacy.point_features):
-            self.assertTrue(np.allclose(pf_legacy.data, pf_new.data,
-                                        atol=1e-5))
-            self.assertTrue(pf_legacy.row is None)
-            self.assertTrue(pf_new.row is not None)
-
     def do_test_image_mode(self, mode):
         """
         Test an image of a particular color mode.
@@ -236,7 +187,6 @@ class BaseExtractorTest(unittest.TestCase):
 
 @require_caffe
 @require_test_extractors
-@require_test_fixtures
 class TestCaffeExtractor(BaseExtractorTest):
 
     expected_feature_dimension = 4096
@@ -251,14 +201,13 @@ class TestCaffeExtractor(BaseExtractorTest):
     def test_dims(self):
         super().do_test_dims()
 
+    @require_test_fixtures
     def test_corner_case1(self):
         super().do_test_corner_case1()
 
+    @require_test_fixtures
     def test_corner_case2(self):
         super().do_test_corner_case2()
-
-    def test_regression(self):
-        super().do_test_regression('08bfc10v7t.png.featurevector')
 
     def test_rgb_mode(self):
         super().do_test_image_mode('RGB')
@@ -273,16 +222,13 @@ class TestCaffeExtractor(BaseExtractorTest):
         super().do_test_image_mode('LA')
 
 
-@require_test_extractors
-@require_test_fixtures
 class TestEfficientNetExtractor(BaseExtractorTest):
 
     expected_feature_dimension = 1280
 
     @classmethod
     def setUpClass(cls):
-        cls.extractor = FeatureExtractor.deserialize(
-            TEST_EXTRACTORS['efficientnet-b0'])
+        cls.extractor = EfficientNetExtractor.untrained_instance()
 
     def test_simple(self):
         super().do_test_simple()
@@ -290,14 +236,13 @@ class TestEfficientNetExtractor(BaseExtractorTest):
     def test_dims(self):
         super().do_test_dims()
 
+    @require_test_fixtures
     def test_corner_case1(self):
         super().do_test_corner_case1()
 
+    @require_test_fixtures
     def test_corner_case2(self):
         super().do_test_corner_case2()
-
-    def test_regression(self):
-        super().do_test_regression('08bfc10v7t.png.effnet.ver1.featurevector')
 
     def test_rgb_mode(self):
         super().do_test_image_mode('RGB')
@@ -310,6 +255,72 @@ class TestEfficientNetExtractor(BaseExtractorTest):
 
     def test_la_mode(self):
         super().do_test_image_mode('LA')
+
+
+@require_test_fixtures
+@require_test_extractors
+class TestRegression(unittest.TestCase):
+
+    def do_test(self, extractor, legacy_features_s3_key, expected_feature_dim):
+        """
+        This test runs the extractor on a known image and compares the
+        results to features extracted with
+        https://github.com/beijbom/ecs_spacer/releases/tag/1.0
+        """
+        rowcols = [(20, 265),
+                   (76, 295),
+                   (59, 274),
+                   (151, 62),
+                   (265, 234)]
+
+        img = load_image(DataLocation(
+            storage_type='s3',
+            key='08bfc10v7t.png',
+            bucket_name=config.TEST_BUCKET,
+        ))
+        features_new, _ = extractor(
+            im=img,
+            rowcols=rowcols,
+        )
+
+        legacy_feat_loc = DataLocation(storage_type='s3',
+                                       key=legacy_features_s3_key,
+                                       bucket_name=config.TEST_BUCKET)
+        features_legacy = ImageFeatures.load(legacy_feat_loc)
+
+        self.assertFalse(features_legacy.valid_rowcol)
+        self.assertEqual(features_legacy.npoints, len(rowcols))
+        self.assertEqual(
+            features_legacy.feature_dim,
+            expected_feature_dim)
+
+        self.assertTrue(features_new.valid_rowcol)
+        self.assertEqual(features_new.npoints, len(rowcols))
+        self.assertEqual(
+            features_new.feature_dim,
+            expected_feature_dim)
+
+        for pf_new, pf_legacy in zip(features_new.point_features,
+                                     features_legacy.point_features):
+            self.assertTrue(np.allclose(pf_legacy.data, pf_new.data,
+                                        atol=1e-5))
+            self.assertTrue(pf_legacy.row is None)
+            self.assertTrue(pf_new.row is not None)
+
+    @require_caffe
+    def test_vgg16(self):
+        self.do_test(
+            FeatureExtractor.deserialize(TEST_EXTRACTORS['vgg16']),
+            '08bfc10v7t.png.featurevector',
+            4096,
+        )
+
+    def test_efficientnet(self):
+        self.do_test(
+            FeatureExtractor.deserialize(TEST_EXTRACTORS['efficientnet-b0']),
+            '08bfc10v7t.png.effnet.ver1.featurevector',
+            1280,
+        )
 
 
 class TestExtractorLoad(unittest.TestCase):

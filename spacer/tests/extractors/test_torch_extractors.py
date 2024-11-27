@@ -5,10 +5,8 @@ import torch
 from PIL import Image
 from torchvision import transforms
 
-from spacer.extractors import FeatureExtractor
+from spacer.extractors import EfficientNetExtractor
 from spacer.extractors.torch_extractors import transformation
-from ..common import TEST_EXTRACTORS
-from ..decorators import require_test_extractors
 
 
 class TestTransformation(unittest.TestCase):
@@ -38,13 +36,11 @@ class TestTransformation(unittest.TestCase):
         self.assertTrue(np.allclose(output.numpy(), expected_output))
 
 
-@require_test_extractors
 class TestPatchesToFeatures(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.extractor = FeatureExtractor.deserialize(
-            TEST_EXTRACTORS['efficientnet-b0'])
+        cls.extractor = EfficientNetExtractor.untrained_instance()
 
     def test(self):
         crop_size = self.extractor.CROP_SIZE

@@ -4,6 +4,9 @@ from contextlib import contextmanager
 import tempfile
 import uuid
 
+import numpy as np
+from PIL import Image
+
 from spacer import config
 from spacer.messages import DataLocation
 from spacer.storage import FileSystemStorage, S3Storage
@@ -58,3 +61,11 @@ def temp_s3_filepaths(
     for filename in filenames:
         if storage.exists(filename):
             storage.delete(filename)
+
+
+def random_image(width, height) -> Image:
+    """
+    Source: https://stackoverflow.com/a/10901092
+    """
+    arr = np.random.rand(width, height, 3) * 255
+    return Image.fromarray(arr.astype('uint8')).convert('RGB')
