@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+import hashlib
 from io import BytesIO
 import unittest
 
@@ -12,9 +14,9 @@ from spacer.extractors import (
 from spacer.messages import ExtractFeaturesReturnMsg, DataLocation
 from spacer.storage import load_image, storage_factory
 from ..common import TEST_EXTRACTORS
-from ..decorators import \
-    require_caffe, require_test_extractors, require_test_fixtures
-from ..utils import random_image
+from ..decorators import (
+    require_caffe, require_test_extractors, require_test_fixtures)
+from ..utils import random_image, temp_s3_filepaths
 
 
 class TestDummyExtractor(unittest.TestCase):
@@ -323,6 +325,14 @@ class TestRegression(unittest.TestCase):
         )
 
 
+class SampleExtractor(FeatureExtractor):
+    DATA_LOCATION_KEYS = ['weights_1', 'weights_2']
+
+    @property
+    def feature_dim(self):
+        return 1280
+
+
 class TestExtractorLoad(unittest.TestCase):
 
     @classmethod
@@ -330,101 +340,135 @@ class TestExtractorLoad(unittest.TestCase):
         cls.file_storage = storage_factory('filesystem')
         cls.memory_storage = storage_factory('memory')
 
-    @require_test_extractors
+    @contextmanager
+    def s3_extractor(self):
+        with temp_s3_filepaths(config.TEST_BUCKET, 2) as s3_filepaths:
+            data_locations = dict(
+                weights_1=DataLocation(
+                    's3', s3_filepaths[0], bucket_name=config.TEST_BUCKET),
+                weights_2=DataLocation(
+                    's3', s3_filepaths[1], bucket_name=config.TEST_BUCKET),
+            )
+
+            extractor_s3_storage = storage_factory('s3', config.TEST_BUCKET)
+            extractor_s3_storage.store(
+                data_locations['weights_1'].key, BytesIO(b'sample content'))
+            extractor_s3_storage.store(
+                data_locations['weights_2'].key, BytesIO(b'sample content 2'))
+
+            data_hashes = dict(
+                # Each hash is 64 hex digits
+                weights_1=hashlib.sha256(b'sample content').hexdigest(),
+                weights_2=hashlib.sha256(b'sample content 2').hexdigest(),
+            )
+
+            extractor = SampleExtractor(
+                data_locations=data_locations, data_hashes=data_hashes)
+
+            yield extractor
+
+    # This and some other tests in this class require an S3 bucket,
+    # but it need not be the bucket with spacer's test-fixtures in it.
+    # However, these distinct bucket concepts aren't defined separately
+    # in spacer's config yet. So we still use @require_test_fixtures.
+    @require_test_fixtures
     def test_remote_filesystem_load(self):
         """
         Extractor caching only happens for extractors downloaded
         remotely (from S3 or URL).
-        We test with the VGG16 definition file because that's the
-        smallest of the test-extractor files, and thus quickest
-        to download.
         """
-        extractor = FeatureExtractor.deserialize(TEST_EXTRACTORS['vgg16'])
-        key = 'definition'
+        with self.s3_extractor() as extractor:
+            key = 'weights_1'
 
-        extractor.decache_remote_loaded_file(key)
-        filepath_for_cache = str(extractor.data_filepath_for_cache(key))
-        self.assertFalse(
-            self.file_storage.exists(filepath_for_cache),
-            msg="decache call should've worked")
+            # Ensure the file's uncached.
+            extractor.decache_remote_loaded_file(key)
+            filepath_for_cache = str(extractor.data_filepath_for_cache(key))
+            self.assertFalse(
+                self.file_storage.exists(filepath_for_cache),
+                msg="Should not be in cache")
 
-        # Test cache miss.
-        filepath_loaded, remote_loaded = \
-            extractor.load_data_into_filesystem(key)
-        self.assertTrue(remote_loaded)
-        self.assertTrue(
-            self.file_storage.exists(filepath_loaded),
-            msg="Should be loaded into cache after a cache miss")
-        self.assertEqual(filepath_for_cache, filepath_loaded)
+            # Test cache miss.
+            filepath_loaded, remote_loaded = \
+                extractor.load_data_into_filesystem(key)
+            self.assertTrue(remote_loaded)
+            self.assertTrue(
+                self.file_storage.exists(filepath_loaded),
+                msg="Should be loaded into cache after a cache miss")
+            self.assertEqual(filepath_for_cache, filepath_loaded)
 
-        # Test cache hit.
-        _, remote_loaded = extractor.load_data_into_filesystem(key)
-        self.assertFalse(remote_loaded)
+            # Test cache hit.
+            _, remote_loaded = extractor.load_data_into_filesystem(key)
+            self.assertFalse(remote_loaded)
 
-    @require_test_extractors
+    @require_test_fixtures
     def test_remote_datastream_load(self):
-        extractor = FeatureExtractor.deserialize(TEST_EXTRACTORS['vgg16'])
-        key = 'definition'
+        with self.s3_extractor() as extractor:
+            key = 'weights_1'
 
-        extractor.decache_remote_loaded_file(key)
-        filepath_for_cache = str(extractor.data_filepath_for_cache(key))
+            # Ensure the file's uncached.
+            extractor.decache_remote_loaded_file(key)
+            filepath_for_cache = str(extractor.data_filepath_for_cache(key))
 
-        # Test cache miss.
-        datastream, remote_loaded = \
-            extractor.load_datastream(key)
-        self.assertTrue(remote_loaded)
-        self.assertTrue(
-            self.file_storage.exists(filepath_for_cache),
-            msg="Should be loaded into cache after a cache miss")
-        self.assertEqual(
-            datastream.tell(), 0,
-            msg="datastream should be at the start of the file")
+            # Test cache miss.
+            datastream, remote_loaded = \
+                extractor.load_datastream(key)
+            self.assertTrue(remote_loaded)
+            self.assertTrue(
+                self.file_storage.exists(filepath_for_cache),
+                msg="Should be loaded into cache after a cache miss")
+            self.assertEqual(
+                datastream.tell(), 0,
+                msg="datastream should be at the start of the file")
 
-        # Test cache hit.
-        _, remote_loaded = extractor.load_data_into_filesystem(key)
-        self.assertFalse(remote_loaded)
+            # Test cache hit.
+            _, remote_loaded = extractor.load_data_into_filesystem(key)
+            self.assertFalse(remote_loaded)
 
-    @require_test_extractors
+    @require_test_fixtures
     def test_remote_hash_mismatch(self):
-        serialized_extractor = TEST_EXTRACTORS['vgg16'].copy()
-        serialized_extractor['data_hashes']['definition'] = '1'*64
-        extractor = FeatureExtractor.deserialize(serialized_extractor)
-        key = 'definition'
+        with self.s3_extractor() as extractor:
+            key = 'weights_1'
 
-        extractor.decache_remote_loaded_file(key)
+            # Bogus hash.
+            extractor.data_hashes[key] = '1'*64
 
-        with self.assertRaises(HashMismatchError):
-            extractor.load_datastream(key)
+            # Ensure the file's uncached.
+            extractor.decache_remote_loaded_file(key)
 
-        filepath_for_cache = str(extractor.data_filepath_for_cache(key))
-        self.assertFalse(
-            self.file_storage.exists(filepath_for_cache),
-            msg="Should not keep in cache after a hash mismatch")
+            with self.assertRaises(HashMismatchError):
+                extractor.load_datastream(key)
 
-    @require_test_extractors
+            filepath_for_cache = str(extractor.data_filepath_for_cache(key))
+            self.assertFalse(
+                self.file_storage.exists(filepath_for_cache),
+                msg="Should not keep in cache after a hash mismatch")
+
+    @require_test_fixtures
     def test_remote_no_hash(self):
-        serialized_extractor = TEST_EXTRACTORS['vgg16'].copy()
-        del serialized_extractor['data_hashes']['definition']
-        extractor = FeatureExtractor.deserialize(serialized_extractor)
-        key = 'definition'
+        with self.s3_extractor() as extractor:
+            key = 'weights_1'
 
-        extractor.decache_remote_loaded_file(key)
-        filepath_for_cache = str(extractor.data_filepath_for_cache(key))
+            # Delete the hash.
+            del extractor.data_hashes[key]
 
-        # Test cache miss.
-        datastream, remote_loaded = \
-            extractor.load_datastream(key)
-        self.assertTrue(remote_loaded)
-        self.assertTrue(
-            self.file_storage.exists(filepath_for_cache),
-            msg="Should be loaded into cache after a cache miss")
-        self.assertEqual(
-            datastream.tell(), 0,
-            msg="datastream should be at the start of the file")
+            # Ensure the file's uncached.
+            extractor.decache_remote_loaded_file(key)
+            filepath_for_cache = str(extractor.data_filepath_for_cache(key))
 
-        # Test cache hit.
-        _, remote_loaded = extractor.load_data_into_filesystem(key)
-        self.assertFalse(remote_loaded)
+            # Test cache miss.
+            datastream, remote_loaded = \
+                extractor.load_datastream(key)
+            self.assertTrue(remote_loaded)
+            self.assertTrue(
+                self.file_storage.exists(filepath_for_cache),
+                msg="Should be loaded into cache after a cache miss")
+            self.assertEqual(
+                datastream.tell(), 0,
+                msg="datastream should be at the start of the file")
+
+            # Test cache hit.
+            _, remote_loaded = extractor.load_data_into_filesystem(key)
+            self.assertFalse(remote_loaded)
 
     def test_local(self):
         key = 'weights'
@@ -436,10 +480,7 @@ class TestExtractorLoad(unittest.TestCase):
                 weights=DataLocation('memory', key),
             ),
             data_hashes=dict(
-                # This is the result of
-                # hashlib.sha256(b'test bytes').hexdigest()
-                weights='4be66ea6f5222861df37e88d4635bffb'
-                        '99e183435f79fba13055b835b5dc420b',
+                weights=hashlib.sha256(b'test bytes').hexdigest(),
             ),
         )
 
