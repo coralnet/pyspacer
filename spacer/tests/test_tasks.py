@@ -38,7 +38,7 @@ from spacer.tasks import (
 from spacer.task_utils import preprocess_labels
 from spacer.tests.utils import cn_beta_fixture_location, temp_s3_filepaths
 from spacer.train_utils import make_random_data, train
-from .decorators import require_test_fixtures
+from .decorators import require_cn_fixtures, require_s3
 
 TEST_URL = \
     'https://upload.wikimedia.org/wikipedia/commons/7/7b/Red_sea_coral_reef.jpg'
@@ -346,7 +346,7 @@ class TestTrainClassifier(unittest.TestCase):
 
         return load_remote.mock_obj
 
-    @require_test_fixtures
+    @require_s3
     def test_feature_caching_enabled(self):
         load_remote_mock = self.do_feature_caching_test(
             TrainClassifierMsg.FeatureCache.AUTO)
@@ -355,7 +355,7 @@ class TestTrainClassifier(unittest.TestCase):
             "Should go like: download ref, download train, cache-load"
             " train, download val")
 
-    @require_test_fixtures
+    @require_s3
     def test_feature_caching_disabled(self):
         load_remote_mock = self.do_feature_caching_test(
             TrainClassifierMsg.FeatureCache.DISABLED)
@@ -432,7 +432,7 @@ class TestClassifyFeatures(ClassifyReturnMsgTest):
     def setUp(self):
         config.filter_warnings()
 
-    @require_test_fixtures
+    @require_cn_fixtures
     def test_legacy(self):
         msg = ClassifyFeaturesMsg(
             job_token='my_job',
@@ -443,7 +443,7 @@ class TestClassifyFeatures(ClassifyReturnMsgTest):
         return_msg = classify_features(msg)
         self._validate_return_msg(return_msg, False)
 
-    @require_test_fixtures
+    @require_cn_fixtures
     def test_new(self):
 
         feats = ImageFeatures.make_random([1, 2, 3, 2], feature_dim=4096)
@@ -494,7 +494,7 @@ class TestClassifyImage(ClassifyReturnMsgTest):
     def setUp(self):
         config.filter_warnings()
 
-    @require_test_fixtures
+    @require_cn_fixtures
     def test_deploy_simple(self):
         msg = ClassifyImageMsg(
             job_token='my_job',
@@ -535,7 +535,7 @@ class TestClassifyImageCache(unittest.TestCase):
     def setUp(self):
         config.filter_warnings()
 
-    @require_test_fixtures
+    @require_cn_fixtures
     def test_classify_image_with_caching(self):
         """ Call classify_image three times.
         The first 2 time with same message.
@@ -571,7 +571,7 @@ class TestClassifyImageCache(unittest.TestCase):
 
 class TestClassifyBadRowcols(unittest.TestCase):
 
-    @require_test_fixtures
+    @require_cn_fixtures
     def test_image_classify(self):
         msg = ClassifyImageMsg(
             job_token='my_job',

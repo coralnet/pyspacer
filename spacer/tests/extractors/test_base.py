@@ -15,7 +15,7 @@ from spacer.messages import ExtractFeaturesReturnMsg, DataLocation
 from spacer.storage import load_image, storage_factory
 from ..common import TEST_EXTRACTORS
 from ..decorators import (
-    require_caffe, require_test_extractors, require_test_fixtures)
+    require_caffe, require_cn_fixtures, require_s3, require_cn_test_extractors)
 from ..utils import random_image, temp_s3_filepaths
 
 
@@ -108,7 +108,7 @@ class BaseExtractorTest(unittest.TestCase):
         img = load_image(DataLocation(
             storage_type='s3',
             key='kh6dydiix0.jpeg',
-            bucket_name=config.TEST_BUCKET,
+            bucket_name=config.CN_FIXTURES_BUCKET,
         ))
         features, return_msg = self.extractor(
             im=img,
@@ -132,7 +132,7 @@ class BaseExtractorTest(unittest.TestCase):
         img = load_image(DataLocation(
             storage_type='s3',
             key='sfq2mr5qbs.jpeg',
-            bucket_name=config.TEST_BUCKET,
+            bucket_name=config.CN_FIXTURES_BUCKET,
         ))
         features, return_msg = self.extractor(
             im=img,
@@ -188,7 +188,7 @@ class BaseExtractorTest(unittest.TestCase):
 
 
 @require_caffe
-@require_test_extractors
+@require_cn_test_extractors
 class TestCaffeExtractor(BaseExtractorTest):
 
     expected_feature_dimension = 4096
@@ -203,11 +203,11 @@ class TestCaffeExtractor(BaseExtractorTest):
     def test_dims(self):
         super().do_test_dims()
 
-    @require_test_fixtures
+    @require_cn_fixtures
     def test_corner_case1(self):
         super().do_test_corner_case1()
 
-    @require_test_fixtures
+    @require_cn_fixtures
     def test_corner_case2(self):
         super().do_test_corner_case2()
 
@@ -238,11 +238,11 @@ class TestEfficientNetExtractor(BaseExtractorTest):
     def test_dims(self):
         super().do_test_dims()
 
-    @require_test_fixtures
+    @require_cn_fixtures
     def test_corner_case1(self):
         super().do_test_corner_case1()
 
-    @require_test_fixtures
+    @require_cn_fixtures
     def test_corner_case2(self):
         super().do_test_corner_case2()
 
@@ -259,8 +259,8 @@ class TestEfficientNetExtractor(BaseExtractorTest):
         super().do_test_image_mode('LA')
 
 
-@require_test_fixtures
-@require_test_extractors
+@require_cn_fixtures
+@require_cn_test_extractors
 class TestRegression(unittest.TestCase):
 
     def do_test(self, extractor, legacy_features_s3_key, expected_feature_dim):
@@ -278,7 +278,7 @@ class TestRegression(unittest.TestCase):
         img = load_image(DataLocation(
             storage_type='s3',
             key='08bfc10v7t.png',
-            bucket_name=config.TEST_BUCKET,
+            bucket_name=config.CN_FIXTURES_BUCKET,
         ))
         features_new, _ = extractor(
             im=img,
@@ -287,7 +287,7 @@ class TestRegression(unittest.TestCase):
 
         legacy_feat_loc = DataLocation(storage_type='s3',
                                        key=legacy_features_s3_key,
-                                       bucket_name=config.TEST_BUCKET)
+                                       bucket_name=config.CN_FIXTURES_BUCKET)
         features_legacy = ImageFeatures.load(legacy_feat_loc)
 
         self.assertFalse(features_legacy.valid_rowcol)
@@ -367,11 +367,7 @@ class TestExtractorLoad(unittest.TestCase):
 
             yield extractor
 
-    # This and some other tests in this class require an S3 bucket,
-    # but it need not be the bucket with spacer's test-fixtures in it.
-    # However, these distinct bucket concepts aren't defined separately
-    # in spacer's config yet. So we still use @require_test_fixtures.
-    @require_test_fixtures
+    @require_s3
     def test_remote_filesystem_load(self):
         """
         Extractor caching only happens for extractors downloaded
@@ -400,7 +396,7 @@ class TestExtractorLoad(unittest.TestCase):
             _, remote_loaded = extractor.load_data_into_filesystem(key)
             self.assertFalse(remote_loaded)
 
-    @require_test_fixtures
+    @require_s3
     def test_remote_datastream_load(self):
         with self.s3_extractor() as extractor:
             key = 'weights_1'
@@ -424,7 +420,7 @@ class TestExtractorLoad(unittest.TestCase):
             _, remote_loaded = extractor.load_data_into_filesystem(key)
             self.assertFalse(remote_loaded)
 
-    @require_test_fixtures
+    @require_s3
     def test_remote_hash_mismatch(self):
         with self.s3_extractor() as extractor:
             key = 'weights_1'
@@ -443,7 +439,7 @@ class TestExtractorLoad(unittest.TestCase):
                 self.file_storage.exists(filepath_for_cache),
                 msg="Should not keep in cache after a hash mismatch")
 
-    @require_test_fixtures
+    @require_s3
     def test_remote_no_hash(self):
         with self.s3_extractor() as extractor:
             key = 'weights_1'

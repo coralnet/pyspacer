@@ -15,7 +15,7 @@ from spacer.storage import FileSystemStorage, S3Storage
 def cn_beta_fixture_location(key):
     return DataLocation(
         storage_type='s3',
-        bucket_name=config.TEST_BUCKET,
+        bucket_name=config.CN_FIXTURES_BUCKET,
         key='legacy_compat/coralnet_beta/' + key
     )
 

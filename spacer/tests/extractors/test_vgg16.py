@@ -7,7 +7,7 @@ from PIL import Image
 from spacer import config
 from spacer.extractors import FeatureExtractor
 from ..common import TEST_EXTRACTORS
-from ..decorators import require_caffe, require_test_extractors
+from ..decorators import require_caffe, require_cn_test_extractors
 
 
 @require_caffe
@@ -23,7 +23,7 @@ class TestTransformer(unittest.TestCase):
 
 
 @require_caffe
-@require_test_extractors
+@require_cn_test_extractors
 class TestClassifyFromPatchList(unittest.TestCase):
 
     @classmethod
