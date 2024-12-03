@@ -1,6 +1,10 @@
 """
 Adapted from
 https://github.com/lukemelas/EfficientNet-PyTorch/blob/master/efficientnet_pytorch/model.py
+
+Note that EfficientNet has since been included as part of torchvision,
+although the implementation's at least partly based on lukemelas' work:
+https://github.com/pytorch/vision/pull/4293
 """
 
 import torch
