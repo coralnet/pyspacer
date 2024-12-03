@@ -9,10 +9,11 @@ from copy import copy
 from functools import lru_cache
 from typing import Any
 
-import caffe
 import numpy as np
 
 from spacer import config
+from spacer.exceptions import ConfigError
+from .base import FeatureExtractor
 
 
 class Transformer:
@@ -55,78 +56,73 @@ class Transformer:
         return np.uint8(im)
 
 
-def classify_from_imlist(im_list: list,
-                         net: Any,
-                         transformer: Transformer,
-                         batch_size: int,
-                         scorelayer: str = 'score',
-                         startlayer: str = 'conv1_1') -> list:
-    """
-    classify_from_imlist classifies a list of images and returns
-    estimated labels and scores.
-    Only support classification nets (not FCNs).
-    :param im_list: list of images to classify (each stored as a numpy array).
-    :param net: caffe net object.
-    :param transformer: transformer object as defined above.
-    :param batch_size: batch size for the net.
-    :param scorelayer: name of the score (the last conv) layer.
-    :param startlayer: name of first convolutional layer.
-    :return: features list.
-    """
-    with config.log_entry_and_exit('forward pass through net'):
-        scorelist = []
-        for b in range(len(im_list) // batch_size + 1):
-            for i in range(batch_size):
-                pos = b * batch_size + i
-                if pos < len(im_list):
-                    net.blobs['data'].data[i, :, :, :] = \
-                        transformer.preprocess(im_list[pos])
-            net.forward(start=startlayer)
-            scorelist.extend(list(copy(net.blobs[scorelayer].data).
-                                  astype(float)))
+class VGG16CaffeExtractor(FeatureExtractor):
 
-        scorelist = scorelist[:len(im_list)]
+    # definition should be a Caffe prototxt file, typically .prototxt
+    # weights should be a Caffe model file, typically .caffemodel
+    DATA_LOCATION_KEYS = ['definition', 'weights']
 
-    return scorelist
+    BATCH_SIZE = 10
+    # Name of first convolutional layer.
+    START_LAYER = 'conv1_1'
+    # Name of the score (the last conv) layer.
+    SCORE_LAYER = 'fc7'
+
+    def __call__(self, im, rowcols):
+        if not config.HAS_CAFFE:
+            raise ConfigError(
+                f"Need Caffe installed to call"
+                f" {self.__class__.__name__}.")
+
+        return super().__call__(im, rowcols)
+
+    def patches_to_features(self, patch_list):
+        # Load pretrained weights
+        definition_filepath, _ = (
+            self.load_data_into_filesystem('definition'))
+        weights_filepath, extractor_loaded_remotely = (
+            self.load_data_into_filesystem('weights'))
+        net = load_net(definition_filepath, weights_filepath)
+
+        # Extract features.
+        # Although the below code is somewhat network-agnostic, it's only
+        # meant for classification nets (not FCNs).
+
+        transformer = Transformer((128, 128, 128))
+
+        with config.log_entry_and_exit('forward pass through net'):
+            features = []
+            for b in range(len(patch_list) // self.BATCH_SIZE + 1):
+                for i in range(self.BATCH_SIZE):
+                    pos = b * self.BATCH_SIZE + i
+                    if pos < len(patch_list):
+                        net.blobs['data'].data[i, :, :, :] = \
+                            transformer.preprocess(patch_list[pos])
+                net.forward(start=self.START_LAYER)
+                features.extend(list(
+                    copy(net.blobs[self.SCORE_LAYER].data).astype(float)
+                ))
+
+            features = features[:len(patch_list)]
+
+        features = [feat.tolist() for feat in features]
+        return features, extractor_loaded_remotely
+
+    @property
+    def feature_dim(self):
+        return 4096
 
 
 @lru_cache(maxsize=1)
 def load_net(modeldef_path: str,
-             modelweighs_path: str) -> Any:
+             modelweights_path: str) -> Any:
     """
-    load pretrained net.
+    Load pretrained net.
     :param modeldef_path: model path.
-    :param modelweighs_path: pretrained weights path.
+    :param modelweights_path: pretrained weights path.
     :return: pretrained model.
     """
-    return caffe.Net(modeldef_path, modelweighs_path, caffe.TEST)
-
-
-def classify_from_patchlist(patchlist: list,
-                            pyparams: dict,
-                            modeldef_path: str,
-                            modelweighs_path: str,
-                            scorelayer: str = 'score',
-                            startlayer: str = 'conv1_1') -> list:
-    """
-    extract features of a list of patches
-    :param patchlist: a list of patches (cropped images).
-    :param pyparams: a set of parameters.
-    :param modeldef_path: model path.
-    :param modelweighs_path: pretrained weights path.
-    :param scorelayer: name of the score (the last conv) layer.
-    :param startlayer: name of first convolutional layer.
-    :return: a list of features
-    """
-    # Setup caffe
+    # Should have checked for a Caffe installation before reaching this.
+    import caffe
     caffe.set_mode_cpu()
-    net = load_net(modeldef_path, modelweighs_path)
-
-    # Classify
-    transformer = Transformer(pyparams['im_mean'])
-    scorelist = classify_from_imlist(
-        patchlist, net, transformer, pyparams['batch_size'],
-        scorelayer=scorelayer, startlayer=startlayer
-    )
-
-    return scorelist
+    return caffe.Net(modeldef_path, modelweights_path, caffe.TEST)
