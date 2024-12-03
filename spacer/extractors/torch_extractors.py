@@ -1,9 +1,11 @@
 """
-This file contains a set of pytorch utility functions
+Feature extraction details which are specific to PyTorch, but not
+specific to a particular model type such as EfficientNet.
 """
 
 from __future__ import annotations
 import abc
+import codecs
 from collections import OrderedDict
 from io import BytesIO
 
@@ -27,6 +29,21 @@ def transformation():
         transforms.ToTensor(),
     ])
     return transformer
+
+
+class _ModuleProxy:
+    """
+    Proxy of an object, which can report its __module__ as something other
+    than what it was originally.
+    For backward-compat unpickling.
+    """
+    def __init__(self, obj, module):
+        self.obj = obj
+        self.__module__ = module
+        self.__name__ = obj.__name__
+
+    def __call__(self, *args, **kwargs):
+        return self.obj(*args, **kwargs)
 
 
 class TorchExtractor(FeatureExtractor, abc.ABC):
@@ -85,9 +102,49 @@ class TorchExtractor(FeatureExtractor, abc.ABC):
 
         model = cls.untrained_model()
 
-        # Load weights
-        state_dicts = torch.load(weights_datastream,
-                                 map_location=device)
+        # This function is present in torch>=2.4.
+        if hasattr(torch.serialization, 'add_safe_globals'):
+
+            # Add types we expect our pytorch extractor weights to use to the
+            # pytorch-load allowlist.
+
+            safe_globals = [
+                np.dtype,
+                np.dtypes.Int64DType,
+                # torch 2.5.0 doesn't need this, but at least 2.4.1 does.
+                codecs.encode,
+            ]
+            # In numpy>=2, numpy._core is present, and numpy.core is a
+            # deprecated alias of numpy._core.
+            if hasattr(np, '_core'):
+                safe_globals.extend([
+                    np._core.multiarray.scalar,
+                    # To load core stuff created in numpy<2 while running numpy>=2,
+                    # we add this to the allowlist: a proxy which reports its
+                    # __module__ as numpy.core.x instead of numpy._core.x.
+                    _ModuleProxy(
+                        np._core.multiarray.scalar, 'numpy.core.multiarray'),
+                ])
+            else:
+                safe_globals.append(np.core.multiarray.scalar)
+            torch.serialization.add_safe_globals(safe_globals)
+
+            # Load weights
+            state_dicts = torch.load(
+                weights_datastream,
+                map_location=device,
+                # Since we enumerated safe globals, we can use this option to use
+                # safer unpickling when loading the weights.
+                # (Having this be False gets a warning in torch>=2.4, and may get an
+                # error in torch>=2.6.)
+                weights_only=True,
+            )
+
+        else:
+
+            # weights_only=True would still help in this case, but it's not clear
+            # how we can use it without add_safe_globals().
+            state_dicts = torch.load(weights_datastream, map_location=device)
 
         with config.log_entry_and_exit('model initialization'):
             new_state_dicts = OrderedDict()
