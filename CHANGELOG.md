@@ -12,16 +12,6 @@
 
   - There are now `CROP_SIZE` and `BATCH_SIZE` class-level variables available.
 
-- Config and test changes:
-
-  - Some former usages of `TEST_BUCKET` have been changed to `CN_FIXTURES_BUCKET`, to more clearly denote test fixtures that are currently only available to CoralNet devs.
-
-  - The remaining usages of `TEST_BUCKET` are now usable by anyone with an AWS account. This can be any S3 bucket that you have read and write access to.
-
-  - `TEST_EXTRACTORS_BUCKET` is now known as `CN_TEST_EXTRACTORS_BUCKET`, again denoting fixtures currently only available to CoralNet devs.
-
-  Related to these changes, now more tests are runnable without needing CoralNet AWS credentials. More tests are runnable in GitHub Actions CI, as well (even though that doesn't use AWS at all).
-
 - Updates to pip-install dependencies:
 
   - Pillow: >=10.2.0 to >=10.4.0
@@ -36,6 +26,16 @@
   Also note that torch>=2.3 does not provide binaries for macOS x86.
 
 - Feature extraction should now be able to tolerate more image color modes. Previously, `LA` and possibly other modes supported by Pillow would make feature extraction crash. (Note that all modes are converted to RGB for feature extraction purposes.)
+
+- Config and test changes:
+
+  - Some former usages of `TEST_BUCKET` have been changed to `CN_FIXTURES_BUCKET`, to more clearly denote test fixtures that are currently only available to CoralNet devs.
+
+  - The remaining usages of `TEST_BUCKET` are now usable by anyone with an AWS account. This can be any S3 bucket that you have read and write access to.
+
+  - `TEST_EXTRACTORS_BUCKET` is now known as `CN_TEST_EXTRACTORS_BUCKET`, again denoting fixtures currently only available to CoralNet devs.
+
+  Related to these changes, now more tests are runnable without needing CoralNet AWS credentials. More tests are runnable in GitHub Actions CI, as well (even though that doesn't use AWS at all).
 
 - Most of the repo's standalone scripts have been removed, thus avoiding confusion about their purpose.
 
