@@ -26,7 +26,7 @@ from spacer.storage import \
     clear_memory_storage
 from spacer.tests.utils import cn_beta_fixture_location
 from spacer.train_utils import make_random_data, train
-from .decorators import require_test_fixtures
+from .decorators import require_cn_fixtures, require_s3
 from .utils import temp_filesystem_data_location
 
 
@@ -113,11 +113,11 @@ class TestURLStorage(unittest.TestCase):
     def s3_url(filepath):
         return (
             'https://'
-            f'{config.TEST_BUCKET}.s3-{config.AWS_REGION}.amazonaws.com/'
+            f'{config.CN_FIXTURES_BUCKET}.s3-{config.AWS_REGION}.amazonaws.com/'
             f'{filepath}'
         )
 
-    @require_test_fixtures
+    @require_cn_fixtures
     def test_load_image(self):
         loc = DataLocation(
             storage_type='url',
@@ -126,7 +126,7 @@ class TestURLStorage(unittest.TestCase):
         img = load_image(loc)
         self.assertTrue(isinstance(img, Image.Image))
 
-    @require_test_fixtures
+    @require_cn_fixtures
     def test_load_classifier(self):
         loc = DataLocation(
             storage_type='url',
@@ -135,7 +135,7 @@ class TestURLStorage(unittest.TestCase):
         clf = load_classifier(loc)
         self.assertTrue(isinstance(clf, CalibratedClassifierCV))
 
-    @require_test_fixtures
+    @require_cn_fixtures
     def test_load_string(self):
         loc = DataLocation(
             storage_type='url',
@@ -144,7 +144,7 @@ class TestURLStorage(unittest.TestCase):
         feats = ImageFeatures.load(loc)
         self.assertTrue(isinstance(feats, ImageFeatures))
 
-    @require_test_fixtures
+    @require_cn_fixtures
     def test_exists_true(self):
         self.assertTrue(self.storage.exists(self.s3_url('08bfc10v7t.png')))
 
@@ -214,7 +214,7 @@ class TestURLStorage(unittest.TestCase):
         self.assertIn("full response", str(cm.exception))
 
 
-@require_test_fixtures
+@require_s3
 class TestS3Storage(BaseStorageTest):
 
     def setUp(self):
@@ -250,6 +250,7 @@ class TestS3Storage(BaseStorageTest):
         self.assertTrue(np.allclose(np.array(img), np.array(img2), atol=1e-5))
         self.assertTrue(isinstance(img2, Image.Image))
 
+    @require_cn_fixtures
     def test_load_legacy_features(self):
         feats = ImageFeatures.load(
             cn_beta_fixture_location('example.jpg.feats'))
@@ -259,6 +260,7 @@ class TestS3Storage(BaseStorageTest):
     def test_delete(self):
         self.do_test_delete()
 
+    @require_cn_fixtures
     def test_load_legacy_model(self):
         clf = load_classifier(cn_beta_fixture_location('example.model'))
         self.assertTrue(isinstance(clf, CalibratedClassifierCV))

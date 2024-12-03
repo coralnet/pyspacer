@@ -1,13 +1,17 @@
 """
 Adapted from
 https://github.com/lukemelas/EfficientNet-PyTorch/blob/master/efficientnet_pytorch/model.py
+
+Note that EfficientNet has since been included as part of torchvision,
+although the implementation's at least partly based on lukemelas' work:
+https://github.com/pytorch/vision/pull/4293
 """
 
 import torch
 from torch import nn
 from torch.nn import functional as F
 
-from .effcientnet_utils import (
+from .efficientnet_utils import (
     relu_fn,
     round_filters,
     round_repeats,
@@ -16,6 +20,7 @@ from .effcientnet_utils import (
     get_model_params,
     efficientnet_params,
 )
+from .torch_extractors import TorchExtractor
 
 
 class MBConvBlock(nn.Module):
@@ -246,3 +251,20 @@ class EfficientNet(nn.Module):
             raise ValueError('model_name should be one of: ' + ', '.join(
                 valid_models
             ))
+
+
+class EfficientNetExtractor(TorchExtractor):
+
+    MODEL_NAME = 'efficientnet-b0'
+    NUM_CLASSES = 1275
+
+    @property
+    def feature_dim(self):
+        return 1280
+
+    @classmethod
+    def untrained_model(cls) -> torch.nn.Module:
+        return EfficientNet.from_pretrained(
+            model_name=cls.MODEL_NAME,
+            num_classes=cls.NUM_CLASSES,
+        )

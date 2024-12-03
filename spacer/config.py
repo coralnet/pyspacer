@@ -258,20 +258,20 @@ TRAINER_NAMES = [
     'minibatch'
 ]
 
-# For extractors used in unit tests.
-TEST_EXTRACTORS_BUCKET = get_config_value(
-    'TEST_EXTRACTORS_BUCKET', default=None)
-# For other fixtures used in unit tests.
-#
-# At least for now, the main reason these bucket names are pulled from
-# config is to not expose the bucket names used by the PySpacer core devs.
-# However, since these test files are not publicly linked and need to
-# live in an S3 bucket with specific filenames (specified by TEST_EXTRACTORS
-# and individual tests), the tests are still onerous to set up for anyone
-# besides the core devs. This should be addressed sometime.
+# Amazon S3 bucket for temporarily storing data during unit tests.
+# You'll need write access to this bucket to run the applicable tests.
 TEST_BUCKET = get_config_value('TEST_BUCKET', default=None)
-# A few other fixtures live here.
+# A few testing fixtures live here.
 LOCAL_FIXTURE_DIR = str(APP_DIR / 'tests' / 'fixtures')
+
+# And the rest of the testing fixtures live in these CoralNet-owned
+# private buckets. (CoralNet devs should specify the names of the buckets
+# in their environment.)
+# These tests and fixtures should be reorganized sometime so that anyone can
+# run the applicable tests.
+CN_TEST_EXTRACTORS_BUCKET = get_config_value(
+    'CN_TEST_EXTRACTORS_BUCKET', default=None)
+CN_FIXTURES_BUCKET = get_config_value('CN_FIXTURES_BUCKET', default=None)
 
 STORAGE_TYPES = [
     's3',
@@ -315,10 +315,12 @@ CONFIGURABLE_VARS = [
     # This is required if you're loading feature extractors from a remote
     # source (S3 or URL).
     'EXTRACTORS_CACHE_DIR',
-    # These are required to run certain unit tests. They're also not really
-    # usable by anyone besides spacer's core devs at the moment.
-    'TEST_EXTRACTORS_BUCKET',
+    # This is required for S3 unit tests.
     'TEST_BUCKET',
+    # These are required to run certain unit tests. They're also only usable
+    # by CoralNet devs at the moment.
+    'CN_TEST_EXTRACTORS_BUCKET',
+    'CN_FIXTURES_BUCKET',
     # These can just be configured as needed, or left as defaults.
     'LOG_DESTINATION',
     'LOG_LEVEL',

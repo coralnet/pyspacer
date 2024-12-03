@@ -5,10 +5,8 @@ import torch
 from PIL import Image
 from torchvision import transforms
 
-from spacer.extract_features import FeatureExtractor
-from spacer.torch_utils import extract_feature, transformation
-from .common import TEST_EXTRACTORS
-from .decorators import require_test_extractors
+from spacer.extractors import EfficientNetExtractor
+from spacer.extractors.torch_extractors import transformation
 
 
 class TestTransformation(unittest.TestCase):
@@ -38,28 +36,19 @@ class TestTransformation(unittest.TestCase):
         self.assertTrue(np.allclose(output.numpy(), expected_output))
 
 
-@require_test_extractors
-class TestExtractFeatures(unittest.TestCase):
+class TestPatchesToFeatures(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.extractor = FeatureExtractor.deserialize(
-            TEST_EXTRACTORS['efficientnet-b0'])
+        cls.extractor = EfficientNetExtractor.untrained_instance()
 
-    def test_rgb(self):
-
-        weights_datastream, _ = self.extractor.load_datastream('weights')
-        torch_params = {'model_type': 'efficientnet',
-                        'model_name': 'efficientnet-b0',
-                        'weights_datastream': weights_datastream,
-                        'num_class': 1275,
-                        'crop_size': 224,
-                        'batch_size': 10}
-        patch_list = [np.array(Image.new('RGB', (224, 224))),
-                      np.array(Image.new('RGB', (224, 224))),
-                      np.array(Image.new('RGB', (224, 224)))]
-        feats = extract_feature(patch_list=patch_list,
-                                pyparams=torch_params)
+    def test(self):
+        crop_size = self.extractor.CROP_SIZE
+        patch_list = [np.array(Image.new('RGB', (crop_size, crop_size))),
+                      np.array(Image.new('RGB', (crop_size, crop_size))),
+                      np.array(Image.new('RGB', (crop_size, crop_size)))]
+        feats, remote_loaded = self.extractor.patches_to_features(
+            patch_list=patch_list)
         self.assertEqual(len(feats), len(patch_list))
         self.assertEqual(len(feats[0]), 1280)
 

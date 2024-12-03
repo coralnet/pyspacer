@@ -2,7 +2,7 @@ import unittest
 
 from PIL import Image
 
-from spacer.extract_features_utils import crop_patches
+from spacer.extractors.utils import crop_patches
 
 
 class TestCropPatch(unittest.TestCase):

@@ -101,7 +101,7 @@ class ExtractFeaturesMsg(DataClass):
 
     @classmethod
     def example(cls) -> 'ExtractFeaturesMsg':
-        from spacer.extract_features import EfficientNetExtractor
+        from spacer.extractors import EfficientNetExtractor
         return ExtractFeaturesMsg(
             job_token='123abc',
             extractor=EfficientNetExtractor(
@@ -125,7 +125,7 @@ class ExtractFeaturesMsg(DataClass):
 
     @classmethod
     def deserialize(cls, data: dict) -> 'ExtractFeaturesMsg':
-        from spacer.extract_features import FeatureExtractor
+        from spacer.extractors import FeatureExtractor
         return ExtractFeaturesMsg(
             job_token=data['job_token'],
             extractor=FeatureExtractor.deserialize(data['extractor']),
@@ -433,7 +433,7 @@ class ClassifyImageMsg(DataClass):
 
     @classmethod
     def example(cls):
-        from spacer.extract_features import EfficientNetExtractor
+        from spacer.extractors import EfficientNetExtractor
         return ClassifyImageMsg(
             job_token='my_job',
             extractor=EfficientNetExtractor(
@@ -461,7 +461,7 @@ class ClassifyImageMsg(DataClass):
 
     @classmethod
     def deserialize(cls, data: dict) -> 'ClassifyImageMsg':
-        from spacer.extract_features import FeatureExtractor
+        from spacer.extractors import FeatureExtractor
         return ClassifyImageMsg(
             job_token=data['job_token'],
             extractor=FeatureExtractor.deserialize(data['extractor']),

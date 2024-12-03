@@ -111,7 +111,7 @@ The `tasks.py` module has four functions which comprise the main interface of py
 
 The first step when analyzing an image, or preparing an image as training data, is extracting [features](https://en.wikipedia.org/wiki/Feature_(computer_vision)) from the image. For this step, you specify a set of points (pixel locations) in the image which you want to analyze. At each point, spacer will crop a square of pixels centered around that location and extract features based on that square.
 
-You'll also need a feature extractor, but spacer does not provide one out of the box. Spacer's `extract_features.py` provides the Python classes `EfficientNetExtractor` for loading EfficientNet extractors in PyTorch format (CoralNet 1.0's default extraction scheme), and `VGG16CaffeExtractor` for loading VGG16 extractors in Caffe format (CoralNet's legacy extraction scheme).
+You'll also need a feature extractor, but spacer does not provide one out of the box. `spacer/extractors` includes the Python classes `EfficientNetExtractor` for loading EfficientNet extractors in PyTorch format (CoralNet 1.0's default extraction scheme), and `VGG16CaffeExtractor` for loading VGG16 extractors in Caffe format (CoralNet's legacy extraction scheme).
 
 You'll either want to match one of these schemes so you can use the provided classes, or you'll have to write your own extractor class which inherits from the base class `FeatureExtractor`. Between the provided classes, the easier one to use will probably be `EfficientNetExtractor`, because Caffe is old software which is more complicated to install.
 
@@ -120,7 +120,7 @@ If you're loading the extractor files remotely (from S3 or from a URL), the file
 The output of `extract_features()` is a single feature-vector file, which is a JSON file that is deserializable using the `data_classes.ImageFeatures` class. Example usage:
 
 ```python
-from spacer.extract_features import EfficientNetExtractor
+from spacer.extractors import EfficientNetExtractor
 from spacer.messages import DataLocation, ExtractFeaturesMsg
 from spacer.tasks import extract_features
 
@@ -369,7 +369,7 @@ This basically does `extract_features` and `classify_features` together in one g
 Takes an image, a list of pixel locations on that image, a feature extractor, and a classifier. Produces prediction results (scores) for the image points, as posterior probabilities for each class. Example:
 
 ```python
-from spacer.extract_features import EfficientNetExtractor
+from spacer.extractors import EfficientNetExtractor
 from spacer.messages import DataLocation, ClassifyImageMsg
 from spacer.tasks import classify_image
 
@@ -406,7 +406,7 @@ for row, col, scores in return_message.scores:
 
 If you are using the docker build or local install, you can run the test suite by running `python -m unittest` from the `spacer` directory.
 
-- Expect many tests to be skipped, since most test fixtures aren't set up for public access yet.
+- Some tests require Amazon S3 config, Caffe installation, and/or CoralNet infrastructure access. The applicable tests will be skipped if your config doesn't support them.
 
 - Run just a single test module with a command like `python -m unittest tests.test_tasks`, or just `python -m tests.test_tasks` (the latter invokes the `if __name__ == '__main__':` part of the module).
 

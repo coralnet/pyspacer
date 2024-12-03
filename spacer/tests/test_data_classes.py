@@ -10,7 +10,7 @@ from spacer.data_classes import \
     ImageLabels, \
     ValResults
 from spacer.messages import DataLocation
-from .decorators import require_test_fixtures
+from .decorators import require_cn_fixtures, require_s3
 from .utils import temp_filesystem_data_location
 
 
@@ -38,11 +38,11 @@ class TestImageFeatures(unittest.TestCase):
         self.assertEqual(feats.npoints, len(feats.point_features))
         self.assertEqual(feats.feature_dim, len(feats.point_features[0].data))
 
-    @require_test_fixtures
+    @require_cn_fixtures
     def test_legacy_from_s3(self):
         legacy_feat_loc = DataLocation(storage_type='s3',
                                        key='08bfc10v7t.png.featurevector',
-                                       bucket_name=config.TEST_BUCKET)
+                                       bucket_name=config.CN_FIXTURES_BUCKET)
 
         feats = ImageFeatures.load(legacy_feat_loc)
         self.assertEqual(feats.valid_rowcol, False)
@@ -65,7 +65,7 @@ class TestImageFeatures(unittest.TestCase):
 
 class TestImageFeaturesNumpyStore(unittest.TestCase):
 
-    @require_test_fixtures
+    @require_s3
     def test_s3(self):
         s3_loc = DataLocation(
             storage_type='s3',
@@ -177,11 +177,11 @@ class TestValResults(unittest.TestCase):
         self.assertRaises(AssertionError, ValResults,
                           gt=gt, est=est, scores=scores, classes=classes)
 
-    @require_test_fixtures
+    @require_cn_fixtures
     def test_legacy(self):
         legacy_loc = DataLocation(storage_type='s3',
                                   key='beta.valresult',
-                                  bucket_name=config.TEST_BUCKET)
+                                  bucket_name=config.CN_FIXTURES_BUCKET)
 
         res = ValResults.load(legacy_loc)
         self.assertEqual(res, ValResults.deserialize(json.loads(

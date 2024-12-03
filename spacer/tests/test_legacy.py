@@ -9,18 +9,17 @@ import numpy as np
 
 from spacer import config
 from spacer.data_classes import ImageFeatures
-from spacer.extract_features import FeatureExtractor
+from spacer.extractors import FeatureExtractor
 from spacer.messages import \
     DataLocation, \
     ExtractFeaturesMsg, \
     ClassifyFeaturesMsg, \
     ClassifyReturnMsg
-from spacer.storage import storage_factory
 from spacer.tasks import classify_features, extract_features
 from spacer.tests.utils import cn_beta_fixture_location
 from .common import TEST_EXTRACTORS
 from .decorators import \
-    require_caffe, require_test_extractors, require_test_fixtures
+    require_caffe, require_cn_fixtures, require_cn_test_extractors
 
 
 cn_beta_fixtures = {
@@ -43,7 +42,7 @@ pyspacer_031_efficientnet_fixtures = {
 def pyspacer031_vgg16_fixture_location(key):
     return DataLocation(
         storage_type='s3',
-        bucket_name=config.TEST_BUCKET,
+        bucket_name=config.CN_FIXTURES_BUCKET,
         key='legacy_compat/pyspacer_0.3.1/vgg16/' + key
     )
 
@@ -51,7 +50,7 @@ def pyspacer031_vgg16_fixture_location(key):
 def pyspacer031_efficientnet_fixture_location(key):
     return DataLocation(
         storage_type='s3',
-        bucket_name=config.TEST_BUCKET,
+        bucket_name=config.CN_FIXTURES_BUCKET,
         key='legacy_compat/pyspacer_0.3.1/efficientnet/' + key
     )
 
@@ -84,8 +83,8 @@ def extract_and_classify(im_key, clf_key, rowcol):
 
 
 @require_caffe
-@require_test_extractors
-@require_test_fixtures
+@require_cn_test_extractors
+@require_cn_fixtures
 class TestExtractFeatures(unittest.TestCase):
     """
     Test pyspacer's Caffe extractor and compare to features extracted using
@@ -141,7 +140,7 @@ class TestExtractFeatures(unittest.TestCase):
                                         atol=1e-5))
 
 
-@require_test_fixtures
+@require_cn_fixtures
 class TestClassifyFeatures(unittest.TestCase):
     """
     Get scores from the current classify_features task using previous
@@ -223,8 +222,8 @@ class TestClassifyFeatures(unittest.TestCase):
 
 
 @require_caffe
-@require_test_extractors
-@require_test_fixtures
+@require_cn_test_extractors
+@require_cn_fixtures
 class TestExtractClassify(unittest.TestCase):
     """ Tests new feature extractor and a classification against legacy.
     Test passes if the same class is assigned in both cases for each
@@ -232,7 +231,6 @@ class TestExtractClassify(unittest.TestCase):
 
     def setUp(self):
         config.filter_warnings()
-        self.storage = storage_factory('s3', config.TEST_BUCKET)
 
     def test_tricky_example(self):
         """ From regression testing, this particular row, col location

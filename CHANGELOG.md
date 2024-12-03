@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.11.0 (WIP)
+
+- Feature extractor class changes:
+
+  - `FeatureExtractor` and its built-in subclasses should now be imported like `from spacer.extractors import <class>` instead of `from spacer.extract_features import <class>`.
+
+  - High-level usage of `FeatureExtractor` instances is the same as before - invoking `__call__()` performs feature extraction on an image. However, subclass implementations should now generally define a `patches_to_features()` method instead of overriding `__call__()`.
+
+  - There is now a `TorchExtractor` class which has details that are specific to PyTorch but not to EfficientNet. So, it's suitable as a starting point for a custom PyTorch extractor that uses another type of network. `EfficientNetExtractor` now inherits from TorchExtractor.
+
+  - There are now `CROP_SIZE` and `BATCH_SIZE` class-level variables available.
+
+- Config and test changes:
+
+  - Some former usages of `TEST_BUCKET` have been changed to `CN_FIXTURES_BUCKET`, to more clearly denote test fixtures that are currently only available to CoralNet devs.
+
+  - The remaining usages of `TEST_BUCKET` are now usable by anyone with an AWS account. This can be any S3 bucket that you have read and write access to.
+
+  - `TEST_EXTRACTORS_BUCKET` is now known as `CN_TEST_EXTRACTORS_BUCKET`, again denoting fixtures currently only available to CoralNet devs.
+
+  Related to these changes, now more tests are runnable without needing CoralNet AWS credentials. More tests are runnable in GitHub Actions CI, as well (even though that doesn't use AWS at all).
+
 ## 0.10.0
 
 - AWS credentials can now be obtained through the following methods, in addition to spacer config values as before:

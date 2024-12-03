@@ -1,7 +1,7 @@
 import unittest
 
 from spacer import config
-from spacer.extract_features import DummyExtractor
+from spacer.extractors import DummyExtractor
 from spacer.messages import (
     ClassifyImageMsg,
     DataLocation,
