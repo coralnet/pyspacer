@@ -22,6 +22,10 @@
 
   Related to these changes, now more tests are runnable without needing CoralNet AWS credentials. More tests are runnable in GitHub Actions CI, as well (even though that doesn't use AWS at all).
 
+- Feature extraction should now be able to tolerate more image color modes. Previously, `LA` and possibly other modes supported by Pillow would make feature extraction crash. (Note that all modes are converted to RGB for feature extraction purposes.)
+
+- Most of the repo's standalone scripts have been removed, thus avoiding confusion about their purpose.
+
 ## 0.10.0
 
 - AWS credentials can now be obtained through the following methods, in addition to spacer config values as before:
