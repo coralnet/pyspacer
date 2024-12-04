@@ -60,7 +60,7 @@ class TorchExtractor(FeatureExtractor, abc.ABC):
                     features = net.extract_features(batch)
                 feats_list.extend(features.tolist())
 
-        return features, extractor_loaded_remotely
+        return feats_list, extractor_loaded_remotely
 
     @staticmethod
     def untrained_model() -> torch.nn.Module:
