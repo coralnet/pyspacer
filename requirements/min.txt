@@ -11,5 +11,5 @@ scikit-learn==1.5.2
 torch==2.2.0
 # Should correspond with torch version
 torchvision==0.17.0
-# Fairly arbitrary
-boto3==1.26.0
+# Minimum for Python 3.10
+boto3==1.26.115

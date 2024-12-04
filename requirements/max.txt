@@ -6,4 +6,4 @@ scipy
 scikit-learn==1.5.2
 torch>=2.2,<2.5
 torchvision>=0.17,<0.20
-boto3
+boto3>=1.26.115

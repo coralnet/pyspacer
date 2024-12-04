@@ -1,10 +1,11 @@
 # Package versions recommended for developers.
 
-coverage==7.0.5
+# https://coverage.readthedocs.io/en/latest/changes.html
+coverage==7.6.8
 
 # For mailman.py entry point
 # https://github.com/google/python-fire/releases
-fire==0.5.0
+fire==0.7.0
 
 # https://pillow.readthedocs.io/en/stable/releasenotes/index.html
 Pillow==11.0.0
@@ -35,4 +36,9 @@ scikit-learn==1.5.2
 torch==2.4.1
 torchvision==0.19.1
 
-boto3>=1.26.122,<1.27
+# https://github.com/boto/boto3/blob/develop/CHANGELOG.rst
+# Never had version issues with this, but in general when updating,
+# let's go for the final patch release of the previous minor-version
+# series. e.g. if the latest is 1.35.x, then get the latest in the
+# 1.34 series.
+boto3==1.34.162

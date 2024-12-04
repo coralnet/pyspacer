@@ -14,6 +14,7 @@
 
 - Updates to pip-install dependencies:
 
+  - boto3: >=1.26.0 to >=1.26.115
   - Pillow: >=10.2.0 to >=10.4.0
   - numpy: >=1.21.4,<2 to >=1.22,<2.2
   - scikit-learn: ==1.1.3 to ==1.5.2 (loading models from previously-supported versions should still work)
