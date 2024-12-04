@@ -99,6 +99,41 @@ class BaseExtractorTest(unittest.TestCase):
             self.extractor.feature_dim,
             self.expected_feature_dimension)
 
+    def do_test_batches(self):
+        img = random_image(800, 600)
+        # 12 points to extract features for. We assume batch size is 10, so
+        # this should allow us to test multiple batches.
+        rowcols = [
+            (100, 100), (300, 100), (500, 100), (700, 100),
+            (100, 300), (300, 300), (500, 300), (700, 300),
+            (100, 500), (300, 500), (500, 500), (700, 500),
+        ]
+        self.assertEqual(self.extractor.BATCH_SIZE, 10, msg="Sanity check")
+
+        # One call with multiple batches.
+        features_1, _ = self.extractor(im=img, rowcols=rowcols)
+        self.assertEqual(
+            len(features_1.point_features), 12,
+            msg="Multi-batch extraction should return the correct number"
+                " of features",
+        )
+
+        # Multiple calls, single batch each.
+        features_2 = [
+            feat for feat, _ in
+            [self.extractor(im=img, rowcols=[rc]) for rc in rowcols]
+        ]
+
+        for i in range(len(rowcols)):
+            self.assertTrue(
+                np.allclose(
+                    features_1.point_features[i].data,
+                    features_2[i].point_features[0].data,
+                ),
+                msg="Multi-batch and single-batch extraction should get the"
+                    f" same features in the same order (this is element {i})",
+            )
+
     def do_test_corner_case1(self):
         """
         This particular image caused trouble on the coralnet production server.
@@ -196,12 +231,16 @@ class TestCaffeExtractor(BaseExtractorTest):
     @classmethod
     def setUpClass(cls):
         cls.extractor = FeatureExtractor.deserialize(TEST_EXTRACTORS['vgg16'])
+        cls.extractor.BATCH_SIZE = 10
 
     def test_simple(self):
         super().do_test_simple()
 
     def test_dims(self):
         super().do_test_dims()
+
+    def test_batches(self):
+        super().do_test_batches()
 
     @require_cn_fixtures
     def test_corner_case1(self):
@@ -231,12 +270,16 @@ class TestEfficientNetExtractor(BaseExtractorTest):
     @classmethod
     def setUpClass(cls):
         cls.extractor = EfficientNetExtractor.untrained_instance()
+        cls.extractor.BATCH_SIZE = 10
 
     def test_simple(self):
         super().do_test_simple()
 
     def test_dims(self):
         super().do_test_dims()
+
+    def test_batches(self):
+        super().do_test_batches()
 
     @require_cn_fixtures
     def test_corner_case1(self):
