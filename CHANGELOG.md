@@ -12,6 +12,8 @@
 
   - There are now `CROP_SIZE` and `BATCH_SIZE` class-level variables available.
 
+- Python 3.12 support added, so the supported versions are now 3.10-3.12.
+
 - Updates to pip-install dependencies:
 
   - boto3: >=1.26.0 to >=1.26.115
