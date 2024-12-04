@@ -4,8 +4,8 @@
 Pillow==10.4.0
 # Minimum for GitHub security alerts
 numpy==1.22.0
-# Minimum for scikit-learn compat
-scipy==1.6.0
+# Minimum for Python 3.10 (scikit-learn compat only needs 1.6+)
+scipy==1.7.3
 scikit-learn==1.5.2
 # Minimum for GitHub security alerts
 torch==2.2.0
