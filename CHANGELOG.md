@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.11.0 (WIP)
+## 0.11.0
 
 - Feature extractor class changes:
 
