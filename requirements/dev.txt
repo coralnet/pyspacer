@@ -1,25 +1,31 @@
 # Package versions recommended for developers.
 
-coverage==7.0.5
-
-# https://tqdm.github.io/releases/
-tqdm==4.65.0
+# https://coverage.readthedocs.io/en/latest/changes.html
+coverage==7.6.8
 
 # For mailman.py entry point
 # https://github.com/google/python-fire/releases
-fire==0.5.0
+fire==0.7.0
 
 # https://pillow.readthedocs.io/en/stable/releasenotes/index.html
-Pillow==10.2.0
+Pillow==11.0.0
 
 # https://numpy.org/devdocs/release.html
-numpy==1.24.1
+numpy==2.1.3
+
+# pyspacer has no direct usages of scipy. But since scikit-learn (below)
+# requires scipy, it must be installed. And since scipy requires numpy (above),
+# one may need to specify a scipy version constraint for numpy compatibility,
+# particularly when updating an existing env instead of creating a new one.
+# https://github.com/scipy/scipy/releases
+# Requires: numpy
+scipy==1.14.1
 
 # For training and classification.
 # Classifier compatibility depends heavily on this package's version.
 # https://scikit-learn.org/stable/whats_new.html
-# Requires: numpy (and scipy)
-scikit-learn==1.1.3
+# Requires: numpy, scipy
+scikit-learn==1.5.2
 
 # For the EfficientNet extractor
 # https://github.com/pytorch/pytorch/releases
@@ -27,7 +33,12 @@ scikit-learn==1.1.3
 #
 # Matching torch and Python versions:
 # https://github.com/pytorch/vision#installation
-torch==1.13.1
-torchvision==0.14.1
+torch==2.4.1
+torchvision==0.19.1
 
-boto3>=1.26.122,<1.27
+# https://github.com/boto/boto3/blob/develop/CHANGELOG.rst
+# Never had version issues with this, but in general when updating,
+# let's go for the final patch release of the previous minor-version
+# series. e.g. if the latest is 1.35.x, then get the latest in the
+# 1.34 series.
+boto3==1.34.162

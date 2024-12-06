@@ -66,7 +66,7 @@ RUN git clone -b ${CLONE_TAG} --depth 1 https://github.com/Qengineering/caffe.gi
 # results in an error like "Couldn't build proto file into descriptor pool:
 # duplicate file name" when importing caffe. So we avoid protobuf 4.x.
 WORKDIR $CAFFE_ROOT/python
-RUN for req in $(cat requirements.txt) pydot 'numpy==1.24.1' 'protobuf<4'; \
+RUN for req in $(cat requirements.txt) pydot 'numpy==2.1.3' 'protobuf<4'; \
     do pip3 install $req; \
     done
 
@@ -94,14 +94,13 @@ FROM caffe AS spacer
 # But by doing it explicitly, the docker build can cache each step's result
 # for faster builds.
 # Note that numpy is not here because it was specified before building caffe.
-RUN pip3 install coverage==7.0.5
-RUN pip3 install tqdm==4.65.0
-RUN pip3 install fire==0.5.0
-RUN pip3 install Pillow==10.2.0
-RUN pip3 install scikit-learn==1.1.3
-RUN pip3 install torch==1.13.1
-RUN pip3 install torchvision==0.14.1
-RUN pip3 install boto3==1.26.122
+RUN pip3 install coverage==7.6.8
+RUN pip3 install fire==0.7.0
+RUN pip3 install Pillow==11.0.0
+RUN pip3 install scikit-learn==1.5.2
+RUN pip3 install torch==2.4.1
+RUN pip3 install torchvision==0.19.1
+RUN pip3 install boto3==1.34.162
 
 ENV SPACER_EXTRACTORS_CACHE_DIR=/workspace/models
 ENV PYTHONPATH="/workspace/spacer:${PYTHONPATH}"

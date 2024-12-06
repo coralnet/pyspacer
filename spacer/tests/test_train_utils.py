@@ -116,7 +116,7 @@ class TestTrain(unittest.TestCase):
 
             clf_calibrated, ref_acc = train(
                 train_labels, ref_labels, feature_loc, num_epochs, 'MLP')
-            clf_param = clf_calibrated.get_params()['base_estimator']
+            clf_param = clf_calibrated.get_params()['estimator']
             self.assertEqual(
                 clf_param.hidden_layer_sizes, hls,
                 msg="Hidden layer sizes should correspond to label count")

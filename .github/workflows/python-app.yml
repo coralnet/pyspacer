@@ -19,7 +19,7 @@ jobs:
             requirements: "dev"
           - python-version: "3.10"
             requirements: "min"
-          - python-version: "3.11"
+          - python-version: "3.12"
             requirements: "max"
 
     steps:

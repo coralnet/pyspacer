@@ -7,7 +7,7 @@ PySpacer (AKA spacer) provides utilities to extract features from random point
 locations in images and then train classifiers over those features.
 It is used in the vision backend of `https://github.com/coralnet/coralnet`.
 
-Spacer currently supports Python 3.10 and 3.11.
+Spacer currently supports Python 3.10 through 3.12.
 
 ## Installation
 
