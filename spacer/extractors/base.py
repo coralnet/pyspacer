@@ -105,7 +105,7 @@ class FeatureExtractor(abc.ABC):
         cls = self.__class__
         return dict(
             # Dotted path to the FeatureExtractor subclass,
-            # e.g. 'spacer.extract_features.EfficientNetExtractor'
+            # e.g. 'spacer.extractors.EfficientNetExtractor'
             class_path=f'{cls.__module__}.{cls.__name__}',
             data_locations=dict([
                 (key, loc.serialize())
