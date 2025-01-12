@@ -192,7 +192,7 @@ class TestURLStorage(unittest.TestCase):
                 self.storage.load('a_url')
         self.assertIn("404", str(cm.exception))
 
-    def test_timeout(self):
+    def test_timeout_urlopen(self):
         with mock.patch('urllib.request.urlopen', raise_timeout):
             with self.assertRaises(URLDownloadError) as cm:
                 self.storage.load('a_url')
@@ -202,6 +202,21 @@ class TestURLStorage(unittest.TestCase):
         class FakeResponse:
             def read(self):
                 raise IncompleteRead(b'')
+
+        def return_fake_response(*args, **kwargs):
+            return FakeResponse()
+
+        with mock.patch.object(
+            urllib.request, 'urlopen', return_fake_response
+        ):
+            with self.assertRaises(URLDownloadError) as cm:
+                self.storage.load('url')
+        self.assertIn("full response", str(cm.exception))
+
+    def test_timeout_read(self):
+        class FakeResponse:
+            def read(self):
+                raise TimeoutError("Test")
 
         def return_fake_response(*args, **kwargs):
             return FakeResponse()

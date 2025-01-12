@@ -117,10 +117,11 @@ class URLStorage(RemoteStorage):
 
         try:
             download_bytes = download_response.read()
-        except IncompleteRead as e:
+        except (IncompleteRead, TimeoutError) as e:
             # http.client.IncompleteRead - <num> bytes read, <num> more expected
             #   - In some cases this seems to just happen randomly?
             #     But it'll depend on the URL's server.
+            # TimeoutError: The read operation timed out
             raise URLDownloadError(
                 f"Couldn't read the full response from the URL '{url}'.", e)
 
