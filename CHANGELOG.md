@@ -1,6 +1,11 @@
 # Changelog
 
-## 0.11.1 (WIP)
+## 0.12.0 (WIP)
+
+- Updates to pip-install dependencies:
+
+  - torch: >=2.2,<2.5 to >=2.6,<2.7
+  - torchvision: >=0.17,<0.20 to >=0.21,<0.22
 
 - `URLStorage` downloads: if a `TimeoutError` occurs while calling `read()` on the response, the error will be wrapped in a `spacer.exceptions.URLDownloadError`. Previously this was only the case for the `urlopen()` call, not the `read()` call.
 

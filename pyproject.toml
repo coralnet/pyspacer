@@ -15,8 +15,8 @@ dependencies = [
     "Pillow>=10.4.0",
     "numpy>=1.22,<2.2",
     "scikit-learn==1.5.2",
-    "torch>=2.2,<2.5",
-    "torchvision>=0.17,<0.20",
+    "torch>=2.6,<2.7",
+    "torchvision>=0.21,<0.22",
     "boto3>=1.26.115",
 ]
 license = {file = "license.txt"}

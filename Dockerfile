@@ -98,8 +98,8 @@ RUN pip3 install coverage==7.6.8
 RUN pip3 install fire==0.7.0
 RUN pip3 install Pillow==11.0.0
 RUN pip3 install scikit-learn==1.5.2
-RUN pip3 install torch==2.4.1
-RUN pip3 install torchvision==0.19.1
+RUN pip3 install torch==2.6.0
+RUN pip3 install torchvision==0.21.0
 RUN pip3 install boto3==1.34.162
 
 ENV SPACER_EXTRACTORS_CACHE_DIR=/workspace/models
