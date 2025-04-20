@@ -4,6 +4,8 @@
 
 - `URLStorage` downloads: if a `TimeoutError` occurs while calling `read()` on the response, the error will be wrapped in a `spacer.exceptions.URLDownloadError`. Previously this was only the case for the `urlopen()` call, not the `read()` call.
 
+- (This is a test change)
+
 ## 0.11.0
 
 - Feature extractor class changes:
