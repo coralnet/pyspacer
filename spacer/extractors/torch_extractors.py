@@ -110,10 +110,14 @@ class TorchExtractor(FeatureExtractor, abc.ABC):
 
             safe_globals = [
                 np.dtype,
-                np.dtypes.Int64DType,
                 # torch 2.5.0 doesn't need this, but at least 2.4.1 does.
                 codecs.encode,
             ]
+
+            # In numpy>=1.25, numpy.dtypes is present.
+            if hasattr(np, 'dtypes'):
+                safe_globals.append(np.dtypes.Int64DType)
+
             # In numpy>=2, numpy._core is present, and numpy.core is a
             # deprecated alias of numpy._core.
             if hasattr(np, '_core'):
@@ -127,6 +131,7 @@ class TorchExtractor(FeatureExtractor, abc.ABC):
                 ])
             else:
                 safe_globals.append(np.core.multiarray.scalar)
+
             torch.serialization.add_safe_globals(safe_globals)
 
             # Load weights
