@@ -8,8 +8,8 @@ numpy==1.22.0
 scipy==1.7.3
 scikit-learn==1.5.2
 # Minimum for GitHub security alerts
-torch==2.6.0
+torch==2.7.1
 # Should correspond with torch version
-torchvision==0.21.0
+torchvision==0.22.1
 # Minimum for Python 3.10
 boto3==1.26.115
