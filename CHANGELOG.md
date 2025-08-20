@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.12.1 (WIP)
+
+- Fixed an `AttributeError` in `TorchExtractor.load_weights()` that would happen on numpy 1.26.1 through 1.26.5. These are the versions where `numpy._core` exists but doesn't have attributes available; on these versions we now access `numpy.core` like on other 1.x versions.
+
 ## 0.12.0
 
 - Updates to pip-install dependencies:
