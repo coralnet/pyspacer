@@ -8,7 +8,7 @@ scipy
 # Supports up to Python 3.12; 1.6 adds 3.13
 scikit-learn==1.5.2
 # Supports up to Python 3.13
-torch>=2.6,<2.7
-torchvision>=0.21,<0.22
+torch>=2.7.1,<2.8
+torchvision>=0.22.1,<0.23
 # 1.35.36 adds "provisional" Python 3.13 support
 boto3>=1.26.115
