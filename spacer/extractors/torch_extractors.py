@@ -118,9 +118,13 @@ class TorchExtractor(FeatureExtractor, abc.ABC):
             if hasattr(np, 'dtypes'):
                 safe_globals.append(np.dtypes.Int64DType)
 
-            # In numpy>=2, numpy._core is present, and numpy.core is a
-            # deprecated alias of numpy._core.
-            if hasattr(np, '_core'):
+            if np.version.version[0] != '1':
+                # We have numpy>=2, where numpy.core is a deprecated alias of
+                # numpy._core.
+                # Note that numpy._core exists as some kind of stub in numpy
+                # >=1.26.1,<2 and issues can arise with trying to reference
+                # that here. So we don't want to be here in all cases that
+                # _core exists; only in the numpy>=2 case.
                 safe_globals.extend([
                     np._core.multiarray.scalar,
                     # To load core stuff created in numpy<2 while running numpy>=2,
