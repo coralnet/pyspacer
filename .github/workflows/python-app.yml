@@ -21,6 +21,8 @@ jobs:
             requirements: "min"
           - python-version: "3.12"
             requirements: "max"
+          - python-version: "3.12"
+            requirements: "np1"
 
     steps:
     - uses: actions/checkout@v2
