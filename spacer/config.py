@@ -7,7 +7,6 @@ import importlib
 import json
 import os
 import sys
-import threading
 import time
 import warnings
 from contextlib import ContextDecorator
@@ -15,8 +14,6 @@ from logging import basicConfig, getLogger
 from pathlib import Path
 from typing import Any
 
-import boto3
-import botocore.exceptions
 from PIL import Image, ImageFile
 
 from spacer.exceptions import ConfigError
@@ -162,64 +159,6 @@ if LOG_DESTINATION:
     )
 
 
-# Save S3 resources for reuse, but only have one per thread,
-# because they're not thread-safe:
-# https://boto3.amazonaws.com/v1/documentation/api/latest/guide/resources.html
-THREAD_LOCAL = threading.local()
-
-
-def get_s3_resource():
-    """
-    Returns a boto s3 Resource.
-    Each thread only gets this from the boto API once, saving it to
-    THREAD_LOCAL.s3_resource and reusing it thereafter.
-
-    The logging statements aim to confirm:
-    - That each thread only gets one resource (log with %(thread)d
-      in the logging format to confirm this)
-    - How long a single resource retrieval can be reused before expiring,
-      if it ever expires (we might not handle this case yet, but logging
-      with timestamp will help confirm the time till expiry)
-    """
-    try:
-        # Reuse this thread's previously established resource, if any.
-        return THREAD_LOCAL.s3_resource
-    except AttributeError:
-        # No resource for this thread yet.
-        pass
-
-    # Try getting an identity, which means the process is running in AWS
-    # with access to the metadata service to fetch credentials.
-    try:
-        response = boto3.client('sts').get_caller_identity()
-    except botocore.exceptions.NoCredentialsError:
-        pass
-    else:
-        if response['ResponseMetadata']['HTTPStatusCode'] == 200:
-            THREAD_LOCAL.s3_resource = boto3.resource('s3')
-            logger.info(
-                "Called boto3.resource() in get_s3_resource(),"
-                " with STS credentials")
-            return THREAD_LOCAL.s3_resource
-
-    # Use credentials from spacer config. If credentials are None,
-    # boto will instead look in other places such as ~/.aws/credentials.
-    # https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-authentication.html#cli-chap-authentication-precedence
-    #
-    # This call doesn't actually test validity of credentials. When a bucket
-    # or object is actually accessed later, you'll know if it's valid or not.
-    THREAD_LOCAL.s3_resource = boto3.resource(
-        's3',
-        region_name=AWS_REGION,
-        aws_access_key_id=AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-    )
-    logger.info(
-        "Called boto3.resource() in get_s3_resource(),"
-        " with spacer config or auto-detected credentials")
-    return THREAD_LOCAL.s3_resource
-
-
 class log_entry_and_exit(ContextDecorator):
     def __init__(self, name):
         self.name = name
@@ -236,6 +175,10 @@ class log_entry_and_exit(ContextDecorator):
 
 AWS_ACCESS_KEY_ID = get_config_value('AWS_ACCESS_KEY_ID', default=None)
 AWS_SECRET_ACCESS_KEY = get_config_value('AWS_SECRET_ACCESS_KEY', default=None)
+AWS_SESSION_TOKEN = get_config_value('AWS_SESSION_TOKEN', default=None)
+# If present, profile name takes precedence over the above keys and token.
+AWS_PROFILE_NAME = get_config_value('AWS_PROFILE_NAME', default=None)
+
 AWS_REGION = get_config_value('AWS_REGION', default=None)
 
 # Filesystem directory to use for caching downloaded feature-extractor data.
@@ -305,13 +248,17 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
 CONFIGURABLE_VARS = [
-    # These three variables enable use of AWS S3 storage with static
-    # credentials. If you don't use S3, or if you have other ways to specify
-    # credentials and region (such as Amazon STS or `aws configure`), then
-    # these aren't required.
+    # These variables enable a few ways to provide credentials for AWS S3
+    # storage.
+    # None of these are required for:
+    # - Workflows that don't use S3.
+    # - Certain S3 credentials methods, such as using the AWS instance
+    #   metadata service without a profile name.
     'AWS_ACCESS_KEY_ID',
     'AWS_SECRET_ACCESS_KEY',
+    'AWS_SESSION_TOKEN',
     'AWS_REGION',
+    'AWS_PROFILE_NAME',
     # This is required if you're loading feature extractors from a remote
     # source (S3 or URL).
     'EXTRACTORS_CACHE_DIR',

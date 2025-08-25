@@ -10,6 +10,7 @@ from logging.config import dictConfig
 import fire
 
 from spacer import config
+from spacer.aws import get_s3_resource
 from spacer.messages import JobMsg, DataLocation
 from spacer.tasks import process_job
 
@@ -63,7 +64,7 @@ def env_job(): # pragma: no cover
 
         with config.log_entry_and_exit('writing res to {}'.format(
                 out_msg_loc.key)):
-            s3 = config.get_s3_resource()
+            s3 = get_s3_resource()
             s3.Bucket(out_msg_loc.bucket_name).put_object(
                 Key=out_msg_loc.key,
                 Body=bytes(json.dumps(job_return_msg_dict).encode('UTF-8')))
