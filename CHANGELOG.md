@@ -10,6 +10,12 @@
 
 - Fixed an `AttributeError` in `TorchExtractor.load_weights()` that would happen on numpy 1.26.1 through 1.26.5. These are the versions where `numpy._core` exists but doesn't have attributes available; on these versions we now access `numpy.core` like on other 1.x versions.
 
+- AWS related changes:
+
+  - Added AWS_PROFILE_NAME and AWS_SESSION_TOKEN config variables to support more ways of accessing AWS.
+  - Moved get_s3_resource() from `config.py` to a new file, `aws.py`.
+  - Added an `aws_check()` function in `aws.py`, to help debug AWS configuration.
+
 ## 0.12.0
 
 - Updates to pip-install dependencies:
