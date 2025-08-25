@@ -177,12 +177,27 @@ class S3Storage(RemoteStorage):
         s3.Object(self.bucket_name, key).delete()
 
     def exists(self, key: str):
+        """
+        The error-handling logic is from django-storages'
+        S3Storage.exists().
+        """
         s3 = get_s3_resource()
         try:
+            # This calls head_object() to retrieve object metadata
+            # without retrieving the object itself.
+            # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/object/load.html
             s3.Object(self.bucket_name, key).load()
             return True
-        except botocore.exceptions.ClientError:
-            return False
+        except botocore.exceptions.ClientError as err:
+            if err.response["ResponseMetadata"]["HTTPStatusCode"] == 404:
+                # The object doesn't exist AND we have the ListBucket
+                # permission (which we expect to).
+                # If we can't ListBucket, it'll be 403 instead.
+                # https://repost.aws/articles/ARe3OTZ3SCTWWqGtiJ6aHn8Q/why-does-s-3-return-403-instead-of-404-when-the-object-doesnt-exist
+                return False
+
+            # Some other error was encountered. Re-raise it.
+            raise
 
 
 class FileSystemStorage(Storage):
