@@ -12,9 +12,10 @@
 
 - AWS related changes:
 
-  - Added AWS_PROFILE_NAME and AWS_SESSION_TOKEN config variables to support more ways of accessing AWS.
-  - Moved get_s3_resource() from `config.py` to a new file, `aws.py`.
+  - Added `AWS_PROFILE_NAME` and `AWS_SESSION_TOKEN` config variables to support more ways of accessing AWS.
+  - Moved `get_s3_resource()` from `config.py` to a new file, `aws.py`.
   - Added an `aws_check()` function in `aws.py`, to help debug AWS configuration.
+  - `S3Storage.exists()` now only returns False if there is a ClientError with status code 404. In other ClientError cases, including 403, this method will now re-raise the error. Due to this, it's now recommended to ensure you have the ListBucket permission for any S3 bucket you work with; otherwise, S3 will return 403 instead of 404 for a missing file (see [this article](https://repost.aws/articles/ARe3OTZ3SCTWWqGtiJ6aHn8Q/why-does-s-3-return-403-instead-of-404-when-the-object-doesnt-exist)).
 
 ## 0.12.0
 
