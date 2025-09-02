@@ -4,8 +4,8 @@
 
 - Updates to pip-install dependencies:
 
-  - torch: >=2.6,<2.7 to >=2.7.1,<2.8
-  - torchvision: >=0.21,<0.22 to >=0.22.1,<0.23
+  - torch: >=2.6,<2.7 to >=2.6,<2.9
+  - torchvision: >=0.21,<0.22 to >=0.21,<0.24
 
 - Fixed an `AttributeError` in `TorchExtractor.load_weights()` that would happen on numpy 1.26.1 through 1.26.5. These are the versions where `numpy._core` exists but doesn't have attributes available; on these versions we now access `numpy.core` like on other 1.x versions.
 

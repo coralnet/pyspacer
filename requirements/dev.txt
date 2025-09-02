@@ -33,8 +33,8 @@ scikit-learn==1.5.2
 #
 # Matching torch and Python versions:
 # https://github.com/pytorch/vision#installation
-torch==2.7.1
-torchvision==0.22.1
+torch==2.8.0
+torchvision==0.23.0
 
 # https://github.com/boto/boto3/blob/develop/CHANGELOG.rst
 # Never had version issues with this, but in general when updating,
