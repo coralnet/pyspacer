@@ -41,7 +41,7 @@ from spacer.train_utils import make_random_data, train
 from .decorators import require_cn_fixtures, require_s3
 
 TEST_URL = \
-    'https://upload.wikimedia.org/wikipedia/commons/7/7b/Red_sea_coral_reef.jpg'
+    'https://www.gstatic.com/images/branding/searchlogo/ico/favicon.ico'
 
 
 class TestImageAndPointLimitsAsserts(unittest.TestCase):
@@ -501,7 +501,7 @@ class TestClassifyImage(ClassifyReturnMsgTest):
             image_loc=DataLocation(storage_type='url',
                                    key=TEST_URL),
             extractor=DummyExtractor(),
-            rowcols=[(100, 100), (200, 200)],
+            rowcols=[(10, 10), (20, 20)],
             classifier_loc=cn_beta_fixture_location('example.model')
         )
         return_msg = classify_image(msg)
@@ -513,7 +513,7 @@ class TestClassifyImage(ClassifyReturnMsgTest):
         msg = ClassifyImageMsg(
             job_token='my_job',
             extractor=DummyExtractor(feature_dim=5),
-            rowcols=[(100, 100), (200, 200)],
+            rowcols=[(10, 10), (20, 20)],
             image_loc=DataLocation(storage_type='url',
                                    key=TEST_URL),
             classifier_loc=model_loc
@@ -549,7 +549,7 @@ class TestClassifyImageCache(unittest.TestCase):
             image_loc=DataLocation(storage_type='url',
                                    key=TEST_URL),
             extractor=DummyExtractor(),
-            rowcols=[(100, 100), (200, 200)],
+            rowcols=[(10, 10), (20, 20)],
             classifier_loc=cn_beta_fixture_location('example.model')
         )
 
@@ -558,7 +558,7 @@ class TestClassifyImageCache(unittest.TestCase):
             image_loc=DataLocation(storage_type='url',
                                    key=TEST_URL),
             extractor=DummyExtractor(),
-            rowcols=[(100, 100), (200, 200)],
+            rowcols=[(10, 10), (20, 20)],
             classifier_loc=cn_beta_fixture_location('example_model2.pkl')
         )
 
@@ -584,8 +584,8 @@ class TestClassifyBadRowcols(unittest.TestCase):
         with self.assertRaises(RowColumnInvalidError) as context:
             classify_image(msg)
         self.assertEqual(
-            "https://upload.wikimedia.org/wikipedia/commons/7/7b/"
-            "Red_sea_coral_reef.jpg: Row values must be non-negative."
+            "https://www.gstatic.com/images/branding/searchlogo/ico/favicon.ico"
+            ": Row values must be non-negative."
             " Given value was: -1",
             str(context.exception))
 

@@ -14,7 +14,7 @@ from spacer.messages import (
 from spacer.tasks import process_job
 
 TEST_URL = \
-    'https://upload.wikimedia.org/wikipedia/commons/7/7b/Red_sea_coral_reef.jpg'
+    'https://www.gstatic.com/images/branding/searchlogo/ico/favicon.ico'
 
 
 class TestProcessJobErrorHandling(unittest.TestCase):
