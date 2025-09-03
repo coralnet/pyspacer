@@ -7,9 +7,12 @@ numpy==1.22.0
 # Minimum for Python 3.10 (scikit-learn compat only needs 1.6+)
 scipy==1.7.3
 scikit-learn==1.5.2
-# Minimum for GitHub security alerts
-torch==2.7.1
+# Not minimum for GitHub security alerts (that'd be 2.8), but this is a
+# big package to pin to a very recent version.
+# In SageMaker, for example, their default version is a bit behind,
+# and the install time can make it onerous to use a newer one.
+torch==2.6
 # Should correspond with torch version
-torchvision==0.22.1
+torchvision==0.21.0
 # Minimum for Python 3.10
 boto3==1.26.115
