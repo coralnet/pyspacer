@@ -27,6 +27,20 @@ class TestGetConfigValue(unittest.TestCase):
         with mock.patch('os.getenv', mock_getenv_factory('KEY', '100')):
             self.assertEqual(get_config_value('KEY', value_type=int), 100)
 
+    def test_bool_from_getenv(self):
+        """
+        Ensure bool config vars are transformed from str to bool.
+        """
+        with mock.patch('os.getenv', mock_getenv_factory('KEY', 'True')):
+            self.assertEqual(get_config_value('KEY', value_type=bool), True)
+
+        with mock.patch('os.getenv', mock_getenv_factory('KEY', 'False')):
+            self.assertEqual(get_config_value('KEY', value_type=bool), False)
+
+        with mock.patch('os.getenv', mock_getenv_factory('KEY', 'neither')):
+            with self.assertRaises(ConfigError):
+                get_config_value('KEY', value_type=bool)
+
     def test_not_defined(self):
         """
         os.getenv() returns None if the env var isn't defined.

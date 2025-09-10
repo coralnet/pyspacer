@@ -99,8 +99,19 @@ def get_config_value(
     def cast_str_value(value_):
         if value_type == str:
             return value_
+
         if value_type == int:
             return int(value_)
+
+        if value_type == bool:
+            match value_:
+                case "True":
+                    return True
+                case "False":
+                    return False
+                case _:
+                    raise ConfigError(f"{key} may only be True or False.")
+
         assert False, "Don't call cast_str_value() with unsupported types."
 
     # Try environment variables. Each should be prefixed with 'SPACER_'.
@@ -176,8 +187,14 @@ class log_entry_and_exit(ContextDecorator):
 AWS_ACCESS_KEY_ID = get_config_value('AWS_ACCESS_KEY_ID', default=None)
 AWS_SECRET_ACCESS_KEY = get_config_value('AWS_SECRET_ACCESS_KEY', default=None)
 AWS_SESSION_TOKEN = get_config_value('AWS_SESSION_TOKEN', default=None)
+
 # If present, profile name takes precedence over the above keys and token.
 AWS_PROFILE_NAME = get_config_value('AWS_PROFILE_NAME', default=None)
+
+# If True, AWS is accessed without any credentials, which can simplify setup
+# while still allowing access to public S3 files.
+AWS_ANONYMOUS = get_config_value(
+    'AWS_ANONYMOUS', value_type=bool, default=False)
 
 AWS_REGION = get_config_value('AWS_REGION', default=None)
 
@@ -257,8 +274,9 @@ CONFIGURABLE_VARS = [
     'AWS_ACCESS_KEY_ID',
     'AWS_SECRET_ACCESS_KEY',
     'AWS_SESSION_TOKEN',
-    'AWS_REGION',
     'AWS_PROFILE_NAME',
+    'AWS_ANONYMOUS',
+    'AWS_REGION',
     # This is required if you're loading feature extractors from a remote
     # source (S3 or URL).
     'EXTRACTORS_CACHE_DIR',

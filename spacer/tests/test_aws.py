@@ -79,6 +79,19 @@ class TestAwsCheck(unittest.TestCase):
         """Save the string instead of printing to stdout."""
         self.printed_strs.append(s)
 
+    def test_anonymous(self):
+        with (
+            mock.patch('spacer.aws.print', self.mock_print),
+            mock.patch('spacer.config.AWS_ANONYMOUS', True),
+        ):
+            aws_check()
+
+        self.assertListEqual(
+            self.printed_strs,
+            ["AWS_ANONYMOUS has been set to True, so AWS will be accessed"
+             " without credentials."],
+        )
+
     def test_sts_success(self):
         with (
             mock.patch('spacer.aws.print', self.mock_print),
