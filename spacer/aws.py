@@ -3,6 +3,8 @@ import threading
 from logging import getLogger
 
 import boto3
+import botocore
+from botocore.config import Config as BotoConfig
 import botocore.exceptions
 
 from spacer import config
@@ -43,9 +45,19 @@ def create_aws_session():
 
 
 def create_aws_resource(service_name, region=None):
+
+    if config.AWS_ANONYMOUS:
+        # Access public S3 files without credentials of any kind.
+        boto_config = BotoConfig(signature_version=botocore.UNSIGNED)
+    else:
+        boto_config = None
+
     session = create_aws_session()
     return session.resource(
-        service_name, region_name=region or config.AWS_REGION)
+        service_name,
+        region_name=region or config.AWS_REGION,
+        config=boto_config,
+    )
 
 
 def get_s3_resource():
@@ -85,6 +97,12 @@ def aws_check():
     This doesn't necessarily cover all AWS credentials methods. See:
     https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-authentication.html#cli-chap-authentication-precedence
     """
+    if config.AWS_ANONYMOUS:
+        print(
+            "AWS_ANONYMOUS has been set to True, so AWS will be accessed"
+            " without credentials.")
+        return
+
     # Try getting an identity, which means the process is running in AWS
     # with access to the metadata service to fetch credentials.
     try:
