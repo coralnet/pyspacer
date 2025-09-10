@@ -19,29 +19,29 @@ THREAD_LOCAL = threading.local()
 
 
 def create_aws_session():
+    """
+    Create an AWS session to encapsulate credentials. This can then be used
+    to create a boto client or resource.
 
-    # This logic is from django-storages' backends/s3.py.
-    #
-    # If a profile name is specified, that takes precedence over other
-    # credential specifiers such as environment variables.
+    This logic is largely from django-storages' backends/s3.py.
+    """
     if config.AWS_PROFILE_NAME:
         # AWS profile name specified in spacer config (env vars, etc).
-        session = boto3.Session(profile_name=config.AWS_PROFILE_NAME)
-    else:
-        # Use credentials from spacer config (env vars, etc).
-        # If credentials are None, boto will instead look in
-        # other places such as env var AWS_SHARED_CREDENTIALS_FILE
-        # (default ~/.aws/credentials).
-        # If no static credentials are defined, then the instance
-        # metadata service will be accessed for temporary credentials
-        # instead.
-        # https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-authentication.html#cli-chap-authentication-precedence
-        session = boto3.Session(
-            aws_access_key_id=config.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=config.AWS_SECRET_ACCESS_KEY,
-            aws_session_token=config.AWS_SESSION_TOKEN,
-        )
-    return session
+        # We give this precedence over other
+        # credential specifiers such as environment variables.
+        return boto3.Session(profile_name=config.AWS_PROFILE_NAME)
+
+    # Use credentials from spacer config (env vars, etc).
+    # If credentials are None, boto will instead look in other places such
+    # as env var AWS_SHARED_CREDENTIALS_FILE (default ~/.aws/credentials).
+    # If no static credentials are defined, then the instance metadata
+    # service will be accessed for temporary credentials instead.
+    # https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-authentication.html#cli-chap-authentication-precedence
+    return boto3.Session(
+        aws_access_key_id=config.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=config.AWS_SECRET_ACCESS_KEY,
+        aws_session_token=config.AWS_SESSION_TOKEN,
+    )
 
 
 def create_aws_resource(service_name, region=None):
