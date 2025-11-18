@@ -15,9 +15,8 @@ from sklearn.calibration import CalibratedClassifierCV
 
 from spacer import config
 from spacer.aws import get_s3_resource
-from spacer.data_classes import ImageFeatures
+from spacer.data_classes import DataLocation, ImageFeatures
 from spacer.exceptions import URLDownloadError
-from spacer.messages import DataLocation
 from spacer.storage import \
     storage_factory, \
     load_image, \

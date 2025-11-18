@@ -15,9 +15,9 @@ from sklearn.linear_model import SGDClassifier
 from sklearn.neural_network import MLPClassifier
 
 from spacer import config
-from spacer.data_classes import Annotation, ImageLabels, ImageFeatures, LabelId
+from spacer.data_classes import (
+    Annotation, DataLocation, ImageLabels, ImageFeatures, LabelId)
 from spacer.exceptions import RowColumnInvalidError, RowColumnMismatchError
-from spacer.messages import DataLocation
 
 logger = getLogger(__name__)
 

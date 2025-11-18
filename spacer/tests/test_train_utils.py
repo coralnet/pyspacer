@@ -5,9 +5,8 @@ import numpy as np
 
 from spacer import config
 from spacer.data_classes import (
-    Annotation, ImageLabels, PointFeatures, ImageFeatures)
+    Annotation, DataLocation, ImageLabels, PointFeatures, ImageFeatures)
 from spacer.exceptions import RowColumnInvalidError, RowColumnMismatchError
-from spacer.messages import DataLocation
 from spacer.train_utils import (
     calc_acc,
     evaluate_classifier,

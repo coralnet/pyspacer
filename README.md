@@ -123,8 +123,9 @@ If you're loading the extractor files remotely (from S3 or from a URL), the file
 The output of `extract_features()` is a single feature-vector file, which is a JSON file that is deserializable using the `data_classes.ImageFeatures` class. Example usage:
 
 ```python
+from spacer.data_classes import DataLocation
 from spacer.extractors import EfficientNetExtractor
-from spacer.messages import DataLocation, ExtractFeaturesMsg
+from spacer.messages import ExtractFeaturesMsg
 from spacer.tasks import extract_features
 
 message = ExtractFeaturesMsg(
@@ -232,8 +233,8 @@ Once you have a TrainingTaskLabels instance, pass that and the other required ar
 Example: 
 
 ```python
-from spacer.data_classes import ImageLabels
-from spacer.messages import DataLocation, TrainClassifierMsg
+from spacer.data_classes import DataLocation, ImageLabels
+from spacer.messages import TrainClassifierMsg
 from spacer.tasks import train_classifier
 from spacer.task_utils import preprocess_labels
 
@@ -339,7 +340,8 @@ for ground_truth_i, prediction_i, score in zip(
 Takes a feature vector (representing points in an image) to classify, and a classifier trained on the same type of features (EfficientNet or VGG16). Produces prediction results (scores) for the image points, as posterior probabilities for each class. Example:
 
 ```python
-from spacer.messages import DataLocation, ClassifyFeaturesMsg
+from spacer.data_classes import DataLocation
+from spacer.messages import ClassifyFeaturesMsg
 from spacer.tasks import classify_features
 
 message = ClassifyFeaturesMsg(
@@ -372,8 +374,9 @@ This basically does `extract_features` and `classify_features` together in one g
 Takes an image, a list of pixel locations on that image, a feature extractor, and a classifier. Produces prediction results (scores) for the image points, as posterior probabilities for each class. Example:
 
 ```python
+from spacer.data_classes import DataLocation
 from spacer.extractors import EfficientNetExtractor
-from spacer.messages import DataLocation, ClassifyImageMsg
+from spacer.messages import ClassifyImageMsg
 from spacer.tasks import classify_image
 
 message = ClassifyImageMsg(

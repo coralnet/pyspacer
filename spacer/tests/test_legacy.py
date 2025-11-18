@@ -8,13 +8,13 @@ import unittest
 import numpy as np
 
 from spacer import config
-from spacer.data_classes import ImageFeatures
+from spacer.data_classes import DataLocation, ImageFeatures
 from spacer.extractors import FeatureExtractor
-from spacer.messages import \
-    DataLocation, \
-    ExtractFeaturesMsg, \
-    ClassifyFeaturesMsg, \
-    ClassifyReturnMsg
+from spacer.messages import (
+    ClassifyFeaturesMsg,
+    ClassifyReturnMsg,
+    ExtractFeaturesMsg,
+)
 from spacer.tasks import classify_features, extract_features
 from spacer.tests.utils import cn_beta_fixture_location
 from .common import TEST_EXTRACTORS

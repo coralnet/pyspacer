@@ -6,7 +6,13 @@ from PIL import Image
 
 from spacer import config
 from spacer.data_classes import (
-    ImageFeatures, ImageLabels, LabelId, PointFeatures, ValResults)
+    DataLocation,
+    ImageFeatures,
+    ImageLabels,
+    LabelId,
+    PointFeatures,
+    ValResults,
+)
 from spacer.exceptions import (
     DataLimitError, RowColumnInvalidError, RowColumnMismatchError)
 from spacer.extractors import DummyExtractor
@@ -14,7 +20,6 @@ from spacer.messages import (
     ClassifyFeaturesMsg,
     ClassifyImageMsg,
     ClassifyReturnMsg,
-    DataLocation,
     ExtractFeaturesMsg,
     ExtractFeaturesReturnMsg,
     TrainClassifierMsg,
