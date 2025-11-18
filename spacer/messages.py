@@ -7,72 +7,10 @@ python-native data-structures such that it can be stored.
 from __future__ import annotations
 import dataclasses
 from pathlib import Path
-from urllib.parse import urlparse
 
 from spacer import config
-from spacer.data_classes import DataClass, ImageLabels, LabelId
-
-
-class DataLocation(DataClass):
-    """
-    Points to the location of a piece of data. Can either be a url, a key
-    in a s3 bucket, a file path on a local file system or a key to a
-    in-memory store.
-    """
-    def __init__(self,
-                 storage_type: str,
-                 key: str,
-                 bucket_name: str | None = None):
-
-        assert storage_type in config.STORAGE_TYPES, "Storage type not valid."
-        if storage_type == 's3':
-            assert bucket_name is not None, "Need bucket_name to use s3."
-        self.storage_type = storage_type
-        self.key = key
-        self.bucket_name = bucket_name
-
-        self.filesystem_cache = None
-
-    @classmethod
-    def example(cls) -> 'DataLocation':
-        return DataLocation('memory', 'my_blob')
-
-    @property
-    def filename(self) -> str:
-        if self.storage_type == 'url':
-            # This is a basic implementation which just gets the last
-            # part of the URL 'path', even if that part isn't filename-like.
-            return Path(urlparse(self.key).path).name
-        else:
-            return Path(self.key).name
-
-    @property
-    def is_remote(self) -> bool:
-        return self.storage_type in ['url', 's3']
-
-    @property
-    def is_writable(self) -> bool:
-        return self.storage_type != 'url'
-
-    def set_filesystem_cache(self, dir_path):
-        if not self.is_remote:
-            raise TypeError(
-                "Filesystem caching is only available for remote storage.")
-        self.filesystem_cache = dir_path
-
-    @classmethod
-    def deserialize(cls, data: dict) -> 'DataLocation':
-        return DataLocation(**data)
-
-    def serialize(self) -> dict:
-        return dict(
-            storage_type=self.storage_type,
-            key=self.key,
-            bucket_name=self.bucket_name,
-        )
-
-    def __hash__(self):
-        return hash((self.storage_type, self.key, self.bucket_name))
+from spacer.data_classes import (
+    DataClass, DataLocation, ImageLabels, LabelId)
 
 
 class ExtractFeaturesMsg(DataClass):

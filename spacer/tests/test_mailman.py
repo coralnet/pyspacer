@@ -1,10 +1,10 @@
 import unittest
 
 from spacer import config
+from spacer.data_classes import DataLocation
 from spacer.extractors import DummyExtractor
 from spacer.messages import (
     ClassifyImageMsg,
-    DataLocation,
     ExtractFeaturesMsg,
     JobMsg,
     JobReturnMsg,

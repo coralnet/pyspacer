@@ -3,8 +3,9 @@ import unittest
 
 from PIL import Image
 
+from spacer.data_classes import DataLocation
 from spacer.exceptions import RowColumnInvalidError, TrainingLabelsError
-from spacer.messages import DataLocation, ImageLabels, TrainingTaskLabels
+from spacer.messages import ImageLabels, TrainingTaskLabels
 from spacer.task_utils import (
     check_extract_inputs, preprocess_labels, SplitMode)
 from spacer.train_utils import make_random_data

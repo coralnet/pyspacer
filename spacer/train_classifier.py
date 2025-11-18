@@ -9,9 +9,8 @@ import time
 from sklearn.calibration import CalibratedClassifierCV
 
 from spacer import config
-from spacer.data_classes import ValResults
-from spacer.messages import (
-    DataLocation, TrainClassifierReturnMsg, TrainingTaskLabels)
+from spacer.data_classes import DataLocation, ValResults
+from spacer.messages import TrainClassifierReturnMsg, TrainingTaskLabels
 from spacer.train_utils import train, evaluate_classifier, calc_acc
 
 

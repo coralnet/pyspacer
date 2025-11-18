@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 
 from spacer import config
-from spacer.messages import DataLocation
+from spacer.data_classes import DataLocation
 from spacer.train_classifier import trainer_factory
 from spacer.train_utils import make_random_data, train
 
