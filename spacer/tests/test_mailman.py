@@ -92,8 +92,6 @@ class TestProcessJobErrorHandling(unittest.TestCase):
                              nbr_epochs=1,
                              clf_type=clf_type,
                              labels=TrainingTaskLabels.example(),
-                             features_loc=DataLocation(storage_type='memory',
-                                                       key=''),
                              previous_model_locs=[
                                  DataLocation(storage_type='memory',
                                               key='my_previous_model')

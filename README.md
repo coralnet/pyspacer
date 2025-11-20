@@ -175,21 +175,40 @@ This three-set split is known by other names elsewhere, such as [training, valid
 There are a few ways to create the `labels` structure. Each way involves creating one or more instances of `data_classes.ImageLabels`:
 
 ```python
-from spacer.data_classes import ImageLabels
+from spacer.data_classes import DataLocation, ImageLabels
+
+# Method 1
 image_labels = ImageLabels({
     # Labels for one feature vector's points.
-    '/path/to/image1.featurevector': [
+    DataLocation('filesystem', '/path/to/image1.featurevector'): [
         # Point location at row 1000, column 2000, labeled as class 1.
         (1000, 2000, 1), 
         # Point location at row 3000, column 2000, labeled as class 2.
         (3000, 2000, 2),
     ],
     # Labels for another feature vector's points.
-    '/path/to/image2.featurevector': [
+    DataLocation('filesystem', '/path/to/image2.featurevector'): [
         (1500, 2500, 3),
         (2500, 500, 1),
     ],
 })
+
+# Method 2
+image_labels_2 = ImageLabels()
+image_labels_2.add_image(
+    DataLocation('filesystem', '/path/to/image1.featurevector'),
+    [
+        (1000, 2000, 1),
+        (3000, 2000, 2),
+    ],
+)
+image_labels_2.add_image(
+    DataLocation('filesystem', '/path/to/image2.featurevector'),
+    [
+        (1500, 2500, 3),
+        (2500, 500, 1),
+    ],
+)
 ```
 
 The `labels` argument of `TrainClassifierMsg` expects an instance of `data_classes.TrainingTaskLabels`. There are a few ways to create this:
@@ -253,8 +272,8 @@ message = TrainClassifierMsg(
     clf_type='MLP',
     # Point-locations to ground-truth-labels (annotations) mappings
     # used to train the classifier.
-    # The dict keys must be the same as the `key` used in the
-    # extract-features task's `feature_loc`.
+    # The dict keys are DataLocations for the feature vector files
+    # created by the extract-features task.
     # The dict values are lists of tuples of (row, column, label ID).
     # Label IDs may be either integers or strings.
     # preprocess_labels() can automatically split the data into training,
@@ -262,15 +281,13 @@ message = TrainClassifierMsg(
     # split it yourself; for details, see `TrainingTaskLabels` comments
     # in messages.py.
     labels=preprocess_labels(ImageLabels({
-        '/path/to/image1.featurevector': [(1000, 2000, 1), (3000, 2000, 2)],
-        '/path/to/image2.featurevector': [(1000, 2000, 3), (3000, 2000, 1)],
-        '/path/to/image3.featurevector': [(1234, 2857, 11), (3094, 2262, 25)],
+        DataLocation('filesystem', '/path/to/image1.featurevector'): 
+            [(1000, 2000, 1), (3000, 2000, 2)],
+        DataLocation('filesystem', '/path/to/image2.featurevector'):
+            [(1000, 2000, 3), (3000, 2000, 1)],
+        DataLocation('filesystem', '/path/to/image3.featurevector'):
+            [(1234, 2857, 11), (3094, 2262, 25)],
     })),
-    # All the feature vectors should use the same storage_type, and the same
-    # S3 bucket_name if applicable. This DataLocation's purpose is to describe
-    # those common storage details. The key arg is ignored, because that will
-    # be different for each feature vector.
-    features_loc=DataLocation('filesystem', ''),
     # List of previously-created models (classifiers) to also evaluate
     # using this validation set, for informational purposes only.
     # This can be handy for comparing classifiers.

@@ -184,7 +184,7 @@ def split_labels(
         # 2) the main benefit of train_test_split() is stratification, but
         #    we're not doing that in this case anyway.
 
-        image_keys = labels_in.image_keys
+        image_keys = list(labels_in.keys())
         random.seed(0)
         random.shuffle(image_keys)
         # Use a generator so we can continue iterating over the image keys
@@ -235,7 +235,7 @@ def split_labels(
     # We want this so we have smaller identifiers for each image
     # (int instead of an arbitrary string)
     # to use in the potentially very long, RAM-consuming lists below.
-    image_lookup = labels_in.image_keys
+    image_lookup = list(labels_in.keys())
     # Flat lists of annotation identifiers (image index +
     # annotation-in-image index) and labels.
     annotation_indices_flat = []
