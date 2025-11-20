@@ -140,6 +140,18 @@ class TrainingTaskLabels:
             + self.ref.label_count
             + self.val.label_count)
 
+    @property
+    def has_remote_data(self) -> bool:
+        return (
+            self.train.has_remote_data
+            or self.ref.has_remote_data
+            or self.val.has_remote_data)
+
+    def set_filesystem_cache(self, dir_path: str):
+        self.train.set_filesystem_cache(dir_path)
+        self.ref.set_filesystem_cache(dir_path)
+        self.val.set_filesystem_cache(dir_path)
+
     def serialize(self) -> dict:
         return {
             'train': self.train.serialize(),
@@ -190,11 +202,6 @@ class TrainClassifierMsg(DataClass):
         # used to train the classifier.
         # See TrainingTaskLabels comments for more info.
         labels: TrainingTaskLabels,
-        # All the feature vectors should use the same storage_type, and the
-        # same S3 bucket_name if applicable. This DataLocation's purpose is
-        # to describe those common storage details. The key arg is ignored,
-        # because that will be different for each feature vector.
-        features_loc: DataLocation,
         # List of previously-created models (classifiers) to also evaluate
         # using this dataset, for informational purposes only.
         # A classifier is stored as a pickled CalibratedClassifierCV.
@@ -226,7 +233,6 @@ class TrainClassifierMsg(DataClass):
         self.nbr_epochs = nbr_epochs
         self.clf_type = clf_type
         self.labels = labels
-        self.features_loc = features_loc
         self.previous_model_locs = previous_model_locs
         self.model_loc = model_loc
         self.valresult_loc = valresult_loc
@@ -240,7 +246,6 @@ class TrainClassifierMsg(DataClass):
             nbr_epochs=2,
             clf_type='MLP',
             labels=TrainingTaskLabels.example(),
-            features_loc=DataLocation('memory', ''),
             previous_model_locs=[
                 DataLocation('memory', 'previous_model1.pkl'),
                 DataLocation('memory', 'previous_model2.pkl'),
@@ -256,7 +261,6 @@ class TrainClassifierMsg(DataClass):
             'nbr_epochs': self.nbr_epochs,
             'clf_type': self.clf_type,
             'labels': self.labels.serialize(),
-            'features_loc': self.features_loc.serialize(),
             'previous_model_locs': [entry.serialize()
                                     for entry in self.previous_model_locs],
             'model_loc': self.model_loc.serialize(),
@@ -272,7 +276,6 @@ class TrainClassifierMsg(DataClass):
             nbr_epochs=data['nbr_epochs'],
             clf_type=data['clf_type'],
             labels=TrainingTaskLabels.deserialize(data['labels']),
-            features_loc=DataLocation.deserialize(data['features_loc']),
             previous_model_locs=[DataLocation.deserialize(entry)
                                  for entry in data['previous_model_locs']],
             model_loc=DataLocation.deserialize(data['model_loc']),

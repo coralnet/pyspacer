@@ -11,10 +11,17 @@ class HashMismatchError(Exception):
 
 
 class RowColumnInvalidError(Exception):
+    """Rows/columns out of range or not integers."""
     pass
 
 
 class RowColumnMismatchError(Exception):
+    """Expecting to find a row+column in a set, but not there."""
+    pass
+
+
+class RowColumnMissingError(Exception):
+    """Old features with no rowcol information."""
     pass
 
 

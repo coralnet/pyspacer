@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 from abc import ABC, abstractmethod
 from collections import Counter
+from collections.abc import Generator
 from io import BytesIO
 from pathlib import Path
 from pprint import pformat
@@ -16,6 +17,7 @@ from urllib.parse import urlparse
 import numpy as np
 
 from spacer import config
+from spacer.exceptions import RowColumnMissingError, RowColumnMismatchError
 from spacer.storage import RemoteStorage, storage_factory
 
 
@@ -25,6 +27,8 @@ from spacer.storage import RemoteStorage, storage_factory
 # thereof).
 LabelId: TypeAlias = int | str
 Annotation: TypeAlias = tuple[int, int, LabelId]
+FeatureLabelPair: TypeAlias = tuple[np.ndarray, LabelId]
+FeatureLabelBatch: TypeAlias = tuple[list[np.ndarray], list[LabelId]]
 
 
 class DataClass(ABC):  # pragma: no cover
@@ -96,10 +100,8 @@ class DataLocation(DataClass):
         self.key = key
         self.bucket_name = bucket_name
 
-        self.filesystem_cache = None
-
     @classmethod
-    def example(cls) -> 'DataLocation':
+    def example(cls) -> DataLocation:
         return DataLocation('memory', 'my_blob')
 
     @property
@@ -119,14 +121,8 @@ class DataLocation(DataClass):
     def is_writable(self) -> bool:
         return self.storage_type != 'url'
 
-    def set_filesystem_cache(self, dir_path):
-        if not self.is_remote:
-            raise TypeError(
-                "Filesystem caching is only available for remote storage.")
-        self.filesystem_cache = dir_path
-
     @classmethod
-    def deserialize(cls, data: dict) -> 'DataLocation':
+    def deserialize(cls, data: dict) -> DataLocation:
         return DataLocation(**data)
 
     def serialize(self) -> dict:
@@ -136,6 +132,15 @@ class DataLocation(DataClass):
             bucket_name=self.bucket_name,
         )
 
+    # __eq__ and __hash__ allow instances to be used as dict keys.
+
+    def __eq__(self, other):
+        return (
+            self.storage_type == other.storage_type
+            and self.key == other.key
+            and self.bucket_name == other.bucket_name
+        )
+
     def __hash__(self):
         return hash((self.storage_type, self.key, self.bucket_name))
 
@@ -143,15 +148,37 @@ class DataLocation(DataClass):
 class ImageLabels(DataClass):
     """ Contains row, col, label information for a set of images. """
 
-    def __init__(self,
-                 # Data maps a feature key (or file path) to some Annotations.
-                 data: dict[str, list[Annotation]]):
-        self._data = data
-
+    def __init__(
+        self,
+        # Tuples of image feature vectors and corresponding Annotations.
+        data: dict[DataLocation, list[Annotation]] = None,
+    ):
+        self._data: dict[DataLocation, list[Annotation]] = dict()
         self.label_count_per_class = Counter()
-        for single_image_annotations in data.values():
-            labels = [label for (row, col, label) in single_image_annotations]
-            self.label_count_per_class.update(labels)
+        self.has_remote_data = False
+
+        if data:
+            for feature_loc, single_image_annotations in data.items():
+                self.add_image(feature_loc, single_image_annotations)
+        # Else, we presume the caller means to call add_image() themselves.
+
+        self.filesystem_cache: str | None = None
+
+    def add_image(
+        self,
+        feature_loc: DataLocation,
+        image_annotations: list[Annotation],
+    ):
+        self._data[feature_loc] = image_annotations
+
+        labels = [label for (row, col, label) in image_annotations]
+        self.label_count_per_class.update(labels)
+
+        if not self.has_remote_data and feature_loc.is_remote:
+            self.has_remote_data = True
+
+    def set_filesystem_cache(self, dir_path: str):
+        self.filesystem_cache = dir_path
 
     @property
     def classes_set(self):
@@ -163,55 +190,151 @@ class ImageLabels(DataClass):
 
     @classmethod
     def example(cls):
-        return ImageLabels({
-            'img1.features': [(100, 200, 3), (101, 200, 2)],
-            'img2.features': [(100, 202, 3), (101, 200, 3)],
-            'img3.features': [(100, 202, 3), (101, 200, 3)],
-            'img4.features': [(100, 202, 3), (101, 200, 3)],
+        return cls({
+            DataLocation('filesystem', 'img1.features'):
+                [(100, 200, 3), (101, 200, 2)],
+            DataLocation('filesystem', 'img2.features'):
+                [(100, 202, 3), (101, 200, 3)],
+            DataLocation('filesystem', 'img3.features'):
+                [(100, 202, 3), (101, 200, 3)],
+            DataLocation('filesystem', 'img4.features'):
+                [(100, 202, 3), (101, 200, 3)],
         })
 
-    def serialize(self) -> dict:
-        """Only need the `_data` field; the other fields can be recomputed."""
-        return self._data
+    def serialize(self) -> dict[str, list[Annotation]]:
+        """
+        Only need the `_data` field; the other fields can be recomputed.
+
+        For the DataLocations, we call serialize() on them to get dicts,
+        then stringify those to get something hashable.
+        """
+        return {
+            json.dumps(loc.serialize()): image_annotations
+            for loc, image_annotations in self._data.items()
+        }
 
     @classmethod
-    def deserialize(cls, data: dict) -> 'ImageLabels':
-        """Custom deserializer required to convert back to tuples."""
-        return ImageLabels({
-            key: [tuple(entry) for entry in value] for
-            key, value in data.items()
+    def deserialize(
+            cls, data: dict[str, list[Annotation]]) -> ImageLabels:
+        """
+        Custom deserializer required to convert lists to tuples, and to
+        deserialize the DataLocations.
+        """
+        return cls({
+            DataLocation.deserialize(json.loads(serialized_loc)):
+                [tuple(anno) for anno in image_annotations]
+            for serialized_loc, image_annotations in data.items()
         })
 
-    @property
-    def image_keys(self):
-        return list(self._data.keys())
+    def keys(self):
+        return self._data.keys()
 
-    def filter_classes(self, accepted_classes) -> 'ImageLabels':
+    def filter_classes(self, accepted_classes) -> ImageLabels:
         """
         Make a new instance by filtering out labels not included in
         the specified classes.
         """
-        data = {}
-        for image_key in self.image_keys:
-            this_image_labels = [
+        filtered_instance = ImageLabels()
+        for feature_loc in self.keys():
+            this_image_annotations = [
                 (row, column, label)
-                for row, column, label in self._data[image_key]
+                for row, column, label in self._data[feature_loc]
                 if label in accepted_classes
             ]
-            # Only include an image if it has any labels remaining
+            # Only include an image if it has any annotations remaining
             # after filtering.
-            if len(this_image_labels) > 0:
-                data[image_key] = this_image_labels
-        return ImageLabels(data)
+            if len(this_image_annotations) > 0:
+                filtered_instance.add_image(
+                    feature_loc, this_image_annotations)
+        return filtered_instance
+
+    def load_data_in_batches(
+        self,
+        # Default batch size is arbitrary. None would mean everything
+        # is a single batch.
+        batch_size: int | None = 1000,
+        # If not None, then the feature vectors are iterated through
+        # in random order (as opposed to a fixed order if None).
+        # This integer is the randomization seed. Pass the same seed to
+        # get repeatable results.
+        random_seed: int | None = None,
+    ) -> Generator[FeatureLabelBatch, None, None]:
+        """
+        Loads features and labels; generates batches of
+        element-matching pairs, which can go into methods
+        such as CalibratedClassifierCV.fit().
+
+        Since this is a generator, it does not have to load all feature
+        vectors in memory at the same time; only as many as will fit in
+        a batch.
+        Of course, what you do with the generated results is also
+        important for memory usage.
+
+        Note that a single image's features may straddle multiple batches.
+        """
+        pairs_buffer = []
+
+        keys = self.keys()
+
+        if random_seed is not None:
+            # Shuffle the order of images.
+            keys = list(keys)
+            np.random.seed(random_seed)
+            np.random.shuffle(keys)
+
+        for feature_loc in keys:
+
+            # Load the features.
+            features = ImageFeatures.load(feature_loc, self.filesystem_cache)
+
+            # Pair them up with the corresponding annotations.
+            image_annotations = self._data[feature_loc]
+            try:
+                pairs_buffer.extend(
+                    features.match_with_annotations(image_annotations))
+            except RowColumnMissingError:
+                raise RowColumnMissingError(
+                    f"{feature_loc.key}: Features without rowcols are no"
+                    f" longer supported for training.")
+            except RowColumnMismatchError as e:
+                raise RowColumnMismatchError(f"{feature_loc.key}: {e}")
+
+            if batch_size:
+                while len(pairs_buffer) > batch_size:
+                    # Slice to respect batch size.
+                    # zip(*...) to go from a list of feature-label pairs
+                    # to a pair of lists.
+                    yield zip(*(pairs_buffer[:batch_size]))
+                    pairs_buffer = pairs_buffer[batch_size:]
+            # Else, it's all one batch throughout this function.
+            # Careful not to exhaust memory.
+
+        if len(pairs_buffer) > 0:
+            # Batch of the last features/labels.
+            yield zip(*pairs_buffer)
+
+    def load_all_data(
+        self,
+        random_seed: int | None = None,
+    ) -> FeatureLabelBatch:
+        """
+        Like load_data_in_batches() with batch size None, meaning
+        everything is in one batch. Also just returns the result instead
+        of being a generator.
+        """
+        return next(
+            self.load_data_in_batches(
+                batch_size=None, random_seed=random_seed)
+        )
 
     def __len__(self):
         return len(self._data)
 
-    def __getitem__(self, item):
-        return self._data[item]
+    def __getitem__(self, loc: DataLocation):
+        return self._data[loc]
 
-    def __contains__(self, item):
-        return item in self._data
+    def __contains__(self, loc: DataLocation):
+        return loc in self._data
 
 
 class PointFeatures(DataClass):
@@ -281,6 +404,32 @@ class ImageFeatures(DataClass):
         """
         return np.array(self[rowcol]).reshape(1, -1)
 
+    def match_with_annotations(
+        self,
+        labels_data: list[Annotation],
+    ) -> Generator[FeatureLabelPair, None, None]:
+
+        if not self.valid_rowcol:
+            # This function no longer supports legacy features, since
+            # there aren't any known use cases left.
+            raise RowColumnMissingError
+
+        # Check that the sets of row, col
+        # given by the labels are available in the features.
+        rc_features_set = set([(pf.row, pf.col) for pf in
+                               self.point_features])
+        rc_labels_set = set([(row, col) for (row, col, _) in labels_data])
+
+        if not rc_labels_set.issubset(rc_features_set):
+            difference_set = rc_labels_set.difference(rc_features_set)
+            example_rc = next(iter(difference_set))
+            raise RowColumnMismatchError(
+                f"The labels' row-column positions don't match"
+                f" those of the feature vector (example: {example_rc}).")
+
+        for row, col, label in labels_data:
+            yield self[(row, col)], label
+
     @classmethod
     def example(cls):
         pf1 = PointFeatures(row=100, col=100, data=[1.1, 1.3, 1.12])
@@ -344,11 +493,10 @@ class ImageFeatures(DataClass):
                              npoints=len(point_labels))
 
     @classmethod
-    def load(cls, loc: 'DataLocation'):
+    def load(cls, loc: 'DataLocation', filesystem_cache: str | None = None):
         storage = storage_factory(loc.storage_type, loc.bucket_name)
-        # TODO: This is extremely ugly OOP
         if isinstance(storage, RemoteStorage):
-            stream = storage.load(loc.key, loc.filesystem_cache)
+            stream = storage.load(loc.key, filesystem_cache)
         else:
             stream = storage.load(loc.key)
         stream.seek(0)
