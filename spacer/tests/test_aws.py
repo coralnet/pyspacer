@@ -50,24 +50,23 @@ class TestGetS3Resource(unittest.TestCase):
         self.assertEqual(len(cm.output), 1)
 
 
-def mock_sts_client_factory(
-    raise_no_credentials: bool = False,
-    status_code: int = 200,
-):
+def mock_create_session():
 
-    def mock_boto3_client(service_name):
-        if service_name != 'sts':
-            raise ValueError
+    class Session:
 
-        if raise_no_credentials:
-            raise NoCredentialsError
+        @staticmethod
+        def client(service_name):
+            if service_name != 'sts':
+                raise ValueError
 
-        class Client:
-            @staticmethod
-            def get_caller_identity():
-                return dict(ResponseMetadata=dict(HTTPStatusCode=status_code))
-        return Client()
-    return mock_boto3_client
+            class Client:
+                @staticmethod
+                def get_caller_identity():
+                    return dict(Arn='arn:aws:sts::arn-goes-here')
+
+            return Client()
+
+    return Session()
 
 
 class TestAwsCheck(unittest.TestCase):
@@ -92,49 +91,6 @@ class TestAwsCheck(unittest.TestCase):
              " without credentials."],
         )
 
-    def test_sts_success(self):
-        with (
-            mock.patch('spacer.aws.print', self.mock_print),
-            mock.patch('boto3.client', mock_sts_client_factory()),
-        ):
-            aws_check()
-
-        self.assertListEqual(
-            self.printed_strs,
-            ["We're running on an AWS instance with valid metadata and"
-             " access to STS, allowing us to get temporary credentials."],
-        )
-
-    def test_sts_exception(self):
-        with (
-            mock.patch('spacer.aws.print', self.mock_print),
-            mock.patch(
-                'boto3.client',
-                mock_sts_client_factory(raise_no_credentials=True)),
-        ):
-            aws_check()
-
-        # Should proceed to analyze variables.
-        self.assertIn(
-            "Variables that have been set:",
-            self.printed_strs,
-        )
-
-    def test_sts_bad_request(self):
-        with (
-            mock.patch('spacer.aws.print', self.mock_print),
-            mock.patch(
-                'boto3.client',
-                mock_sts_client_factory(status_code=400)),
-        ):
-            aws_check()
-
-        # Should proceed to analyze variables.
-        self.assertIn(
-            "Variables that have been set:",
-            self.printed_strs,
-        )
-
     @staticmethod
     def mock_getenv_factory(**env_dict):
 
@@ -149,8 +105,8 @@ class TestAwsCheck(unittest.TestCase):
         with (
             mock.patch('spacer.aws.print', self.mock_print),
             mock.patch(
-                'boto3.client',
-                mock_sts_client_factory(raise_no_credentials=True)),
+                'spacer.aws.create_aws_session',
+                mock_create_session),
             mock.patch('spacer.config.AWS_PROFILE_NAME', 'my-profile'),
             mock.patch('spacer.config.AWS_ACCESS_KEY_ID', None),
             mock.patch('spacer.config.AWS_SECRET_ACCESS_KEY', None),
@@ -164,20 +120,24 @@ class TestAwsCheck(unittest.TestCase):
         self.assertListEqual(
             self.printed_strs,
             ["Variables that have been set:",
-             "Spacer config - AWS_PROFILE_NAME (highest precedence): Yes",
+             "Spacer config - AWS_PROFILE_NAME"
+             " (highest priority if specified): Yes",
              "Environment var - AWS_CONFIG_FILE: Yes",
              "Environment var - AWS_SHARED_CREDENTIALS_FILE: No",
              "Spacer config - AWS_ACCESS_KEY_ID: No",
              "Spacer config - AWS_SECRET_ACCESS_KEY: No",
-             "Spacer config - AWS_SESSION_TOKEN: No"],
+             "Spacer config - AWS_SESSION_TOKEN: No",
+             "Will now call create_aws_session()...",
+             "Will now call get_caller_identity()...",
+             "Identified as ARN: arn:aws:sts::arn-goes-here"],
         )
 
     def test_variables_2(self):
         with (
             mock.patch('spacer.aws.print', self.mock_print),
             mock.patch(
-                'boto3.client',
-                mock_sts_client_factory(raise_no_credentials=True)),
+                'spacer.aws.create_aws_session',
+                mock_create_session),
             mock.patch('spacer.config.AWS_PROFILE_NAME', None),
             mock.patch('spacer.config.AWS_ACCESS_KEY_ID', 'myid'),
             mock.patch('spacer.config.AWS_SECRET_ACCESS_KEY', 'mykey'),
@@ -191,12 +151,16 @@ class TestAwsCheck(unittest.TestCase):
         self.assertListEqual(
             self.printed_strs,
             ["Variables that have been set:",
-             "Spacer config - AWS_PROFILE_NAME (highest precedence): No",
+             "Spacer config - AWS_PROFILE_NAME"
+             " (highest priority if specified): No",
              "Environment var - AWS_CONFIG_FILE: No",
              "Environment var - AWS_SHARED_CREDENTIALS_FILE: Yes",
              "Spacer config - AWS_ACCESS_KEY_ID: Yes",
              "Spacer config - AWS_SECRET_ACCESS_KEY: Yes",
-             "Spacer config - AWS_SESSION_TOKEN: Yes"],
+             "Spacer config - AWS_SESSION_TOKEN: Yes",
+             "Will now call create_aws_session()...",
+             "Will now call get_caller_identity()...",
+             "Identified as ARN: arn:aws:sts::arn-goes-here"],
         )
 
 

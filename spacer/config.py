@@ -188,7 +188,8 @@ AWS_ACCESS_KEY_ID = get_config_value('AWS_ACCESS_KEY_ID', default=None)
 AWS_SECRET_ACCESS_KEY = get_config_value('AWS_SECRET_ACCESS_KEY', default=None)
 AWS_SESSION_TOKEN = get_config_value('AWS_SESSION_TOKEN', default=None)
 
-# If present, profile name takes precedence over the above keys and token.
+# If present, profile name takes priority over the above keys and token.
+# See aws.py's aws_check() comments for more detail.
 AWS_PROFILE_NAME = get_config_value('AWS_PROFILE_NAME', default=None)
 
 # If True, AWS is accessed without any credentials, which can simplify setup

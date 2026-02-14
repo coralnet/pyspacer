@@ -92,29 +92,13 @@ def aws_check():
     to use.
 
     Warning: the print output of this function may be sensitive, including
-    the location of static credentials files for example.
-
-    This doesn't necessarily cover all AWS credentials methods. See:
-    https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-authentication.html#cli-chap-authentication-precedence
+    locations of static credentials files, or IDs of AWS accounts.
     """
     if config.AWS_ANONYMOUS:
         print(
             "AWS_ANONYMOUS has been set to True, so AWS will be accessed"
             " without credentials.")
         return
-
-    # Try getting an identity, which means the process is running in AWS
-    # with access to the metadata service to fetch credentials.
-    try:
-        response = boto3.client('sts').get_caller_identity()
-    except botocore.exceptions.NoCredentialsError:
-        pass
-    else:
-        if response['ResponseMetadata']['HTTPStatusCode'] == 200:
-            print(
-                "We're running on an AWS instance with valid metadata and"
-                " access to STS, allowing us to get temporary credentials.")
-            return
 
     # Print status of various AWS variables.
     # We won't be too specific about how they might be used, because
@@ -124,9 +108,27 @@ def aws_check():
 
     print("Variables that have been set:")
 
+    # Observations on priority:
+    # - If profile name is specified, it'll totally rely on the AWS config
+    #   file. That means: if auth stuff for this profile is present in
+    #   that config file, then it's used; if the config file doesn't have
+    #   this profile, then it errors; if the config file isn't found, then
+    #   it errors.
+    # - If profile name is not specified, but explicit key/secret/token
+    #   are specified: it'll use that explicit key/secret/token.
+    # - If neither of those are specified: it'll look for an AWS
+    #   credentials file and use its default-profile entry if it exists,
+    #   else it'll look for an AWS config file and use its default-profile
+    #   entry if it exists.
+    # - Else it'll try other methods (like seeing if it's on EC2 with an
+    #   instance role) before giving up with NoCredentialsError.
+    #
+    # Relevant documentation:
+    # https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-authentication.html#cli-chap-authentication-precedence
+
     variables = [
         (
-            "Spacer config - AWS_PROFILE_NAME (highest precedence)",
+            "Spacer config - AWS_PROFILE_NAME (highest priority if specified)",
             config.AWS_PROFILE_NAME,
         ),
         (
@@ -154,3 +156,32 @@ def aws_check():
     for description, value in variables:
         value_status = "Yes" if value else "No"
         print(f"{description}: {value_status}")
+
+    # Despite above observations, we deliberately do not try to say whether
+    # or why a session will be successfully made or not. We just print the
+    # relevant variables we know of (above) and then actually try to get a
+    # session, letting AWS's error messages attempt to elucidate their own
+    # complex auth logic.
+
+    print("Will now call create_aws_session()...")
+
+    # If this gets an error, just let the error happen.
+    session = create_aws_session()
+
+    print("Will now call get_caller_identity()...")
+
+    # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sts/client/get_caller_identity.html
+    # Again, if this gets an error, just let the error happen.
+    response = session.client('sts').get_caller_identity()
+
+    # ARN can give a bit more insight on the type of auth that worked.
+    # For example:
+    # - If we used an EC2 instance role to automatically get credentials,
+    #   the ARN should contain an instance ID like i-<hex digits>.
+    # - If we used a config file with IAM Roles Anywhere, the end of the ARN
+    #   should have 40 hex digits.
+    # - If we got temporary credentials from AWS CLI, then the
+    #   session name given in that command should be in the ARN.
+    # - If we got temporary credentials from SSO, then the SSO username
+    #   like <name>@UCSD.EDU should be in the ARN.
+    print(f"Identified as ARN: {response['Arn']}")

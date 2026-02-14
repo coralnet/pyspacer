@@ -58,7 +58,7 @@ However, spacer will not read from multiple file-based settings sources; so if a
 To debug your configuration, try opening a Python shell and enter:
 
 - `from spacer import config`, then `config.check()`.
-- To debug AWS config in particular: `from spacer.aws import aws_check`, then `aws_check()`. This might not cover all possible ways of accessing AWS.
+- To debug AWS config in particular: `from spacer.aws import aws_check`, then `aws_check()`.
 
 ### Docker build
 The docker build is used in coralnet's deployment.
