@@ -22,25 +22,22 @@ def create_aws_session():
     """
     Create an AWS session to encapsulate credentials. This can then be used
     to create a boto client or resource.
-
-    This logic is largely from django-storages' backends/s3.py.
     """
-    if config.AWS_PROFILE_NAME:
-        # AWS profile name specified in spacer config (env vars, etc).
-        # We give this precedence over other
-        # credential specifiers such as environment variables.
-        return boto3.Session(profile_name=config.AWS_PROFILE_NAME)
-
-    # Use credentials from spacer config (env vars, etc).
-    # If credentials are None, boto will instead look in other places such
-    # as env var AWS_SHARED_CREDENTIALS_FILE (default ~/.aws/credentials).
-    # If no static credentials are defined, then the instance metadata
-    # service will be accessed for temporary credentials instead.
+    # boto's logic for authentication precedence is documented here:
     # https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-authentication.html#cli-chap-authentication-precedence
+    #
+    # Two of the most secure auth methods are: using an EC2 instance role to
+    # automatically get temp credentials, or using an AWS config file to
+    # define a process that automatically gets temp credentials. Those
+    # two options are notably low in the precedence order.
+    # However, that just means it's easier to detect less-secure auth methods
+    # that have been left lying around unintentionally, since boto will try
+    # most of those methods first if they're present.
     return boto3.Session(
         aws_access_key_id=config.AWS_ACCESS_KEY_ID,
         aws_secret_access_key=config.AWS_SECRET_ACCESS_KEY,
         aws_session_token=config.AWS_SESSION_TOKEN,
+        profile_name=config.AWS_PROFILE_NAME,
     )
 
 
@@ -108,24 +105,6 @@ def aws_check():
 
     print("Variables that have been set:")
 
-    # Observations on priority:
-    # - If profile name is specified, it'll totally rely on the AWS config
-    #   file. That means: if auth stuff for this profile is present in
-    #   that config file, then it's used; if the config file doesn't have
-    #   this profile, then it errors; if the config file isn't found, then
-    #   it errors.
-    # - If profile name is not specified, but explicit key/secret/token
-    #   are specified: it'll use that explicit key/secret/token.
-    # - If neither of those are specified: it'll look for an AWS
-    #   credentials file and use its default-profile entry if it exists,
-    #   else it'll look for an AWS config file and use its default-profile
-    #   entry if it exists.
-    # - Else it'll try other methods (like seeing if it's on EC2 with an
-    #   instance role) before giving up with NoCredentialsError.
-    #
-    # Relevant documentation:
-    # https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-authentication.html#cli-chap-authentication-precedence
-
     variables = [
         (
             "Spacer config - AWS_PROFILE_NAME (highest priority if specified)",
@@ -157,11 +136,10 @@ def aws_check():
         value_status = "Yes" if value else "No"
         print(f"{description}: {value_status}")
 
-    # Despite above observations, we deliberately do not try to say whether
-    # or why a session will be successfully made or not. We just print the
-    # relevant variables we know of (above) and then actually try to get a
-    # session, letting AWS's error messages attempt to elucidate their own
-    # complex auth logic.
+    # We deliberately do not try to say whether or why a session will be
+    # successfully made or not. We just print the relevant variables we know
+    # of (above) and then actually try to get a session, letting AWS's error
+    # messages attempt to elucidate their own complex auth logic.
 
     print("Will now call create_aws_session()...")
 
