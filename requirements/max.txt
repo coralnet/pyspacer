@@ -2,8 +2,8 @@
 
 # 11.0 supports up to Python 3.13
 Pillow>=10.4.0
-# 2.1 supports up to Python 3.13
-numpy>=1.22,<2.2
+# 2.3 series supports up to Python 3.14
+numpy>=1.25,<2.4
 scipy
 # Supports up to Python 3.12; 1.6 adds 3.13
 scikit-learn==1.5.2

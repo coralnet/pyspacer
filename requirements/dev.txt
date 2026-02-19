@@ -11,7 +11,8 @@ fire==0.7.0
 Pillow==11.0.0
 
 # https://numpy.org/devdocs/release.html
-numpy==2.1.3
+# 2.3 drops Python 3.10.
+numpy==2.2.6
 
 # pyspacer has no direct usages of scipy. But since scikit-learn (below)
 # requires scipy, it must be installed. And since scipy requires numpy (above),
@@ -19,7 +20,7 @@ numpy==2.1.3
 # particularly when updating an existing env instead of creating a new one.
 # https://github.com/scipy/scipy/releases
 # Requires: numpy
-scipy==1.14.1
+scipy==1.15.2
 
 # For training and classification.
 # Classifier compatibility depends heavily on this package's version.
