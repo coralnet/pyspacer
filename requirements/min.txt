@@ -4,8 +4,10 @@
 Pillow==10.4.0
 # Minimum for dtypes which is convenient for TorchExtractor.load_weights()
 numpy==1.25.0
-# Minimum for Python 3.10 (scikit-learn compat only needs 1.6+)
-scipy==1.7.3
+# Minimum for numpy 1.25 (found through experimentation; seems the scipy
+# pyproject.toml history isn't accurate to the releases?)
+# scikit-learn compat only needs 1.6+
+scipy==1.9.2
 scikit-learn==1.5.2
 # Not minimum for GitHub security alerts (that'd be 2.8), but this is a
 # big package to pin to a very recent version.

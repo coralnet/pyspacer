@@ -20,7 +20,7 @@ numpy==2.2.6
 # particularly when updating an existing env instead of creating a new one.
 # https://github.com/scipy/scipy/releases
 # Requires: numpy
-scipy==1.14.1
+scipy==1.15.2
 
 # For training and classification.
 # Classifier compatibility depends heavily on this package's version.
