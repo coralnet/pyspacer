@@ -66,7 +66,7 @@ RUN git clone -b ${CLONE_TAG} --depth 1 https://github.com/Qengineering/caffe.gi
 # results in an error like "Couldn't build proto file into descriptor pool:
 # duplicate file name" when importing caffe. So we avoid protobuf 4.x.
 WORKDIR $CAFFE_ROOT/python
-RUN for req in $(cat requirements.txt) pydot 'numpy==2.1.3' 'protobuf<4'; \
+RUN for req in $(cat requirements.txt) pydot 'numpy==2.2.6' 'protobuf<4'; \
     do pip3 install $req; \
     done
 

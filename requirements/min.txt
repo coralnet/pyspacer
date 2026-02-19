@@ -2,8 +2,8 @@
 
 # Minimum for GitHub security alerts
 Pillow==10.4.0
-# Minimum for GitHub security alerts
-numpy==1.22.0
+# Minimum for dtypes which is convenient for TorchExtractor.load_weights()
+numpy==1.25.0
 # Minimum for Python 3.10 (scikit-learn compat only needs 1.6+)
 scipy==1.7.3
 scikit-learn==1.5.2
