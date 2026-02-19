@@ -41,6 +41,7 @@ class _ModuleProxy:
         self.obj = obj
         self.__module__ = module
         self.__name__ = obj.__name__
+        self.__qualname__ = obj.__qualname__
 
     def __call__(self, *args, **kwargs):
         return self.obj(*args, **kwargs)
