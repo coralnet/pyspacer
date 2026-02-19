@@ -115,8 +115,8 @@ class TorchExtractor(FeatureExtractor, abc.ABC):
             ]
 
             # In numpy>=1.25, numpy.dtypes is present.
-            if hasattr(np, 'dtypes'):
-                safe_globals.append(np.dtypes.Int64DType)
+            assert hasattr(np, 'dtypes')
+            safe_globals.append(np.dtypes.Int64DType)
 
             if np.version.version[0] != '1':
                 # We have numpy>=2, where numpy.core is a deprecated alias of
