@@ -1,7 +1,7 @@
 # This should install pyproject.toml's minimum accepted versions.
 
 # Minimum for GitHub security alerts
-Pillow==10.4.0
+Pillow==12.1.1
 # Minimum for dtypes which is convenient for TorchExtractor.load_weights()
 numpy==1.25.0
 # Minimum for numpy 1.25 (found through experimentation; seems the scipy
