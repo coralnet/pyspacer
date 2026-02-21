@@ -13,7 +13,7 @@ scikit-learn==1.5.2
 # big package to pin to a very recent version.
 # In SageMaker, for example, their default version is a bit behind,
 # and the install time can make it onerous to use a newer one.
-torch==2.6
+torch==2.8.0
 # Should correspond with torch version
 torchvision==0.21.0
 # Minimum for Python 3.10
