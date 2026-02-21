@@ -1,7 +1,7 @@
 # This should install pyproject.toml's maximum accepted versions.
 
-# 11.0 supports up to Python 3.13
-Pillow>=10.4.0
+# Supports up to Python 3.14
+Pillow>=12.1.1
 # 2.3 series supports up to Python 3.14
 numpy>=1.25,<2.4
 scipy

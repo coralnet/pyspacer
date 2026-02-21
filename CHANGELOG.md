@@ -5,6 +5,7 @@
 - Updates to pip-install dependencies:
 
   - numpy: >=1.22,<2.2 to >=1.25,<2.4
+  - Pillow: >=10.4.0 to >=12.1.1
   - torch: >=2.6,<2.7 to >=2.6,<2.9
   - torchvision: >=0.21,<0.22 to >=0.21,<0.24
 
