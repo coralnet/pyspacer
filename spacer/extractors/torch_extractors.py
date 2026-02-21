@@ -14,7 +14,7 @@ import torch
 from torchvision import transforms
 
 from spacer import config
-from spacer.messages import DataLocation
+from spacer.data_classes import DataLocation
 from spacer.storage import storage_factory
 from .base import FeatureExtractor
 

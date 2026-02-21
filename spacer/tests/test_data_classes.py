@@ -5,12 +5,13 @@ import random
 
 from spacer import config
 from spacer.aws import get_s3_resource
-from spacer.data_classes import \
-    PointFeatures, \
-    ImageFeatures, \
-    ImageLabels, \
-    ValResults
-from spacer.messages import DataLocation
+from spacer.data_classes import (
+    DataLocation,
+    ImageFeatures,
+    ImageLabels,
+    PointFeatures,
+    ValResults,
+)
 from .decorators import require_cn_fixtures, require_s3
 from .utils import temp_filesystem_data_location
 
@@ -22,6 +23,17 @@ class TestDataClass(unittest.TestCase):
         pf = PointFeatures.example()
         self.assertIn("'col': 100", str(pf))
         self.assertIn("'row': 100", str(pf))
+
+
+class TestDataLocation(unittest.TestCase):
+
+    def test_serialize(self):
+
+        msg = DataLocation.example()
+        self.assertEqual(msg, DataLocation.deserialize(
+            msg.serialize()))
+        self.assertEqual(msg, DataLocation.deserialize(
+            json.loads(json.dumps(msg.serialize()))))
 
 
 class TestImageFeatures(unittest.TestCase):

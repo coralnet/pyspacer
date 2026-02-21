@@ -6,7 +6,13 @@ from PIL import Image
 
 from spacer import config
 from spacer.data_classes import (
-    ImageFeatures, ImageLabels, LabelId, PointFeatures, ValResults)
+    DataLocation,
+    ImageFeatures,
+    ImageLabels,
+    LabelId,
+    PointFeatures,
+    ValResults,
+)
 from spacer.exceptions import (
     DataLimitError, RowColumnInvalidError, RowColumnMismatchError)
 from spacer.extractors import DummyExtractor
@@ -14,7 +20,6 @@ from spacer.messages import (
     ClassifyFeaturesMsg,
     ClassifyImageMsg,
     ClassifyReturnMsg,
-    DataLocation,
     ExtractFeaturesMsg,
     ExtractFeaturesReturnMsg,
     TrainClassifierMsg,
@@ -197,7 +202,7 @@ class TestTrainClassifier(unittest.TestCase):
         # Train once by calling directly so that we have a
         # previous classifier.
         clf, _ = train(
-            labels.train, labels.ref, features_loc_template, 1, clf_type)
+            labels.train, labels.ref, 1, clf_type)
 
         previous_classifier_loc = DataLocation(storage_type='memory',
                                                key='pc')
@@ -211,7 +216,6 @@ class TestTrainClassifier(unittest.TestCase):
             nbr_epochs=1,
             clf_type=clf_type,
             labels=labels,
-            features_loc=features_loc_template,
             previous_model_locs=[previous_classifier_loc],
             model_loc=DataLocation(storage_type='memory', key='model'),
             valresult_loc=valresult_loc
@@ -256,10 +260,10 @@ class TestTrainClassifier(unittest.TestCase):
             feature_dim=feature_dim,
             npoints=len(point_features),
         )
-        feature_loc = DataLocation(storage_type='memory', key='1.feats')
-        features.store(feature_loc)
+        feature_loc_1 = DataLocation(storage_type='memory', key='1.feats')
+        features.store(feature_loc_1)
         train_labels = ImageLabels({
-            '1.feats': [
+            feature_loc_1: [
                 (100, 100, 1),
                 (50, 50, 2),
                 # Duplicate point; the row/column are still in features,
@@ -273,7 +277,6 @@ class TestTrainClassifier(unittest.TestCase):
         val_labels = make_random_data(
             1, [1, 2], 2, feature_dim,
             DataLocation(storage_type='memory', key='3.feats'))
-        features_loc_template = DataLocation(storage_type='memory', key='')
 
         msg = TrainClassifierMsg(
             job_token='test',
@@ -285,16 +288,15 @@ class TestTrainClassifier(unittest.TestCase):
                 ref=ref_labels,
                 val=val_labels,
             ),
-            features_loc=features_loc_template,
             previous_model_locs=[],
             model_loc=DataLocation(storage_type='memory', key='model'),
-            valresult_loc=DataLocation(storage_type='memory', key='result')
+            valresult_loc=DataLocation(storage_type='memory', key='result'),
         )
         # Shouldn't get an error
         train_classifier(msg)
 
         msg.labels['train'] = ImageLabels({
-            '1.feats': [
+            feature_loc_1: [
                 (100, 100, 1),
                 (50, 50, 2),
                 # Row/column not in features
@@ -334,9 +336,8 @@ class TestTrainClassifier(unittest.TestCase):
                 labels=preprocess_labels(make_random_data(
                     n_data, class_list, points_per_image,
                     feature_dim, features_loc_template,
-                    im_keys=s3_feature_paths,
+                    feature_loc_keys=s3_feature_paths,
                 )),
-                features_loc=features_loc_template,
                 previous_model_locs=[],
                 model_loc=DataLocation(storage_type='memory', key='model'),
                 valresult_loc=DataLocation(storage_type='memory', key='valresult'),
@@ -392,7 +393,6 @@ class ClassifyReturnMsgTest(unittest.TestCase):
             nbr_epochs=1,
             clf_type='MLP',
             labels=labels,
-            features_loc=features_loc_template,
             previous_model_locs=[],
             model_loc=model_loc,
             valresult_loc=valresult_loc

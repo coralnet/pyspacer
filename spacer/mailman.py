@@ -11,7 +11,8 @@ import fire
 
 from spacer import config
 from spacer.aws import get_s3_resource
-from spacer.messages import JobMsg, DataLocation
+from spacer.data_classes import DataLocation
+from spacer.messages import JobMsg
 from spacer.tasks import process_job
 
 # Root logger. Logging options seem otherwise limited for __main__.

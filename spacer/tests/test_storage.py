@@ -15,9 +15,8 @@ from sklearn.calibration import CalibratedClassifierCV
 
 from spacer import config
 from spacer.aws import get_s3_resource
-from spacer.data_classes import ImageFeatures
+from spacer.data_classes import DataLocation, ImageFeatures
 from spacer.exceptions import URLDownloadError
-from spacer.messages import DataLocation
 from spacer.storage import \
     storage_factory, \
     load_image, \
@@ -57,6 +56,10 @@ class TestGlobalMemoryStorage(unittest.TestCase):
 
 class BaseStorageTest(unittest.TestCase, abc.ABC):
 
+    storage: 'Storage'
+    tmp_json_loc: DataLocation
+    tmp_model_loc: DataLocation
+
     def do_test_delete(self):
         data = json.dumps({'a': 1, 'b': 2})
         stream = BytesIO(json.dumps(data).encode('utf-8'))
@@ -72,17 +75,17 @@ class BaseStorageTest(unittest.TestCase, abc.ABC):
             class_list=[1, 2],
             points_per_image=5,
             feature_dim=5,
-            feature_loc=features_loc_template,
+            feature_loc_base=features_loc_template,
         )
         ref_labels = make_random_data(
             im_count=2,
             class_list=[1, 2],
             points_per_image=5,
             feature_dim=5,
-            feature_loc=features_loc_template,
+            feature_loc_base=features_loc_template,
         )
         clf, _ = train(
-            train_labels, ref_labels, features_loc_template, 1, 'LR')
+            train_labels, ref_labels, 1, 'LR')
         store_classifier(self.tmp_model_loc, clf)
         self.assertTrue(self.storage.exists(self.tmp_model_loc.key))
 

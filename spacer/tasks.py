@@ -57,7 +57,7 @@ def train_classifier(msg: TrainClassifierMsg) -> TrainClassifierReturnMsg:
     @contextlib.contextmanager
     def wrapper():
         if (
-            msg.features_loc.is_remote
+            labels.has_remote_data
             and msg.feature_cache_dir != msg.FeatureCache.DISABLED
         ):
             # Define a location to cache feature vectors after loading remotely
@@ -74,7 +74,7 @@ def train_classifier(msg: TrainClassifierMsg) -> TrainClassifierReturnMsg:
             # The temp dir is created within feature_cache_dir.
             with tempfile.TemporaryDirectory(
                     dir=feature_cache_dir) as local_feature_dir:
-                msg.features_loc.set_filesystem_cache(local_feature_dir)
+                labels.set_filesystem_cache(local_feature_dir)
                 yield
         else:
             # Not caching feature vectors.
@@ -87,8 +87,7 @@ def train_classifier(msg: TrainClassifierMsg) -> TrainClassifierReturnMsg:
                 labels,
                 msg.nbr_epochs,
                 [load_classifier(loc) for loc in msg.previous_model_locs],
-                msg.features_loc,
-                msg.clf_type
+                msg.clf_type,
             )
 
     with config.log_entry_and_exit('storing classifier and val res'):

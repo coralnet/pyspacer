@@ -7,11 +7,11 @@ import numpy as np
 from PIL import Image
 
 from spacer import config
-from spacer.data_classes import ImageFeatures
+from spacer.data_classes import DataLocation, ImageFeatures
 from spacer.exceptions import HashMismatchError
 from spacer.extractors import (
     DummyExtractor, EfficientNetExtractor, FeatureExtractor)
-from spacer.messages import ExtractFeaturesReturnMsg, DataLocation
+from spacer.messages import ExtractFeaturesReturnMsg
 from spacer.storage import load_image, storage_factory
 from ..common import TEST_EXTRACTORS
 from ..decorators import (

@@ -15,10 +15,10 @@ from typing import Type
 from PIL import Image
 
 from spacer import config
-from spacer.data_classes import PointFeatures, ImageFeatures
+from spacer.data_classes import DataLocation, ImageFeatures, PointFeatures
 from spacer.exceptions import ConfigError, HashMismatchError
 from spacer.extractors.utils import crop_patches
-from spacer.messages import DataLocation, ExtractFeaturesReturnMsg
+from spacer.messages import ExtractFeaturesReturnMsg
 from spacer.storage import storage_factory
 
 
