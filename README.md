@@ -18,22 +18,23 @@ The spacer repo can be installed in three ways.
 
 ### Config
 
-Setting spacer config variables is only necessary when using certain features. If you won't access S3 storage with static credentials, and you won't load extractors remotely, you can skip this section.
+Setting spacer config variables is only necessary when using certain features. You can skip this section unless you'll:
+
+- Access Amazon S3 storage using a named profile or static credentials.
+- Load extractors remotely.
 
 See `CONFIGURABLE_VARS` in `config.py` for a full list of available variables, and for an explanation of when each variable must be configured or not.
 
 Spacer's config variables can be set in any of the following ways:
 
 1. As environment variables; recommended if you `pip install` the package. Each variable name must be prefixed with `SPACER_`:
-   - `export SPACER_AWS_ACCESS_KEY_ID='YOUR_AWS_KEY_ID'`
-   - `export SPACER_AWS_SECRET_ACCESS_KEY='YOUR_AWS_SECRET_KEY'`
+   - `export SPACER_AWS_PROFILE_NAME='your-aws-config-profile-name'`
    - `export SPACER_AWS_REGION='us-west-2'`
    - `export SPACER_EXTRACTORS_CACHE_DIR='/your/cache'`
 2. In a `secrets.json` file in the same directory as this README; recommended for Docker builds and local clones. Example `secrets.json` contents:
    ```json
    {
-     "AWS_ACCESS_KEY_ID": "YOUR_AWS_KEY_ID",
-     "AWS_SECRET_ACCESS_KEY": "YOUR_AWS_SECRET_KEY",
+     "AWS_PROFILE_NAME": "your-aws-config-profile-name",
      "AWS_REGION": "us-west-2",
      "EXTRACTORS_CACHE_DIR": "/your/cache"
    }
@@ -41,8 +42,7 @@ Spacer's config variables can be set in any of the following ways:
 3. As a Django setting; recommended for a Django project that uses spacer. Example code in a Django settings module:
    ```python
    SPACER = {
-       'AWS_ACCESS_KEY_ID': 'YOUR_AWS_KEY_ID',
-       'AWS_SECRET_ACCESS_KEY': 'YOUR_AWS_SECRET_KEY',
+       'AWS_PROFILE_NAME': 'your-aws-config-profile-name',
        'AWS_REGION': 'us-west-2',
        'EXTRACTORS_CACHE_DIR': '/your/cache',
    }
@@ -55,7 +55,10 @@ Spacer supports the following schemes of using multiple settings sources:
 
 However, spacer will not read from multiple file-based settings sources; so if a secrets.json file is present, then spacer will not check for Django settings as a fallback.
 
-To debug your configuration, try opening a Python shell and run `from spacer import config`, then `config.check()`.
+To debug your configuration, try opening a Python shell and enter:
+
+- `from spacer import config`, then `config.check()`.
+- To debug AWS config in particular: `from spacer.aws import aws_check`, then `aws_check()`.
 
 ### Docker build
 The docker build is used in coralnet's deployment.

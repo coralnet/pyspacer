@@ -14,6 +14,7 @@ from PIL import Image
 from sklearn.calibration import CalibratedClassifierCV
 
 from spacer import config
+from spacer.aws import get_s3_resource
 from spacer.data_classes import ImageFeatures
 from spacer.exceptions import URLDownloadError
 from spacer.messages import DataLocation
@@ -111,9 +112,10 @@ class TestURLStorage(unittest.TestCase):
 
     @staticmethod
     def s3_url(filepath):
+        region = get_s3_resource().meta.client.meta.region_name
         return (
             'https://'
-            f'{config.CN_FIXTURES_BUCKET}.s3-{config.AWS_REGION}.amazonaws.com/'
+            f'{config.CN_FIXTURES_BUCKET}.s3-{region}.amazonaws.com/'
             f'{filepath}'
         )
 
