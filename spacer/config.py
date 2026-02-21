@@ -3,7 +3,7 @@ Contains config and settings for the repo.
 """
 
 from __future__ import annotations
-import importlib
+import importlib.util
 import json
 import os
 import sys
