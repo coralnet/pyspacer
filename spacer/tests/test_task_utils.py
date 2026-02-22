@@ -3,8 +3,9 @@ import unittest
 
 from PIL import Image
 
+from spacer.data_classes import DataLocation
 from spacer.exceptions import RowColumnInvalidError, TrainingLabelsError
-from spacer.messages import DataLocation, ImageLabels, TrainingTaskLabels
+from spacer.messages import ImageLabels, TrainingTaskLabels
 from spacer.task_utils import (
     check_extract_inputs, preprocess_labels, SplitMode)
 from spacer.train_utils import make_random_data
@@ -188,9 +189,9 @@ class TestSplitLabels(unittest.TestCase):
 
         # If each vector is entirely in one set, then these should be the
         # number of vectors in each set.
-        self.assertEqual(len(labels['train'].image_keys), 6)
-        self.assertEqual(len(labels['ref'].image_keys), 2)
-        self.assertEqual(len(labels['val'].image_keys), 2)
+        self.assertEqual(len(labels['train']), 6)
+        self.assertEqual(len(labels['ref']), 2)
+        self.assertEqual(len(labels['val']), 2)
 
     def test_points_dont_keep_vectors_together(self):
         n_data = 10
@@ -212,9 +213,9 @@ class TestSplitLabels(unittest.TestCase):
         # 10 of its points in one set. That is, we expect at least one
         # image key to appear in two or more sets.
         self.assertGreater(
-            len(labels['train'].image_keys)
-            + len(labels['ref'].image_keys)
-            + len(labels['val'].image_keys),
+            len(labels['train'])
+            + len(labels['ref'])
+            + len(labels['val']),
             10,
         )
 
@@ -268,9 +269,11 @@ class TestSplitLabels(unittest.TestCase):
         labels = preprocess_labels(
             # classes [1, 2, 3], 25 annotations
             ImageLabels({
-                '1': [*[(n, n, 1) for n in range(0, 9)],
-                      *[(n, n, 2) for n in range(100, 108)],
-                      *[(n, n, 3) for n in range(200, 208)]],
+                DataLocation('memory', '1'): [
+                    *[(n, n, 1) for n in range(0, 9)],
+                    *[(n, n, 2) for n in range(100, 108)],
+                    *[(n, n, 3) for n in range(200, 208)],
+                ],
             }),
             split_ratios=(0.101, 0.2),
             split_mode=SplitMode.POINTS_STRATIFIED,
@@ -284,9 +287,11 @@ class TestSplitLabels(unittest.TestCase):
             preprocess_labels(
                 # classes [1, 2, 3], 25 annotations
                 ImageLabels({
-                    '1': [*[(n, n, 1) for n in range(0, 9)],
-                          *[(n, n, 2) for n in range(100, 108)],
-                          *[(n, n, 3) for n in range(200, 208)]],
+                    DataLocation('memory', '1'): [
+                        *[(n, n, 1) for n in range(0, 9)],
+                        *[(n, n, 2) for n in range(100, 108)],
+                        *[(n, n, 3) for n in range(200, 208)],
+                    ],
                 }),
                 split_ratios=(0.099, 0.2),
                 split_mode=SplitMode.POINTS_STRATIFIED,
@@ -306,41 +311,46 @@ class TestSplitLabels(unittest.TestCase):
         ])
 
     def test_stratify_by_classes(self):
+        loc = DataLocation('memory', '1')
         labels = preprocess_labels(
             ImageLabels({
                 # Annotations per class: 60, 20, 10.
                 # The 60 are split between 2 groups of 50/10 so things aren't
                 # completely in order.
-                '1': [*[(n, n, 1) for n in range(0, 50)],
-                      *[(n, n, 2) for n in range(100, 120)],
-                      *[(n, n, 3) for n in range(200, 210)],
-                      *[(n, n, 1) for n in range(400, 410)]],
+                loc: [
+                    *[(n, n, 1) for n in range(0, 50)],
+                    *[(n, n, 2) for n in range(100, 120)],
+                    *[(n, n, 3) for n in range(200, 210)],
+                    *[(n, n, 1) for n in range(400, 410)],
+                ],
             }),
             split_mode=SplitMode.POINTS_STRATIFIED,
         )
 
         self.assertEqual(
-            self.count_of_label(labels.train['1'], 1), 48)
+            self.count_of_label(labels.train[loc], 1), 48)
         self.assertEqual(
-            self.count_of_label(labels.ref['1'], 1), 6)
+            self.count_of_label(labels.ref[loc], 1), 6)
         self.assertEqual(
-            self.count_of_label(labels.val['1'], 1), 6)
+            self.count_of_label(labels.val[loc], 1), 6)
 
         self.assertEqual(
-            self.count_of_label(labels.train['1'], 2), 16)
+            self.count_of_label(labels.train[loc], 2), 16)
         self.assertEqual(
-            self.count_of_label(labels.ref['1'], 2), 2)
+            self.count_of_label(labels.ref[loc], 2), 2)
         self.assertEqual(
-            self.count_of_label(labels.val['1'], 2), 2)
+            self.count_of_label(labels.val[loc], 2), 2)
 
         self.assertEqual(
-            self.count_of_label(labels.train['1'], 3), 8)
+            self.count_of_label(labels.train[loc], 3), 8)
         self.assertEqual(
-            self.count_of_label(labels.ref['1'], 3), 1)
+            self.count_of_label(labels.ref[loc], 3), 1)
         self.assertEqual(
-            self.count_of_label(labels.val['1'], 3), 1)
+            self.count_of_label(labels.val[loc], 3), 1)
 
     def test_stratify_with_many_uncommon_classes(self):
+        loc = DataLocation('memory', '1')
+
         # 10 of each of 100 classes.
         labels_data = []
         for class_number in range(1, 100+1):
@@ -353,22 +363,22 @@ class TestSplitLabels(unittest.TestCase):
         random.shuffle(labels_data)
         labels = preprocess_labels(
             ImageLabels({
-                '1': labels_data,
+                loc: labels_data,
             }),
             split_mode=SplitMode.POINTS_STRATIFIED,
         )
 
         for class_number in range(1, 100+1):
             self.assertEqual(
-                self.count_of_label(labels.train['1'], class_number), 8,
+                self.count_of_label(labels.train[loc], class_number), 8,
                 msg=f"Class {class_number} should have 8 instances in train",
             )
             self.assertEqual(
-                self.count_of_label(labels.ref['1'], class_number), 1,
+                self.count_of_label(labels.ref[loc], class_number), 1,
                 msg=f"Class {class_number} should have 1 instance in ref",
             )
             self.assertEqual(
-                self.count_of_label(labels.val['1'], class_number), 1,
+                self.count_of_label(labels.val[loc], class_number), 1,
                 msg=f"Class {class_number} should have 1 instance in val",
             )
 
@@ -380,11 +390,13 @@ class TestSplitLabels(unittest.TestCase):
         """
         labels = preprocess_labels(
             ImageLabels({
-                '1': [*[(n, n, 1) for n in range(0, 50)],
-                      *[(n, n, 2) for n in range(100, 103)],
-                      *[(n, n, 3) for n in range(200, 202)],
-                      *[(n, n, 4) for n in range(300, 301)],
-                      *[(n, n, 5) for n in range(400, 410)]],
+                DataLocation('memory', '1'): [
+                    *[(n, n, 1) for n in range(0, 50)],
+                    *[(n, n, 2) for n in range(100, 103)],
+                    *[(n, n, 3) for n in range(200, 202)],
+                    *[(n, n, 4) for n in range(300, 301)],
+                    *[(n, n, 5) for n in range(400, 410)],
+                ],
             }),
             # Ensure the filtering by train+ref doesn't exclude anything,
             # by giving ref a high ratio of 40%.
@@ -400,6 +412,8 @@ class TestSplitLabels(unittest.TestCase):
             msg="Classes 3 and 4 should be excluded")
 
     def test_do_not_stratify(self):
+        loc = DataLocation('memory', '1')
+
         # 10 of each of 100 classes.
         labels_data = []
         for class_number in range(1, 100+1):
@@ -412,13 +426,13 @@ class TestSplitLabels(unittest.TestCase):
         random.shuffle(labels_data)
         labels = preprocess_labels(
             ImageLabels({
-                '1': labels_data,
+                loc: labels_data,
             }),
             split_mode=SplitMode.POINTS,
         )
 
         booleans = [
-            self.count_of_label(labels.train['1'], class_number) == 8
+            self.count_of_label(labels.train[loc], class_number) == 8
             for class_number in range(1, 100+1)
         ]
         self.assertFalse(
@@ -483,26 +497,38 @@ class TestPreprocessLabels(unittest.TestCase):
             "After preprocessing training data, 'val' set is empty.")
 
     def test_filter_by_accepted_classes(self):
+        loc1 = DataLocation('memory', '1')
+        loc2 = DataLocation('memory', '2')
+        loc3 = DataLocation('memory', '3')
+        loc4 = DataLocation('memory', '4')
 
         labels = preprocess_labels(
             TrainingTaskLabels(
                 train=ImageLabels({
-                    '1': [(100, 100, 1),
-                          (200, 200, 2),
-                          (300, 300, 3)],
+                    loc1: [
+                        (100, 100, 1),
+                        (200, 200, 2),
+                        (300, 300, 3),
+                    ],
                 }),
                 ref=ImageLabels({
-                    '2': [(200, 200, 2),
-                          (300, 300, 3),
-                          (100, 100, 1)],
+                    loc2: [
+                        (200, 200, 2),
+                        (300, 300, 3),
+                        (100, 100, 1),
+                    ],
                 }),
                 val=ImageLabels({
-                    '3': [(300, 300, 3),
-                          (100, 100, 1),
-                          (200, 200, 2)],
-                    '4': [(100, 300, 3),
-                          (200, 100, 4),
-                          (300, 200, 3)],
+                    loc3: [
+                        (300, 300, 3),
+                        (100, 100, 1),
+                        (200, 200, 2),
+                    ],
+                    loc4: [
+                        (100, 300, 3),
+                        (200, 100, 4),
+                        (300, 200, 3),
+                    ],
                 }),
             ),
             # Filter to just 1 and 2. Note that, if not for passing this kwarg,
@@ -510,11 +536,11 @@ class TestPreprocessLabels(unittest.TestCase):
             accepted_classes={1, 2},
         )
 
-        self.assertEqual(labels.train['1'], [(100, 100, 1), (200, 200, 2)])
-        self.assertEqual(labels.ref['2'], [(200, 200, 2), (100, 100, 1)])
-        self.assertEqual(labels.val['3'], [(100, 100, 1), (200, 200, 2)])
+        self.assertEqual(labels.train[loc1], [(100, 100, 1), (200, 200, 2)])
+        self.assertEqual(labels.ref[loc2], [(200, 200, 2), (100, 100, 1)])
+        self.assertEqual(labels.val[loc3], [(100, 100, 1), (200, 200, 2)])
         self.assertNotIn(
-            '4', labels.val, msg="Image 4 should be excluded entirely")
+            loc4, labels.val, msg="Image 4 should be excluded entirely")
 
 
 if __name__ == '__main__':

@@ -18,6 +18,14 @@
   - Added an `aws_check()` function in `aws.py`, to help debug AWS configuration.
   - `S3Storage.exists()` now only returns False if there is a ClientError with status code 404. In other ClientError cases, including 403, this method will now re-raise the error. Due to this, it's now recommended to ensure you have the ListBucket permission for any S3 bucket you work with; otherwise, S3 will return 403 instead of 404 for a missing file (see [this article](https://repost.aws/articles/ARe3OTZ3SCTWWqGtiJ6aHn8Q/why-does-s-3-return-403-instead-of-404-when-the-object-doesnt-exist)).
 
+- Moved the `DataLocation` class from `messages.py` to `data_classes.py`.
+
+- When calling training, feature vector locations were previously specified across two different parameters: a `DataLocation` instance for the storage type and S3 bucket name (if applicable), and an `ImageLabels` instance for the file paths. Now, both of these pieces of information are specified by just an `ImageLabels` instance. As a result, a single training run's feature vectors are now free to use different storage types, and different S3 buckets if applicable.
+
+  Also, ImageLabels now provides an `add_image()` method as an alternate way of specifying data.
+
+  See PR #134 for code examples and more discussion.
+
 ## 0.12.0
 
 - Updates to pip-install dependencies:

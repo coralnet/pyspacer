@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 
 from spacer import config
-from spacer.messages import DataLocation
+from spacer.data_classes import DataLocation
 from spacer.train_classifier import trainer_factory
 from spacer.train_utils import make_random_data, train
 
@@ -45,15 +45,14 @@ class TestDefaultTrainerDummyData(unittest.TestCase):
         for clf_type in config.CLASSIFIER_TYPES:
             # 2 previous classifiers
             pc_clf1, _ = train(
-                train_data, ref_data, feature_loc, 1, clf_type)
+                train_data, ref_data, 1, clf_type)
             pc_clf2, _ = train(
-                train_data, ref_data, feature_loc, 1, clf_type)
+                train_data, ref_data, 1, clf_type)
 
             clf, val_results, return_message = trainer(
                 dict(train=train_data, ref=ref_data, val=val_data),
                 num_epochs,
                 [pc_clf1, pc_clf2],
-                feature_loc,
                 clf_type,
             )
 

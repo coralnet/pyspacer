@@ -7,72 +7,10 @@ python-native data-structures such that it can be stored.
 from __future__ import annotations
 import dataclasses
 from pathlib import Path
-from urllib.parse import urlparse
 
 from spacer import config
-from spacer.data_classes import DataClass, ImageLabels, LabelId
-
-
-class DataLocation(DataClass):
-    """
-    Points to the location of a piece of data. Can either be a url, a key
-    in a s3 bucket, a file path on a local file system or a key to a
-    in-memory store.
-    """
-    def __init__(self,
-                 storage_type: str,
-                 key: str,
-                 bucket_name: str | None = None):
-
-        assert storage_type in config.STORAGE_TYPES, "Storage type not valid."
-        if storage_type == 's3':
-            assert bucket_name is not None, "Need bucket_name to use s3."
-        self.storage_type = storage_type
-        self.key = key
-        self.bucket_name = bucket_name
-
-        self.filesystem_cache = None
-
-    @classmethod
-    def example(cls) -> 'DataLocation':
-        return DataLocation('memory', 'my_blob')
-
-    @property
-    def filename(self) -> str:
-        if self.storage_type == 'url':
-            # This is a basic implementation which just gets the last
-            # part of the URL 'path', even if that part isn't filename-like.
-            return Path(urlparse(self.key).path).name
-        else:
-            return Path(self.key).name
-
-    @property
-    def is_remote(self) -> bool:
-        return self.storage_type in ['url', 's3']
-
-    @property
-    def is_writable(self) -> bool:
-        return self.storage_type != 'url'
-
-    def set_filesystem_cache(self, dir_path):
-        if not self.is_remote:
-            raise TypeError(
-                "Filesystem caching is only available for remote storage.")
-        self.filesystem_cache = dir_path
-
-    @classmethod
-    def deserialize(cls, data: dict) -> 'DataLocation':
-        return DataLocation(**data)
-
-    def serialize(self) -> dict:
-        return dict(
-            storage_type=self.storage_type,
-            key=self.key,
-            bucket_name=self.bucket_name,
-        )
-
-    def __hash__(self):
-        return hash((self.storage_type, self.key, self.bucket_name))
+from spacer.data_classes import (
+    DataClass, DataLocation, ImageLabels, LabelId)
 
 
 class ExtractFeaturesMsg(DataClass):
@@ -202,6 +140,18 @@ class TrainingTaskLabels:
             + self.ref.label_count
             + self.val.label_count)
 
+    @property
+    def has_remote_data(self) -> bool:
+        return (
+            self.train.has_remote_data
+            or self.ref.has_remote_data
+            or self.val.has_remote_data)
+
+    def set_filesystem_cache(self, dir_path: str):
+        self.train.set_filesystem_cache(dir_path)
+        self.ref.set_filesystem_cache(dir_path)
+        self.val.set_filesystem_cache(dir_path)
+
     def serialize(self) -> dict:
         return {
             'train': self.train.serialize(),
@@ -252,11 +202,6 @@ class TrainClassifierMsg(DataClass):
         # used to train the classifier.
         # See TrainingTaskLabels comments for more info.
         labels: TrainingTaskLabels,
-        # All the feature vectors should use the same storage_type, and the
-        # same S3 bucket_name if applicable. This DataLocation's purpose is
-        # to describe those common storage details. The key arg is ignored,
-        # because that will be different for each feature vector.
-        features_loc: DataLocation,
         # List of previously-created models (classifiers) to also evaluate
         # using this dataset, for informational purposes only.
         # A classifier is stored as a pickled CalibratedClassifierCV.
@@ -288,7 +233,6 @@ class TrainClassifierMsg(DataClass):
         self.nbr_epochs = nbr_epochs
         self.clf_type = clf_type
         self.labels = labels
-        self.features_loc = features_loc
         self.previous_model_locs = previous_model_locs
         self.model_loc = model_loc
         self.valresult_loc = valresult_loc
@@ -302,7 +246,6 @@ class TrainClassifierMsg(DataClass):
             nbr_epochs=2,
             clf_type='MLP',
             labels=TrainingTaskLabels.example(),
-            features_loc=DataLocation('memory', ''),
             previous_model_locs=[
                 DataLocation('memory', 'previous_model1.pkl'),
                 DataLocation('memory', 'previous_model2.pkl'),
@@ -318,7 +261,6 @@ class TrainClassifierMsg(DataClass):
             'nbr_epochs': self.nbr_epochs,
             'clf_type': self.clf_type,
             'labels': self.labels.serialize(),
-            'features_loc': self.features_loc.serialize(),
             'previous_model_locs': [entry.serialize()
                                     for entry in self.previous_model_locs],
             'model_loc': self.model_loc.serialize(),
@@ -334,7 +276,6 @@ class TrainClassifierMsg(DataClass):
             nbr_epochs=data['nbr_epochs'],
             clf_type=data['clf_type'],
             labels=TrainingTaskLabels.deserialize(data['labels']),
-            features_loc=DataLocation.deserialize(data['features_loc']),
             previous_model_locs=[DataLocation.deserialize(entry)
                                  for entry in data['previous_model_locs']],
             model_loc=DataLocation.deserialize(data['model_loc']),

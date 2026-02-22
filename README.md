@@ -123,8 +123,9 @@ If you're loading the extractor files remotely (from S3 or from a URL), the file
 The output of `extract_features()` is a single feature-vector file, which is a JSON file that is deserializable using the `data_classes.ImageFeatures` class. Example usage:
 
 ```python
+from spacer.data_classes import DataLocation
 from spacer.extractors import EfficientNetExtractor
-from spacer.messages import DataLocation, ExtractFeaturesMsg
+from spacer.messages import ExtractFeaturesMsg
 from spacer.tasks import extract_features
 
 message = ExtractFeaturesMsg(
@@ -174,21 +175,40 @@ This three-set split is known by other names elsewhere, such as [training, valid
 There are a few ways to create the `labels` structure. Each way involves creating one or more instances of `data_classes.ImageLabels`:
 
 ```python
-from spacer.data_classes import ImageLabels
+from spacer.data_classes import DataLocation, ImageLabels
+
+# Method 1
 image_labels = ImageLabels({
     # Labels for one feature vector's points.
-    '/path/to/image1.featurevector': [
+    DataLocation('filesystem', '/path/to/image1.featurevector'): [
         # Point location at row 1000, column 2000, labeled as class 1.
         (1000, 2000, 1), 
         # Point location at row 3000, column 2000, labeled as class 2.
         (3000, 2000, 2),
     ],
     # Labels for another feature vector's points.
-    '/path/to/image2.featurevector': [
+    DataLocation('filesystem', '/path/to/image2.featurevector'): [
         (1500, 2500, 3),
         (2500, 500, 1),
     ],
 })
+
+# Method 2
+image_labels_2 = ImageLabels()
+image_labels_2.add_image(
+    DataLocation('filesystem', '/path/to/image1.featurevector'),
+    [
+        (1000, 2000, 1),
+        (3000, 2000, 2),
+    ],
+)
+image_labels_2.add_image(
+    DataLocation('filesystem', '/path/to/image2.featurevector'),
+    [
+        (1500, 2500, 3),
+        (2500, 500, 1),
+    ],
+)
 ```
 
 The `labels` argument of `TrainClassifierMsg` expects an instance of `data_classes.TrainingTaskLabels`. There are a few ways to create this:
@@ -232,8 +252,8 @@ Once you have a TrainingTaskLabels instance, pass that and the other required ar
 Example: 
 
 ```python
-from spacer.data_classes import ImageLabels
-from spacer.messages import DataLocation, TrainClassifierMsg
+from spacer.data_classes import DataLocation, ImageLabels
+from spacer.messages import TrainClassifierMsg
 from spacer.tasks import train_classifier
 from spacer.task_utils import preprocess_labels
 
@@ -252,8 +272,8 @@ message = TrainClassifierMsg(
     clf_type='MLP',
     # Point-locations to ground-truth-labels (annotations) mappings
     # used to train the classifier.
-    # The dict keys must be the same as the `key` used in the
-    # extract-features task's `feature_loc`.
+    # The dict keys are DataLocations for the feature vector files
+    # created by the extract-features task.
     # The dict values are lists of tuples of (row, column, label ID).
     # Label IDs may be either integers or strings.
     # preprocess_labels() can automatically split the data into training,
@@ -261,15 +281,13 @@ message = TrainClassifierMsg(
     # split it yourself; for details, see `TrainingTaskLabels` comments
     # in messages.py.
     labels=preprocess_labels(ImageLabels({
-        '/path/to/image1.featurevector': [(1000, 2000, 1), (3000, 2000, 2)],
-        '/path/to/image2.featurevector': [(1000, 2000, 3), (3000, 2000, 1)],
-        '/path/to/image3.featurevector': [(1234, 2857, 11), (3094, 2262, 25)],
+        DataLocation('filesystem', '/path/to/image1.featurevector'): 
+            [(1000, 2000, 1), (3000, 2000, 2)],
+        DataLocation('filesystem', '/path/to/image2.featurevector'):
+            [(1000, 2000, 3), (3000, 2000, 1)],
+        DataLocation('filesystem', '/path/to/image3.featurevector'):
+            [(1234, 2857, 11), (3094, 2262, 25)],
     })),
-    # All the feature vectors should use the same storage_type, and the same
-    # S3 bucket_name if applicable. This DataLocation's purpose is to describe
-    # those common storage details. The key arg is ignored, because that will
-    # be different for each feature vector.
-    features_loc=DataLocation('filesystem', ''),
     # List of previously-created models (classifiers) to also evaluate
     # using this validation set, for informational purposes only.
     # This can be handy for comparing classifiers.
@@ -339,7 +357,8 @@ for ground_truth_i, prediction_i, score in zip(
 Takes a feature vector (representing points in an image) to classify, and a classifier trained on the same type of features (EfficientNet or VGG16). Produces prediction results (scores) for the image points, as posterior probabilities for each class. Example:
 
 ```python
-from spacer.messages import DataLocation, ClassifyFeaturesMsg
+from spacer.data_classes import DataLocation
+from spacer.messages import ClassifyFeaturesMsg
 from spacer.tasks import classify_features
 
 message = ClassifyFeaturesMsg(
@@ -372,8 +391,9 @@ This basically does `extract_features` and `classify_features` together in one g
 Takes an image, a list of pixel locations on that image, a feature extractor, and a classifier. Produces prediction results (scores) for the image points, as posterior probabilities for each class. Example:
 
 ```python
+from spacer.data_classes import DataLocation
 from spacer.extractors import EfficientNetExtractor
-from spacer.messages import DataLocation, ClassifyImageMsg
+from spacer.messages import ClassifyImageMsg
 from spacer.tasks import classify_image
 
 message = ClassifyImageMsg(

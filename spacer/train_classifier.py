@@ -10,8 +10,7 @@ from sklearn.calibration import CalibratedClassifierCV
 
 from spacer import config
 from spacer.data_classes import ValResults
-from spacer.messages import (
-    DataLocation, TrainClassifierReturnMsg, TrainingTaskLabels)
+from spacer.messages import TrainClassifierReturnMsg, TrainingTaskLabels
 from spacer.train_utils import train, evaluate_classifier, calc_acc
 
 
@@ -22,7 +21,6 @@ class ClassifierTrainer(abc.ABC):  # pragma: no cover
                  labels: TrainingTaskLabels,
                  nbr_epochs: int,
                  pc_models: list[CalibratedClassifierCV],
-                 feature_loc: DataLocation,
                  clf_type: str) \
             -> tuple[CalibratedClassifierCV,
                      ValResults,
@@ -40,25 +38,24 @@ class MiniBatchTrainer(ClassifierTrainer):
                  labels,
                  nbr_epochs,
                  pc_models,
-                 feature_loc,
                  clf_type):
 
         assert clf_type in config.CLASSIFIER_TYPES
         # Train.
         t0 = time.time()
         clf, ref_accs = train(
-            labels['train'], labels['ref'], feature_loc, nbr_epochs, clf_type)
+            labels['train'], labels['ref'], nbr_epochs, clf_type)
         classes = clf.classes_.tolist()
 
         # Evaluate new classifier on validation set.
         val_gts, val_ests, val_scores = evaluate_classifier(
-            clf, labels['val'], feature_loc)
+            clf, labels['val'])
 
         # Evaluate previous classifiers on validation set.
         pc_accs = []
         for pc_model in pc_models:
             pc_gts, pc_ests, _ = evaluate_classifier(
-                pc_model, labels['val'], feature_loc)
+                pc_model, labels['val'])
             pc_accs.append(calc_acc(pc_gts, pc_ests))
 
         return \
