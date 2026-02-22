@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.13.0 (WIP)
+## 0.13.0
 
 - Updates to pip-install dependencies:
 
