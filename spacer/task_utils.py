@@ -130,7 +130,7 @@ def split_labels(
     # Reference set's max ratio (also capped by
     # TRAINING_BATCH_LABEL_COUNT) and validation set's ratio.
     # Remaining annotations go to the training set.
-    # Example: (0.5, 0.15) for a 5% ref / 15% val / 80% train split.
+    # Example: (0.05, 0.15) for a 5% ref / 15% val / 80% train split.
     split_ratios: tuple[float, float],
     split_mode: SplitMode,
 ) -> TrainingTaskLabels:
