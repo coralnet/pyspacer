@@ -212,7 +212,7 @@ class TestTrainClassifier(unittest.TestCase):
 
         msg = TrainClassifierMsg(
             job_token='test',
-            trainer_name='minibatch',
+            trainer='minibatch',
             nbr_epochs=1,
             clf_type=clf_type,
             labels=labels,
@@ -280,7 +280,7 @@ class TestTrainClassifier(unittest.TestCase):
 
         msg = TrainClassifierMsg(
             job_token='test',
-            trainer_name='minibatch',
+            trainer='minibatch',
             nbr_epochs=1,
             clf_type='LR',
             labels=TrainingTaskLabels(
@@ -330,7 +330,7 @@ class TestTrainClassifier(unittest.TestCase):
         ):
             msg = TrainClassifierMsg(
                 job_token='test',
-                trainer_name='minibatch',
+                trainer='minibatch',
                 nbr_epochs=2,
                 clf_type='MLP',
                 labels=preprocess_labels(make_random_data(
@@ -389,7 +389,7 @@ class ClassifyReturnMsgTest(unittest.TestCase):
 
         msg = TrainClassifierMsg(
             job_token='test',
-            trainer_name='minibatch',
+            trainer='minibatch',
             nbr_epochs=1,
             clf_type='MLP',
             labels=labels,

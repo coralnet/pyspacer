@@ -18,7 +18,7 @@ from spacer.messages import \
     ClassifyReturnMsg, JobMsg, JobReturnMsg
 from spacer.storage import load_image, load_classifier, store_classifier
 from spacer.task_utils import check_extract_inputs, preprocess_labels
-from spacer.train_classifier import ClassifierTrainer, trainer_factory
+from spacer.train_classifier import ClassifierTrainer
 
 logger = getLogger(__name__)
 
@@ -37,7 +37,7 @@ def extract_features(msg: ExtractFeaturesMsg) -> ExtractFeaturesReturnMsg:
 
 
 def train_classifier(msg: TrainClassifierMsg) -> TrainClassifierReturnMsg:
-    trainer: ClassifierTrainer = trainer_factory(msg.trainer_name)
+    trainer: ClassifierTrainer = msg.trainer
 
     labels = preprocess_labels(msg.labels)
     logger.debug(
