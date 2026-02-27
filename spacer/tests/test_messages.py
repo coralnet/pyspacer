@@ -80,6 +80,45 @@ class TestTrainClassifierMsg(unittest.TestCase):
         self.assertEqual(msg, TrainClassifierMsg.deserialize(
             json.loads(json.dumps(msg.serialize()))))
 
+    def test_legacy_deserialize(self):
+        """Deserialize a dict with the old 'trainer_name' key."""
+        msg = TrainClassifierMsg.example()
+        data = msg.serialize()
+        # Replace new format with legacy format
+        del data['trainer']
+        data['trainer_name'] = 'minibatch'
+        restored = TrainClassifierMsg.deserialize(data)
+        self.assertEqual(msg, restored)
+
+    def test_trainer_object_init(self):
+        """Pass a ClassifierTrainer instance directly."""
+        from spacer.train_classifier import MiniBatchTrainer
+        trainer = MiniBatchTrainer()
+        msg = TrainClassifierMsg.example()
+        # Replace trainer via a fresh construction with instance
+        msg2 = TrainClassifierMsg(
+            job_token=msg.job_token,
+            trainer=trainer,
+            nbr_epochs=msg.nbr_epochs,
+            clf_type=msg.clf_type,
+            labels=msg.labels,
+            previous_model_locs=msg.previous_model_locs,
+            model_loc=msg.model_loc,
+            valresult_loc=msg.valresult_loc,
+        )
+        self.assertEqual(msg, msg2)
+        # Round-trip through serialize/deserialize
+        self.assertEqual(msg2, TrainClassifierMsg.deserialize(
+            msg2.serialize()))
+
+    def test_trainer_string_init(self):
+        """Pass a string, verify it resolves and round-trips."""
+        msg = TrainClassifierMsg.example()  # uses trainer='minibatch'
+        from spacer.train_classifier import MiniBatchTrainer
+        self.assertIsInstance(msg.trainer, MiniBatchTrainer)
+        self.assertEqual(msg, TrainClassifierMsg.deserialize(
+            msg.serialize()))
+
 
 class TestTrainClassifierReturnMsg(unittest.TestCase):
 

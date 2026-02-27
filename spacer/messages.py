@@ -189,8 +189,10 @@ class TrainClassifierMsg(DataClass):
         self,
         # For caller's reference.
         job_token: str,
-        # 'minibatch' is currently the only trainer that spacer defines.
-        trainer_name: str,
+        # A ClassifierTrainer instance, or a string that resolves to one
+        # via trainer_factory() (e.g. 'minibatch' or a fully-qualified
+        # class path like 'mypackage.trainers.MyTrainer').
+        trainer: 'ClassifierTrainer | str',
         # How many iterations the training algorithm should run; more epochs
         # = more opportunity to converge to a better fit, but slower.
         nbr_epochs: int,
@@ -226,10 +228,12 @@ class TrainClassifierMsg(DataClass):
         feature_cache_dir: str | Path = FeatureCache.AUTO,
     ):
 
-        assert trainer_name in config.TRAINER_NAMES
+        if isinstance(trainer, str):
+            from spacer.train_classifier import trainer_factory
+            trainer = trainer_factory(trainer)
 
         self.job_token = job_token
-        self.trainer_name = trainer_name
+        self.trainer = trainer
         self.nbr_epochs = nbr_epochs
         self.clf_type = clf_type
         self.labels = labels
@@ -242,7 +246,7 @@ class TrainClassifierMsg(DataClass):
     def example(cls):
         return TrainClassifierMsg(
             job_token='123_abc',
-            trainer_name='minibatch',
+            trainer='minibatch',
             nbr_epochs=2,
             clf_type='MLP',
             labels=TrainingTaskLabels.example(),
@@ -257,7 +261,7 @@ class TrainClassifierMsg(DataClass):
     def serialize(self) -> dict:
         return {
             'job_token': self.job_token,
-            'trainer_name': self.trainer_name,
+            'trainer': self.trainer.serialize(),
             'nbr_epochs': self.nbr_epochs,
             'clf_type': self.clf_type,
             'labels': self.labels.serialize(),
@@ -270,9 +274,17 @@ class TrainClassifierMsg(DataClass):
 
     @classmethod
     def deserialize(cls, data: dict) -> 'TrainClassifierMsg':
+        # Support legacy format with 'trainer_name' key.
+        if 'trainer_name' in data:
+            from spacer.train_classifier import trainer_factory
+            trainer = trainer_factory(data['trainer_name'])
+        else:
+            from spacer.train_classifier import ClassifierTrainer
+            trainer = ClassifierTrainer.deserialize(data['trainer'])
+
         return TrainClassifierMsg(
             job_token=data['job_token'],
-            trainer_name=data['trainer_name'],
+            trainer=trainer,
             nbr_epochs=data['nbr_epochs'],
             clf_type=data['clf_type'],
             labels=TrainingTaskLabels.deserialize(data['labels']),

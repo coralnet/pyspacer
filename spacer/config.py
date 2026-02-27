@@ -212,6 +212,8 @@ CLASSIFIER_TYPES = [
     'MLP'
 ]
 
+# Deprecated: use ClassifierTrainer instances or trainer_factory() instead.
+# Kept for backward compatibility with code that checks membership.
 TRAINER_NAMES = [
     'minibatch'
 ]

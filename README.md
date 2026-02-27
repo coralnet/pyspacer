@@ -261,7 +261,7 @@ message = TrainClassifierMsg(
     # For your bookkeeping.
     job_token='classifier1',
     # 'minibatch' is currently the only trainer that spacer defines.
-    trainer_name='minibatch',
+    trainer='minibatch',
     # How many iterations the training algorithm should run; more epochs
     # = more opportunity to converge to a better fit, but slower.
     nbr_epochs=10,

@@ -5,6 +5,7 @@ Defines train-classifier ABC; implementations; and factory.
 from __future__ import annotations
 import abc
 import time
+from importlib import import_module
 
 from sklearn.calibration import CalibratedClassifierCV
 
@@ -12,6 +13,10 @@ from spacer import config
 from spacer.data_classes import ValResults
 from spacer.messages import TrainClassifierReturnMsg, TrainingTaskLabels
 from spacer.train_utils import train, evaluate_classifier, calc_acc
+
+_BUILTIN_TRAINERS: dict[str, str] = {
+    'minibatch': 'spacer.train_classifier.MiniBatchTrainer',
+}
 
 
 class ClassifierTrainer(abc.ABC):  # pragma: no cover
@@ -26,6 +31,37 @@ class ClassifierTrainer(abc.ABC):  # pragma: no cover
                      ValResults,
                      TrainClassifierReturnMsg]:
         pass
+
+    def serialize(self) -> dict:
+        cls = self.__class__
+        return dict(
+            class_path=f'{cls.__module__}.{cls.__name__}',
+        )
+
+    @staticmethod
+    def deserialize(data: dict) -> 'ClassifierTrainer':
+        working_data = data.copy()
+        class_path = working_data.pop('class_path')
+
+        module_path, class_name = class_path.rsplit('.', 1)
+        module = import_module(module_path)
+        trainer_class = getattr(module, class_name)
+
+        if not (
+            isinstance(trainer_class, type)
+            and issubclass(trainer_class, ClassifierTrainer)
+        ):
+            raise TypeError(
+                f"{class_path} is not a ClassifierTrainer subclass"
+            )
+
+        return trainer_class(**working_data)
+
+    def __repr__(self):
+        return str(self.serialize())
+
+    def __eq__(self, other):
+        return self.serialize() == other.serialize()
 
 
 class MiniBatchTrainer(ClassifierTrainer):
@@ -75,7 +111,11 @@ class MiniBatchTrainer(ClassifierTrainer):
 
 
 def trainer_factory(trainer_name: str) -> ClassifierTrainer:
-    """ There is only one type of Trainer, so this factory is trivial. """
-    assert trainer_name in config.TRAINER_NAMES
-    if trainer_name == 'minibatch':
-        return MiniBatchTrainer()
+    """
+    Resolve a trainer name or class path to a ClassifierTrainer instance.
+
+    Accepts either a built-in alias (e.g. 'minibatch') or a fully-qualified
+    class path (e.g. 'mypackage.trainers.MyTrainer').
+    """
+    class_path = _BUILTIN_TRAINERS.get(trainer_name, trainer_name)
+    return ClassifierTrainer.deserialize({'class_path': class_path})
