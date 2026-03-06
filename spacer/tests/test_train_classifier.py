@@ -8,7 +8,7 @@ from spacer.data_classes import DataLocation
 from spacer.train_classifier import (
     ClassifierTrainer, MiniBatchTrainer, trainer_factory,
 )
-from spacer.train_utils import make_random_data, train
+from spacer.train_utils import make_random_data
 
 
 class TestDefaultTrainerDummyData(unittest.TestCase):
@@ -46,9 +46,9 @@ class TestDefaultTrainerDummyData(unittest.TestCase):
         trainer = trainer_factory('minibatch')
         for clf_type in config.CLASSIFIER_TYPES:
             # 2 previous classifiers
-            pc_clf1, _ = train(
+            pc_clf1, _ = MiniBatchTrainer()._train(
                 train_data, ref_data, 1, clf_type)
-            pc_clf2, _ = train(
+            pc_clf2, _ = MiniBatchTrainer()._train(
                 train_data, ref_data, 1, clf_type)
 
             clf, val_results, return_message = trainer(
@@ -119,6 +119,127 @@ class TestTrainerSerialization(unittest.TestCase):
 
     def test_equality(self):
         self.assertEqual(MiniBatchTrainer(), MiniBatchTrainer())
+
+    def test_serialize_default_only_class_path(self):
+        trainer = MiniBatchTrainer()
+        self.assertEqual(
+            trainer.serialize(),
+            {'class_path': 'spacer.train_classifier.MiniBatchTrainer'},
+        )
+
+    def test_serialize_with_custom_params(self):
+        trainer = MiniBatchTrainer(batch_size=10000)
+        data = trainer.serialize()
+        self.assertIn('batch_size', data)
+        self.assertEqual(data['batch_size'], 10000)
+
+    def test_round_trip_with_custom_params(self):
+        trainer = MiniBatchTrainer(batch_size=10000, sgd_loss='hinge')
+        data = trainer.serialize()
+        restored = ClassifierTrainer.deserialize(data)
+        self.assertEqual(trainer, restored)
+        self.assertEqual(restored.batch_size, 10000)
+        self.assertEqual(restored.sgd_loss, 'hinge')
+
+
+class TestTrain(unittest.TestCase):
+
+    def do_basic_run(self, class_list, clf_type):
+
+        n_traindata = 5
+        n_refdata = 1
+        points_per_image = 20
+        feature_dim = 5
+        num_epochs = 4
+        feature_loc = DataLocation(storage_type='memory', key='')
+
+        train_labels = make_random_data(
+            n_traindata, class_list, points_per_image,
+            feature_dim, feature_loc,
+        )
+        ref_labels = make_random_data(
+            n_refdata, class_list, points_per_image,
+            feature_dim, feature_loc,
+        )
+
+        clf_calibrated, ref_acc = MiniBatchTrainer()._train(
+            train_labels, ref_labels,
+            num_epochs, clf_type,
+        )
+
+        self.assertEqual(
+            len(ref_acc), num_epochs,
+            msg="Sanity check: expecting one ref_acc element per epoch")
+
+    def test_lr_int_labels(self):
+        self.do_basic_run([1, 2], 'LR')
+
+    def test_mlp_int_labels(self):
+        self.do_basic_run([1, 2], 'MLP')
+
+    def test_lr_str_labels(self):
+        self.do_basic_run(['Porites', 'CCA', 'Sand'], 'LR')
+
+    def test_mlp_str_labels(self):
+        self.do_basic_run(['Porites', 'CCA', 'Sand'], 'MLP')
+
+    def test_mlp_hybrid_mode(self):
+
+        param_sets = [
+            (11, 20, (100,), 1e-3),
+            (100, 1000, (200, 100), 1e-4),
+        ]
+
+        for (n_traindata, points_per_image, hls, lr) in param_sets:
+            feature_dim = 5
+            class_list = [1, 2]
+            num_epochs = 4
+            feature_loc = DataLocation(storage_type='memory', key='')
+
+            train_labels = make_random_data(
+                n_traindata, class_list, points_per_image,
+                feature_dim, feature_loc,
+            )
+            ref_labels = make_random_data(
+                1, class_list, points_per_image,
+                feature_dim, feature_loc,
+            )
+
+            clf_calibrated, ref_acc = MiniBatchTrainer()._train(
+                train_labels, ref_labels, num_epochs, 'MLP')
+            clf_param = clf_calibrated.get_params()['estimator']
+            self.assertEqual(
+                clf_param.hidden_layer_sizes, hls,
+                msg="Hidden layer sizes should correspond to label count")
+            self.assertEqual(
+                clf_param.learning_rate_init, lr,
+                msg="Learning rate init value should correspond to label"
+                    " count")
+
+    def test_custom_batch_size(self):
+        feature_loc = DataLocation(storage_type='memory', key='')
+        train_labels = make_random_data(
+            5, [1, 2], 20, 5, feature_loc)
+        ref_labels = make_random_data(
+            1, [1, 2], 20, 5, feature_loc)
+        trainer = MiniBatchTrainer(batch_size=50)
+        clf, ref_acc = trainer._train(train_labels, ref_labels, 2, 'LR')
+        self.assertEqual(len(ref_acc), 2)
+
+    def test_explicit_mlp_params(self):
+        feature_loc = DataLocation(storage_type='memory', key='')
+        train_labels = make_random_data(
+            5, [1, 2], 20, 5, feature_loc)
+        ref_labels = make_random_data(
+            1, [1, 2], 20, 5, feature_loc)
+        trainer = MiniBatchTrainer(
+            mlp_hidden_layer_sizes=(50,),
+            mlp_learning_rate_init=0.01,
+        )
+        clf, ref_acc = trainer._train(train_labels, ref_labels, 2, 'MLP')
+        clf_param = clf.get_params()['estimator']
+        self.assertEqual(clf_param.hidden_layer_sizes, (50,))
+        self.assertEqual(clf_param.learning_rate_init, 0.01)
 
 
 if __name__ == '__main__':

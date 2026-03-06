@@ -7,11 +7,11 @@ from spacer import config
 from spacer.data_classes import (
     DataLocation, ImageLabels, PointFeatures, ImageFeatures)
 from spacer.exceptions import RowColumnMismatchError, RowColumnMissingError
+from spacer.train_classifier import MiniBatchTrainer
 from spacer.train_utils import (
     calc_acc,
     evaluate_classifier,
     make_random_data,
-    train,
 )
 
 
@@ -46,81 +46,6 @@ class TestMakeRandom(unittest.TestCase):
             msg="Should have created features as expected")
 
 
-class TestTrain(unittest.TestCase):
-
-    def do_basic_run(self, class_list, clf_type):
-
-        n_traindata = 5
-        n_refdata = 1
-        points_per_image = 20
-        feature_dim = 5
-        num_epochs = 4
-        feature_loc = DataLocation(storage_type='memory', key='')
-
-        train_labels = make_random_data(
-            n_traindata, class_list, points_per_image,
-            feature_dim, feature_loc,
-        )
-        ref_labels = make_random_data(
-            n_refdata, class_list, points_per_image,
-            feature_dim, feature_loc,
-        )
-
-        clf_calibrated, ref_acc = train(
-            train_labels, ref_labels,
-            num_epochs, clf_type,
-        )
-
-        self.assertEqual(
-            len(ref_acc), num_epochs,
-            msg="Sanity check: expecting one ref_acc element per epoch")
-
-    def test_lr_int_labels(self):
-        self.do_basic_run([1, 2], 'LR')
-
-    def test_mlp_int_labels(self):
-        self.do_basic_run([1, 2], 'MLP')
-
-    def test_lr_str_labels(self):
-        self.do_basic_run(['Porites', 'CCA', 'Sand'], 'LR')
-
-    def test_mlp_str_labels(self):
-        self.do_basic_run(['Porites', 'CCA', 'Sand'], 'MLP')
-
-    def test_mlp_hybrid_mode(self):
-
-        param_sets = [
-            (11, 20, (100,), 1e-3),
-            (100, 1000, (200, 100), 1e-4),
-        ]
-
-        for (n_traindata, points_per_image, hls, lr) in param_sets:
-            feature_dim = 5
-            class_list = [1, 2]
-            num_epochs = 4
-            feature_loc = DataLocation(storage_type='memory', key='')
-
-            train_labels = make_random_data(
-                n_traindata, class_list, points_per_image,
-                feature_dim, feature_loc,
-            )
-            ref_labels = make_random_data(
-                1, class_list, points_per_image,
-                feature_dim, feature_loc,
-            )
-
-            clf_calibrated, ref_acc = train(
-                train_labels, ref_labels, num_epochs, 'MLP')
-            clf_param = clf_calibrated.get_params()['estimator']
-            self.assertEqual(
-                clf_param.hidden_layer_sizes, hls,
-                msg="Hidden layer sizes should correspond to label count")
-            self.assertEqual(
-                clf_param.learning_rate_init, lr,
-                msg="Learning rate init value should correspond to label"
-                    " count")
-
-
 class TestEvaluateClassifier(unittest.TestCase):
 
     def test_simple(self):
@@ -136,7 +61,7 @@ class TestEvaluateClassifier(unittest.TestCase):
             3, class_list, points_per_image, feature_dim, feature_loc)
 
         for clf_type in config.CLASSIFIER_TYPES:
-            clf, _ = train(train_data, ref_data, 1, clf_type)
+            clf, _ = MiniBatchTrainer()._train(train_data, ref_data, 1, clf_type)
 
             gts, ests, scores = evaluate_classifier(clf, val_data)
             # Sanity checks

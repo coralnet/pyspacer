@@ -25,7 +25,8 @@ from spacer.storage import \
     store_classifier, \
     clear_memory_storage
 from spacer.tests.utils import cn_beta_fixture_location
-from spacer.train_utils import make_random_data, train
+from spacer.train_classifier import MiniBatchTrainer
+from spacer.train_utils import make_random_data
 from .decorators import require_cn_fixtures, require_s3
 from .utils import temp_filesystem_data_location
 
@@ -84,7 +85,7 @@ class BaseStorageTest(unittest.TestCase, abc.ABC):
             feature_dim=5,
             feature_loc_base=features_loc_template,
         )
-        clf, _ = train(
+        clf, _ = MiniBatchTrainer()._train(
             train_labels, ref_labels, 1, 'LR')
         store_classifier(self.tmp_model_loc, clf)
         self.assertTrue(self.storage.exists(self.tmp_model_loc.key))

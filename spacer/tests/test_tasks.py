@@ -42,7 +42,8 @@ from spacer.tasks import (
 )
 from spacer.task_utils import preprocess_labels
 from spacer.tests.utils import cn_beta_fixture_location, temp_s3_filepaths
-from spacer.train_utils import make_random_data, train
+from spacer.train_classifier import MiniBatchTrainer
+from spacer.train_utils import make_random_data
 from .decorators import require_cn_fixtures, require_s3
 
 TEST_URL = \
@@ -201,7 +202,7 @@ class TestTrainClassifier(unittest.TestCase):
 
         # Train once by calling directly so that we have a
         # previous classifier.
-        clf, _ = train(
+        clf, _ = MiniBatchTrainer()._train(
             labels.train, labels.ref, 1, clf_type)
 
         previous_classifier_loc = DataLocation(storage_type='memory',
