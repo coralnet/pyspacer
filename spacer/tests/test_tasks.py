@@ -41,7 +41,11 @@ from spacer.tasks import (
     train_classifier,
 )
 from spacer.task_utils import preprocess_labels
-from spacer.tests.utils import cn_beta_fixture_location, temp_s3_filepaths
+from spacer.tests.utils import (
+    cn_beta_fixture_location,
+    temp_s3_filepaths,
+    spy_decorator
+)
 from spacer.train_classifier import MiniBatchTrainer
 from spacer.train_utils import make_random_data
 from .decorators import require_cn_fixtures, require_s3
@@ -166,20 +170,6 @@ class TestExtractFeatures(unittest.TestCase):
         _ = extract_features(msg)
         features = ImageFeatures.load(msg.feature_loc)
         self.assertEqual(len(features.point_features), len(msg.rowcols))
-
-
-def spy_decorator(method_to_decorate):
-    """
-    A way to track calls to a class's instance method, across all instances
-    of the class. From:
-    https://stackoverflow.com/a/41599695
-    """
-    mock_obj = mock.MagicMock()
-    def wrapper(self, *args, **kwargs):
-        mock_obj(*args, **kwargs)
-        return method_to_decorate(self, *args, **kwargs)
-    wrapper.mock_obj = mock_obj
-    return wrapper
 
 
 class TestTrainClassifier(unittest.TestCase):

@@ -1,14 +1,16 @@
 import random
 import unittest
+from unittest import mock
 
 import numpy as np
 
 from spacer import config
-from spacer.data_classes import DataLocation
+from spacer.data_classes import DataLocation, ImageLabels
 from spacer.train_classifier import (
     ClassifierTrainer, MiniBatchTrainer, trainer_factory,
 )
 from spacer.train_utils import make_random_data
+from spacer.tests.utils import spy_decorator
 
 
 class TestDefaultTrainerDummyData(unittest.TestCase):
@@ -223,8 +225,23 @@ class TestTrain(unittest.TestCase):
         ref_labels = make_random_data(
             1, [1, 2], 20, 5, feature_loc)
         trainer = MiniBatchTrainer(batch_size=50)
-        clf, ref_acc = trainer._train(train_labels, ref_labels, 2, 'LR')
+
+        load_spied = spy_decorator(ImageLabels.load_data_in_batches)
+        with mock.patch.object(
+            ImageLabels, 'load_data_in_batches', load_spied
+        ):
+            clf, ref_acc = trainer._train(
+                train_labels, ref_labels, 2, 'LR')
+
         self.assertEqual(len(ref_acc), 2)
+        # Verify batch_size=50 was passed through to load_data_in_batches.
+        # Called once per epoch with random_seed=epoch_number, plus once
+        # for ref data loading via load_all_data().
+        load_spied.mock_obj.assert_any_call(batch_size=50, random_seed=0)
+        load_spied.mock_obj.assert_any_call(batch_size=50, random_seed=1)
+        load_spied.mock_obj.assert_any_call(
+            batch_size=None, random_seed=None)
+        self.assertEqual(load_spied.mock_obj.call_count, 3)
 
     def test_explicit_mlp_params(self):
         feature_loc = DataLocation(storage_type='memory', key='')
