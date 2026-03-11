@@ -88,7 +88,7 @@ class TestProcessJobErrorHandling(unittest.TestCase):
             msg = JobMsg(task_name='train_classifier',
                          tasks=[TrainClassifierMsg(
                              job_token='my_job',
-                             trainer_name='minibatch',
+                             trainer='minibatch',
                              nbr_epochs=1,
                              clf_type=clf_type,
                              labels=TrainingTaskLabels.example(),

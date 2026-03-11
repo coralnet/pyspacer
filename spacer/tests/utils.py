@@ -3,6 +3,7 @@
 from contextlib import contextmanager
 import tempfile
 import uuid
+from unittest import mock
 
 import numpy as np
 from PIL import Image
@@ -10,6 +11,20 @@ from PIL import Image
 from spacer import config
 from spacer.messages import DataLocation
 from spacer.storage import FileSystemStorage, S3Storage
+
+
+def spy_decorator(method_to_decorate):
+    """
+    A way to track calls to a class's instance method, across all instances
+    of the class. From:
+    https://stackoverflow.com/a/41599695
+    """
+    mock_obj = mock.MagicMock()
+    def wrapper(self, *args, **kwargs):
+        mock_obj(*args, **kwargs)
+        return method_to_decorate(self, *args, **kwargs)
+    wrapper.mock_obj = mock_obj
+    return wrapper
 
 
 def cn_beta_fixture_location(key):

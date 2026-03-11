@@ -41,8 +41,13 @@ from spacer.tasks import (
     train_classifier,
 )
 from spacer.task_utils import preprocess_labels
-from spacer.tests.utils import cn_beta_fixture_location, temp_s3_filepaths
-from spacer.train_utils import make_random_data, train
+from spacer.tests.utils import (
+    cn_beta_fixture_location,
+    temp_s3_filepaths,
+    spy_decorator
+)
+from spacer.train_classifier import MiniBatchTrainer
+from spacer.train_utils import make_random_data
 from .decorators import require_cn_fixtures, require_s3
 
 TEST_URL = \
@@ -167,20 +172,6 @@ class TestExtractFeatures(unittest.TestCase):
         self.assertEqual(len(features.point_features), len(msg.rowcols))
 
 
-def spy_decorator(method_to_decorate):
-    """
-    A way to track calls to a class's instance method, across all instances
-    of the class. From:
-    https://stackoverflow.com/a/41599695
-    """
-    mock_obj = mock.MagicMock()
-    def wrapper(self, *args, **kwargs):
-        mock_obj(*args, **kwargs)
-        return method_to_decorate(self, *args, **kwargs)
-    wrapper.mock_obj = mock_obj
-    return wrapper
-
-
 class TestTrainClassifier(unittest.TestCase):
 
     def do_basic_run(self, class_list, clf_type):
@@ -201,7 +192,7 @@ class TestTrainClassifier(unittest.TestCase):
 
         # Train once by calling directly so that we have a
         # previous classifier.
-        clf, _ = train(
+        clf, _ = MiniBatchTrainer()._train(
             labels.train, labels.ref, 1, clf_type)
 
         previous_classifier_loc = DataLocation(storage_type='memory',
@@ -212,7 +203,7 @@ class TestTrainClassifier(unittest.TestCase):
 
         msg = TrainClassifierMsg(
             job_token='test',
-            trainer_name='minibatch',
+            trainer='minibatch',
             nbr_epochs=1,
             clf_type=clf_type,
             labels=labels,
@@ -280,7 +271,7 @@ class TestTrainClassifier(unittest.TestCase):
 
         msg = TrainClassifierMsg(
             job_token='test',
-            trainer_name='minibatch',
+            trainer='minibatch',
             nbr_epochs=1,
             clf_type='LR',
             labels=TrainingTaskLabels(
@@ -330,7 +321,7 @@ class TestTrainClassifier(unittest.TestCase):
         ):
             msg = TrainClassifierMsg(
                 job_token='test',
-                trainer_name='minibatch',
+                trainer='minibatch',
                 nbr_epochs=2,
                 clf_type='MLP',
                 labels=preprocess_labels(make_random_data(
@@ -389,7 +380,7 @@ class ClassifyReturnMsgTest(unittest.TestCase):
 
         msg = TrainClassifierMsg(
             job_token='test',
-            trainer_name='minibatch',
+            trainer='minibatch',
             nbr_epochs=1,
             clf_type='MLP',
             labels=labels,
