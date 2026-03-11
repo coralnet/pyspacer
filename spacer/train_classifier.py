@@ -116,8 +116,14 @@ class MiniBatchTrainer(ClassifierTrainer):
         logger.debug(
             f"Mini-batch size: {self.batch_size} labels")
 
+        # The possible classes for this training.
+        # We derive this from the ref set, but it could just as well be from
+        # the train set, since preprocess_labels() already trimmed both sets
+        # down to the classes common to both.
         classes_list = list(ref_labels.classes_set)
 
+        # The entirety of the ref set is loaded here and then held in memory
+        # during the whole calibration process.
         with config.log_entry_and_exit("loading of reference data"):
             refx, refy = ref_labels.load_all_data()
 

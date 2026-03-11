@@ -185,10 +185,14 @@ class TestTrain(unittest.TestCase):
     def test_mlp_str_labels(self):
         self.do_basic_run(['Porites', 'CCA', 'Sand'], 'MLP')
 
-    def test_mlp_hybrid_mode(self):
-
+    def test_mlp_annotation_threshold(self):
+        """
+        Test the default trainer's logic for automatically selecting MLP
+        parameters based on an annotation-count threshold.
+        """
         param_sets = [
             (11, 20, (100,), 1e-3),
+            # 100*1000 = 100000 total annotations; threshold is 50000
             (100, 1000, (200, 100), 1e-4),
         ]
 
@@ -212,11 +216,12 @@ class TestTrain(unittest.TestCase):
             clf_param = clf_calibrated.get_params()['estimator']
             self.assertEqual(
                 clf_param.hidden_layer_sizes, hls,
-                msg="Hidden layer sizes should correspond to label count")
+                msg="Hidden layer sizes should match the expected values"
+                    " for the annotation count")
             self.assertEqual(
                 clf_param.learning_rate_init, lr,
-                msg="Learning rate init value should correspond to label"
-                    " count")
+                msg="Learning rate init value should match the expected value"
+                    " for the annotation count")
 
     def test_custom_batch_size(self):
         feature_loc = DataLocation(storage_type='memory', key='')

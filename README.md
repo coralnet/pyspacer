@@ -260,8 +260,10 @@ from spacer.task_utils import preprocess_labels
 message = TrainClassifierMsg(
     # For your bookkeeping.
     job_token='classifier1',
-    # 'minibatch' is the default trainer defined by spacer.
-    # Custom trainers can be created by subclassing ClassifierTrainer.
+    # 'minibatch' specifies spacer's default trainer, MiniBatchTrainer,
+    # with default parameters.
+    # For more control, you can instead pass a MiniBatchTrainer instance, or
+    # define your own ClassifierTrainer subclass and pass an instance of it.
     trainer='minibatch',
     # How many iterations the training algorithm should run; more epochs
     # = more opportunity to converge to a better fit, but slower.
