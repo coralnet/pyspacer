@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.14.0
+
+`TrainClassifierMsg` now takes a `trainer` parameter instead of `trainer_name`, and accepts custom trainers through this parameter. The options for the parameter are:
+
+- `'minibatch'` to use the default trainer, `MiniBatchTrainer`, instantiated with default parameters
+- A MiniBatchTrainer instance with custom parameters
+- Fully-qualified class path of your own `ClassifierTrainer` subclass, to instantiate it with default parameters
+- Instance of your own ClassifierTrainer subclass
+
+Use 'minibatch' to match PySpacer's old behavior. Note that `trainer_name` is still supported by TrainClassifierMsg deserialization for now, but not by instantiation anymore.
+
+Thanks to @gnieuwenhuis for the contribution.
+
 ## 0.13.0
 
 - Updates to pip-install dependencies:
